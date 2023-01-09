@@ -1,0 +1,143 @@
+
+
+To define concretely:
+syntax - 
+semantics -
+lexical -
+
+
+predicate -
+
+disjoint (in relation to sets) - 
+
+
+History:
+1956 - First compiler, it was for Fortran, took ~18 man years of effort
+1960 - Algol 60, first time a formal notation was used for the definition of a
+       language's structure (Naur, 1960)
+1980 - Up until about 1980 the whole compiler could not fit into memory, had to
+       be broken up into individual parts
+
+
+Chapter 1: Introduction
+--------------------------------------------------------------------------------
+
+Steps in the translation (compilation) process:
+
+1. Lexical Analysis: Source text -> symbols of the language vocab
+2. Syntax Analysis (Parsing): symbols -> a representation that mirrors the
+   syntatic structure of source text
+3. Type Checking
+4. Code Generation: the rep. from step 2 -> target machine instructions
+
+
+Two part compiler, front end and back end:
+Front End - lexical and syntax analyses, type checking -> generates AST
+Back End - Code generation
+Advantages:
+- front end is independent of the target machine and its instruction set
+- can create front ends for different languages generating trees for a single
+  back end
+
+
+Chapter 2: Language and Syntax
+--------------------------------------------------------------------------------
+
+A language can be expressed (defined?) by a series of syntax rules
+These syntax rules are basically substitutions of left-hand sides with
+right-hand sides. They are often recursively defined.
+
+A syntax does not only define the set of sentences of a language, but also
+provides them with a structure
+
+Formally, a language is defined by:
+
+1. The set of terminal symbols. These are the symbols that occur in its
+   sentences. They are said to be terminal, because they cannot be substituted by
+   any other symbols. The substitution process stops with terminal symbols. In our
+   first example this set consists of the elements a, b, c and d.  The set is also
+   called vocabulary.
+
+2. The set of nonterminal symbols. They denote syntactic classes and can be
+   substituted. In our first example this set consists of the elements S, A and B.
+
+3. The set of syntactic equations (also called productions). These define the
+   possible substitutions of nonterminal symbols. An equation is specified for each
+   nonterminal symbol.
+
+4. The start symbol. It is a nonterminal symbol, in the examples above denoted
+   by S.
+
+EBNF - Extended Backus Naur Form
+introduces a few concepts like {symbol} to encode recursion, i.e. an arbitrarily
+long sequence of symbol in this case
+
+Example of two different structural trees for addition of three numbers, if
+subtraction is used instead, we can see that the two different trees yield
+different results. From this we learn two facts:
+1. Interpretation of sentences always rests on the recognition of their
+   syntactic structure.
+2. Every sentence must have a single structure in order to be unambiguous.
+
+
+Chapter 3: Regular Languages
+--------------------------------------------------------------------------------
+
+syntactic equations (like EBNF) generate context-free languages.
+
+context-free - substitution of the symbol left of = by a sequence derived from
+  the expression to the right of = is always permitted, regardless of the
+  context in which the symbol is embedded within the sentence
+
+regular language - a context-free language whose syntax contains no recursion
+  except for the specification of repetition
+
+sentence recognition is called syntax analysis
+
+a state machine is used for sentence recognition, in each step the state machine
+reads the next symbol and changes state
+
+
+Chapter 4: Analysis of Context-Free Languages
+--------------------------------------------------------------------------------
+
+Regular languages can have no nested structures, however we do want to be able
+to represent nested structures
+
+given the following production:
+A = "a" A "c" | "b"
+We can define a procedure that parses construct A
+
+PROCEDURE A;
+BEGIN
+  IF sym = "a" THEN
+    next; A;
+    IF sym = "c" THEN next ELSE error END
+  ELSIF sym = "b" THEN next
+  ELSE error
+  END
+END A
+
+More generally:
+A parsing algorithm is derived for each nonterminal symbol, and it is formulated
+as a procedure carrying the name of the symbol. The occurrence of the symbol in
+the syntax is translated into a call of the corresponding procedure.
+Note: this rule holds regardless of whether the procedure is recursive or not.
+
+regular language -> parsed by state machine
+
+context-free language -> parsed by a set of state machines that call into other
+                         state machines and themselves
+
+This is the basis of a recursive decent parser
+
+We want to consider languages that can be parsed with a lookahead of only a
+single symbol
+
+By looking ahead one symbol, we are able to determine the "type" of symbol. This
+is only possible because of the requirement that productions can not share any
+start symbols (academic elites like math terminology like the sets must be
+disjoint)
+
+
+
