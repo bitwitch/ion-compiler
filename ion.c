@@ -26,7 +26,7 @@ typedef struct {
 #define array_length(b) ((b) ? array__header(b)->len : 0)
 #define array_capacity(b) ((b) ? array__header(b)->cap : 0)
 #define array_push(b, x) (array__fit(b, 1), (b)[array_length(b)] = (x), array__header(b)->len++)
-#define array_free(b) ((b) ? free(array__header(b)) : 0)
+#define array_free(b) ((b) ? (free(array__header(b)), (b) = NULL) : 0)
 
 void *array__grow(void *buf, size_t new_len, size_t elem_size) {
 	size_t new_cap = MAX(1 + 2*array_capacity(buf), new_len);
@@ -55,11 +55,9 @@ typedef enum {
 
 typedef struct {
 	TokenKind kind;
+    char *start, *end;  // NOTE(shaw): this substring is not null terminated
 	union {
 		uint64_t u64;
-		struct {
-			char *start, *end;
-		};
 	};
 } Token;
 
@@ -67,6 +65,7 @@ Token token;
 char *stream;
 
 void next_token() {
+    token.start = stream;
 	switch (*stream) {
 		case '0':
 		case '1':
@@ -102,20 +101,19 @@ void next_token() {
 		case 'T': case 'U': case 'V': case 'W': case 'X':
 		case 'Y': case 'Z': case '_':
 		{
-			char *start = stream++;
 			while (isalnum(*stream) || *stream == '_')
 				++stream;
 			token.kind = TOKEN_NAME;
-			// NOTE(shaw): this substring is not null terminated
-			token.start = start;
-			token.end = stream;
 			break;
 		}
 		default:
+        {
 			token.kind = *stream;
 			++stream;
 			break;
+        }
 	}
+    token.end = stream;
 }
 
 void print_token(Token token) {
@@ -148,6 +146,8 @@ void lex_test(void) {
 void buf_test(void) {
 	int *buf = NULL;
 
+    assert(array_length(buf) == 0);
+
 	enum { N = 1024 };
 	for (int i=0; i < N; ++i) {
 		array_push(buf, i);
@@ -159,6 +159,8 @@ void buf_test(void) {
 	}
 
 	array_free(buf);
+    assert(buf == NULL);
+    assert(array_len(buf) == 0);
 }
 
 int main(int argc, char **argv) {
