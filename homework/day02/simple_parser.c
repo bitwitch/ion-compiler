@@ -36,6 +36,7 @@
  */
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -44,22 +45,38 @@
 #include "../stb_ds.h"
 
 typedef enum {
-	FIRST_NONASCII_TOKEN = 128,
-	TOKEN_INT,
-} Token_Kind;
+	TOKEN_INT = 128,
+} TokenKind;
 
 typedef struct {
-	Token_Kind kind;
+	TokenKind kind;
 	int val;
 } Token;
 
-typedef struct AST_Node AST_Node;
-struct AST_Node {
-	AST_Node *left, *right;	
-};
+
+/*typedef struct AST_Node AST_Node;*/
+/*struct AST_Node {*/
+    /*[>AST_NodeKind kind;<]*/
+	/*AST_Node *left, *right;	*/
+/*};*/
 
 Token token = {0};
 char *stream;
+
+// Warning! this returns a pointer to a static buffer, so its contents will
+// change on each call
+char *str_token_kind(TokenKind kind) {
+    static char str[64] = {0};
+    if (kind == TOKEN_INT) {
+        sprintf(str, "integer");
+    } else {
+        if (kind < 128 && isprint(kind))
+            sprintf(str, "%c", kind);
+        else 
+            sprintf(str, "<ASCII %d>", kind);
+    }
+    return str;
+}
 
 void next_token(void) {
 	while (isspace(*stream)) ++stream;
@@ -89,29 +106,139 @@ Token *lex(char *expression) {
 	return tokens;
 }
 
+
+int parse_expr(void);
+
+int parse_expr3(void) {
+    if (token.kind == '(') {
+        next_token();
+        int val = parse_expr();
+        if (token.kind == ')') {
+            next_token();
+            return val;
+        } else {
+            fprintf(stderr, "Expected ')', got %s\n", str_token_kind(token.kind));
+            exit(1);
+        }
+    } else if (token.kind == TOKEN_INT) {
+        int val = token.val;
+        next_token();
+        return val;
+    } else {
+        fprintf(stderr, "Expected integer or '(', got %s\n", str_token_kind(token.kind));
+        exit(1);
+    }
+    return 0;
+}
+
+int parse_expr2(void) {
+    if (token.kind == '~' || token.kind == '-') {
+        char op = token.kind;
+        next_token();
+        if (op == '-')
+            return -parse_expr2();
+        else
+            return ~parse_expr2();
+    }
+    return parse_expr3();
+}
+
+int parse_expr1(void) {
+    int val = parse_expr2();
+    while (token.kind == '*' || token.kind == '/' || token.kind == '%' ||
+           token.kind == '&' || token.kind == '>' || token.kind == '<') // TODO(shaw): cheating here by just checking > instead of >>
+    {
+        char op = token.kind;
+        next_token();
+        int rval = parse_expr2();
+        switch (op) {
+            case '*': val  *= rval; break;
+            case '/': assert(rval != 0); val /= rval; break;
+            case '%': assert(rval != 0); val %= rval; break;
+            case '&': val  &= rval; break;
+            case '>': val >>= rval; break;
+            case '<': val <<= rval; break;
+            default:
+                fprintf(stderr, "Expected *, /, %%, &, >>, or <<, got %s\n", str_token_kind(token.kind));
+                exit(1);
+                break;
+        }
+    }
+    return val;
+}
+
+int parse_expr0(void) {
+    int val = parse_expr1();
+    while (token.kind == '+' || token.kind == '-' || token.kind == '^') {
+        char op = token.kind;
+        next_token();
+        int rval = parse_expr1();
+        switch (op) {
+            case '+': val += rval; break;
+            case '-': val -= rval; break;
+            case '^': val ^= rval; break;
+            default:
+                fprintf(stderr, "Expected +, -, or ^, got %s\n", str_token_kind(token.kind));
+                exit(1);
+                break;
+        }
+    }
+    return val;
+}
+
+int parse_expr(void) {
+    return parse_expr0();
+}
+
+
 /*
  * Language for simple arithmetic expressions:
- * expression = expression operator expression | integer | ["-"|"~"] integer
- * operator = "*" | "/" | "%" | "<<" | ">>" | "&" | "+" | "-" | "|" | "^"
- * integer = 0..9
+ * expr3 = integer | '(' expr ')'
+ * expr2 = ([~-] expr2)* | expr3
+ * expr1 = expr2 ([* % / >> << &] expr2)*
+ * expr0 = expr1 ([+-^] expr1)*
+ * expr  = expr0
  */
-AST_Node *parse(Token *tokens) {
-	(void)tokens;
 
-	AST_Node *head = NULL;
+/*AST_Node *parse_expr0(Token *tokens) {*/
 
-	return head;
+    /*parse_expr1();*/
+
+    /*if (token.kind != '+' && token.kind != '-' && token.kind != '^') {*/
+        /*fprintf(stderr, "Expected '+', '-', or '^', got %s\n", str_token_kind(kind));*/
+        /*exit(1);*/
+    /*}*/
+
+
+
+
+	/*AST_Node *head = NULL;*/
+
+	/*return head;*/
+/*}*/
+
+int parse_expression(char *source) {
+    stream = source;
+    next_token();
+    return parse_expr();
 }
 
 int main(int argc, char **argv) {
 	(void)argc; (void)argv;
 
-	char *expression = "12*34 + 45/56 + ~25";
+    assert(parse_expression("3") == 3);
+    assert(parse_expression("-3") == -3);
+    assert(parse_expression("7+-4") == 3);
+    assert(parse_expression("(3)") == 3);
+    assert(parse_expression("60 + 9") == 69);
+    assert(parse_expression("60 + 9 + 351") == 420);
+    assert(parse_expression("300*2 + 33+33") == 666);
 
-	Token *tokens = lex(expression);
-	AST_Node *ast = parse(tokens);
+	/*parse_expression("12*34 + 45/56 + ~25");*/
 
-	(void)ast;
+	/*Token *tokens = lex(expression);*/
+	/*AST_Node *ast = parse_expr(tokens);*/
+
 
 	return 0;
 }
