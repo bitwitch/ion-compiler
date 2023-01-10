@@ -75,6 +75,7 @@ void next_token(void) {
 	} 
 	else {
 		token.kind = *stream;
+        ++stream;
 	}
 }
 
@@ -84,12 +85,19 @@ Token *lex(char *expression) {
 	do {
 		next_token();
 		arrput(tokens, token);
-	} while (token.kind);
+	} while (*stream != '\0');
 	return tokens;
 }
 
+/*
+ * Language for simple arithmetic expressions:
+ * expression = expression operator expression | integer | ["-"|"~"] integer
+ * operator = "*" | "/" | "%" | "<<" | ">>" | "&" | "+" | "-" | "|" | "^"
+ * integer = 0..9
+ */
 AST_Node *parse(Token *tokens) {
 	(void)tokens;
+
 	AST_Node *head = NULL;
 
 	return head;
@@ -102,6 +110,7 @@ int main(int argc, char **argv) {
 
 	Token *tokens = lex(expression);
 	AST_Node *ast = parse(tokens);
+
 	(void)ast;
 
 	return 0;
