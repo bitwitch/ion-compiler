@@ -2,21 +2,21 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 #include <ctype.h>
 
 #define MAX(x, y) ((x) >= (y) ? (x) : (y))
 
-// stretchy buffers, a la sean barrett
+// dynamic array or "stretchy buffers", a la sean barrett
 
 typedef struct {
 	size_t len;
 	size_t cap;
-	char buf[1];
+	char buf[]; // flexible array member
 } DA_Header;
 
-// get the metadata of the array which is stored before the actual buffer in
-// memory
+// get the metadata of the array which is stored before the actual buffer in memory
 #define array__header(b) ((DA_Header*)((char*)b - offsetof(DA_Header, buf)))
 // checks if n new elements will fit in the array
 #define array__fits(b, n) (array_length(b) + (n) <= array_capacity(b)) 
@@ -44,21 +44,69 @@ void *array__grow(void *buf, size_t new_len, size_t elem_size) {
 	return new_header->buf;
 }
 
+// String Interning
+typedef struct {
+    size_t len;
+    char *str;
+} InternStr;
+
+static InternStr *interns;
+
+char *intern_str_range(char *start, char *end) {
+    size_t len = end - start;
+
+    // check if string is already interned
+    for (size_t i=0; i<array_length(interns); ++i) {
+        if (len == interns[i].len && strncmp(interns[i].str, start, len) == 0) {
+            return interns[i].str;
+        }
+    }
+
+    char *str = malloc(len + 1);
+    strncpy(str, start, len);
+    str[len] = 0;
+    InternStr intern_str = { len, str };
+    array_push(interns, intern_str);
+
+    return str;
+}
+
+char *intern_str(char *str) {
+    // FIXME(shaw): just wrapping the range version for now with a wasteful
+    // call to strlen. we can be smarter about this but its fine for now.
+    return intern_str_range(str, str + strlen(str));
+}
+
+void str_intern_test(void) {
+    char a[] = "boobies";
+    char b[] = "boobies";
+    char c[] = "boobies!";
+
+    char *start = a; 
+    char *end = a + strlen(a);
+
+    assert(a != b);
+    assert(intern_str(a) == intern_str(b));
+    assert(intern_str(a) != intern_str(c));
+    assert(intern_str(a) == intern_str_range(start, end));
+}
+
+
 // lexing: translating char stream to token stream
 
 typedef enum {
-	FIRST_NONCHAR_TOKEN = 128,
-	TOKEN_INT,
+    // NOTE(shaw): reserving values 0-127 for ascii chars to use
+	TOKEN_INT = 128,
 	TOKEN_NAME,
-
 } TokenKind;
 
 typedef struct {
 	TokenKind kind;
-    char *start, *end;  // NOTE(shaw): this substring is not null terminated
+    char *start, *end;
 	union {
 		uint64_t u64;
-	};
+        char *name;
+	}; // anonymous unions are c11 feature
 } Token;
 
 Token token;
@@ -104,6 +152,7 @@ void next_token() {
 			while (isalnum(*stream) || *stream == '_')
 				++stream;
 			token.kind = TOKEN_NAME;
+            token.name = intern_str_range(token.start, stream);
 			break;
 		}
 		default:
@@ -116,15 +165,18 @@ void next_token() {
     token.end = stream;
 }
 
+void init_stream(char *source) {
+    stream = source;
+    next_token();
+}
+
 void print_token(Token token) {
 	switch(token.kind) {
 	case TOKEN_INT:
-		printf("TOKEN INT: %lu\n", token.u64);
+		printf("TOKEN INT: %llu\n", token.u64);
 		break;
 	case TOKEN_NAME:
 		printf("TOKEN NAME: %.*s\n", (int)(token.end - token.start), token.start);
-		break;
-	case FIRST_NONCHAR_TOKEN:
 		break;
 	default:
 		printf("TOKEN '%c'\n", token.kind);
@@ -135,10 +187,9 @@ void print_token(Token token) {
 
 void lex_test(void) {
 	char *source = "+()_HELLO1,234+FOO!666";
-	stream = source;
-	next_token();
+    init_stream(source);
 	while (token.kind) {
-		print_token(token);
+		/*print_token(token);*/
 		next_token();
 	}
 }
@@ -160,14 +211,14 @@ void buf_test(void) {
 
 	array_free(buf);
     assert(buf == NULL);
-    assert(array_len(buf) == 0);
+    assert(array_length(buf) == 0);
 }
 
 int main(int argc, char **argv) {
+    (void)argc; (void)argv;
 	buf_test();
 	lex_test();
-
-
+    str_intern_test();
 
 	return 0;
 }
