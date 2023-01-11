@@ -8,7 +8,7 @@ operators, highest to lowest precedence:
     + - | ^             (left associative)
 
 Output an S-expression that corresponds to the parse tree, e.g.
-12 * (34 + 45) / 56 + ~25
+12*34 + 45/56 + ~25
 
 should generate an S-expression that looks like this
 (+ (+ (* 12 34) (/ 45 56)) (~ 25))
