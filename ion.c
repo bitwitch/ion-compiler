@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
 
-#define MAX(x, y) ((x) >= (y) ? (x) : (y))
 
 // dynamic array or "stretchy buffers", a la sean barrett
 
@@ -16,26 +16,30 @@ typedef struct {
 	char buf[]; // flexible array member
 } DA_Header;
 
+#define MAX(x, y) ((x) >= (y) ? (x) : (y))
+
 // get the metadata of the array which is stored before the actual buffer in memory
-#define array__header(b) ((DA_Header*)((char*)b - offsetof(DA_Header, buf)))
+#define da__header(b) ((DA_Header*)((char*)b - offsetof(DA_Header, buf)))
 // checks if n new elements will fit in the array
-#define array__fits(b, n) (array_length(b) + (n) <= array_capacity(b)) 
+#define da__fits(b, n) (da_lenu(b) + (n) <= da_cap(b)) 
 // if n new elements will not fit in the array, grow the array by reallocating 
-#define array__fit(b, n) (array__fits(b, n) ? 0 : ((b) = array__grow((b), array_length(b) + (n), sizeof(*(b)))))
+#define da__fit(b, n) (da__fits(b, n) ? 0 : ((b) = da__grow((b), da_lenu(b) + (n), sizeof(*(b)))))
 
-#define array_length(b) ((b) ? array__header(b)->len : 0)
-#define array_capacity(b) ((b) ? array__header(b)->cap : 0)
-#define array_push(b, x) (array__fit(b, 1), (b)[array_length(b)] = (x), array__header(b)->len++)
-#define array_free(b) ((b) ? (free(array__header(b)), (b) = NULL) : 0)
+#define da_len(b)  ((b) ? (int32_t)da__header(b)->len : 0)
+#define da_lenu(b) ((b) ?          da__header(b)->len : 0)
+#define da_cap(b) ((b) ? da__header(b)->cap : 0)
+#define da_end(b) ((b) + da_lenu(b))
+#define da_push(b, ...) (da__fit(b, 1), (b)[da__header(b)->len++] = (__VA_ARGS__))
+#define da_free(b) ((b) ? (free(da__header(b)), (b) = NULL) : 0)
 
-void *array__grow(void *buf, size_t new_len, size_t elem_size) {
-	size_t new_cap = MAX(1 + 2*array_capacity(buf), new_len);
+void *da__grow(void *buf, size_t new_len, size_t elem_size) {
+	size_t new_cap = MAX(1 + 2*da_cap(buf), new_len);
 	assert(new_len <= new_cap);
 	size_t new_size = offsetof(DA_Header, buf) + new_cap*elem_size;
 
 	DA_Header *new_header;
 	if (buf) {
-		new_header = realloc(array__header(buf), new_size);
+		new_header = realloc(da__header(buf), new_size);
 	} else {
 		new_header = malloc(new_size);
 		new_header->len = 0;
@@ -52,11 +56,11 @@ typedef struct {
 
 static InternStr *interns;
 
-char *intern_str_range(char *start, char *end) {
+char *str_intern_range(char *start, char *end) {
     size_t len = end - start;
 
     // check if string is already interned
-    for (size_t i=0; i<array_length(interns); ++i) {
+    for (size_t i=0; i<da_lenu(interns); ++i) {
         if (len == interns[i].len && strncmp(interns[i].str, start, len) == 0) {
             return interns[i].str;
         }
@@ -65,16 +69,17 @@ char *intern_str_range(char *start, char *end) {
     char *str = malloc(len + 1);
     strncpy(str, start, len);
     str[len] = 0;
-    InternStr intern_str = { len, str };
-    array_push(interns, intern_str);
+    /*InternStr intern_str = { len, str };*/
+
+    da_push(interns, (InternStr){ len, str });
 
     return str;
 }
 
-char *intern_str(char *str) {
+char *str_intern(char *str) {
     // FIXME(shaw): just wrapping the range version for now with a wasteful
     // call to strlen. we can be smarter about this but its fine for now.
-    return intern_str_range(str, str + strlen(str));
+    return str_intern_range(str, str + strlen(str));
 }
 
 void str_intern_test(void) {
@@ -86,9 +91,9 @@ void str_intern_test(void) {
     char *end = a + strlen(a);
 
     assert(a != b);
-    assert(intern_str(a) == intern_str(b));
-    assert(intern_str(a) != intern_str(c));
-    assert(intern_str(a) == intern_str_range(start, end));
+    assert(str_intern(a) == str_intern(b));
+    assert(str_intern(a) != str_intern(c));
+    assert(str_intern(a) == str_intern_range(start, end));
 }
 
 
@@ -104,7 +109,7 @@ typedef struct {
 	TokenKind kind;
     char *start, *end;
 	union {
-		uint64_t u64;
+		uint64_t int_val;
         char *name;
 	}; // anonymous unions are c11 feature
 } Token;
@@ -133,7 +138,7 @@ void next_token() {
 				++stream;
 			}
 			token.kind = TOKEN_INT;
-			token.u64 = val;
+			token.int_val = val;
 			break;
 		}
 
@@ -152,7 +157,7 @@ void next_token() {
 			while (isalnum(*stream) || *stream == '_')
 				++stream;
 			token.kind = TOKEN_NAME;
-            token.name = intern_str_range(token.start, stream);
+            token.name = str_intern_range(token.start, stream);
 			break;
 		}
 		default:
@@ -170,10 +175,18 @@ void init_stream(char *source) {
     next_token();
 }
 
+bool match_token(TokenKind kind) {
+    if (token.kind == kind) {
+        next_token();
+        return true;
+    } 
+    else return false;
+}
+
 void print_token(Token token) {
 	switch(token.kind) {
 	case TOKEN_INT:
-		printf("TOKEN INT: %llu\n", token.u64);
+		printf("TOKEN INT: %llu\n", token.int_val);
 		break;
 	case TOKEN_NAME:
 		printf("TOKEN NAME: %.*s\n", (int)(token.end - token.start), token.start);
@@ -185,33 +198,48 @@ void print_token(Token token) {
 	printf("\n");
 }
 
+#define assert_token(k) assert(match_token(k))
+#define assert_token_name(s) assert(str_intern(token.name) == str_intern(s) && match_token(TOKEN_NAME))
+#define assert_token_int(i) assert(token.int_val == (i) && match_token(TOKEN_INT))
+#define assert_token_eof() assert(token.kind == 0)
 void lex_test(void) {
 	char *source = "+()_HELLO1,234+FOO!666";
     init_stream(source);
-	while (token.kind) {
-		/*print_token(token);*/
-		next_token();
-	}
+    assert_token('+');
+    assert_token('(');
+    assert_token(')');
+    assert_token_name("_HELLO1");
+    assert_token(',');
+    assert_token_int(234);
+    assert_token('+');
+    assert_token_name("FOO");
+    assert_token('!');
+    assert_token_int(666);
+    assert_token_eof();
 }
+#undef assert_token
+#undef assert_token_name
+#undef assert_token_int
+#undef assert_token_eof
 
 void buf_test(void) {
 	int *buf = NULL;
 
-    assert(array_length(buf) == 0);
+    assert(da_len(buf) == 0);
 
-	enum { N = 1024 };
-	for (int i=0; i < N; ++i) {
-		array_push(buf, i);
+    int n = 1024;
+	for (int i=0; i < n; ++i) {
+		da_push(buf, i);
 	}
-	assert(array_length(buf) == N);
+	assert(da_len(buf) == n);
 
-	for (int i=0; i < N; ++i) {
+	for (int i=0; i < n; ++i) {
 		assert(buf[i] == i);
 	}
 
-	array_free(buf);
+	da_free(buf);
     assert(buf == NULL);
-    assert(array_length(buf) == 0);
+    assert(da_len(buf) == 0);
 }
 
 int main(int argc, char **argv) {
