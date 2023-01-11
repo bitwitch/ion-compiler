@@ -1,5 +1,0 @@
-2022-01-09
-- Started watching day 02 of Bitwise: https://youtu.be/0woxSWjWsb8
-- Before really starting the video, Per suggests learning some basics
-- Read chapters 1 - 4.1 of Compiler Construction 
-- Finished watching day 02 of Bitwise 

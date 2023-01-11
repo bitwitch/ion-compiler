@@ -1,0 +1,7 @@
+2022-01-10
+- begin day 2 homework, arithmetic expression lexer
+- watch day 3 of Bitwise
+
+2022-01-09
+- read chapters 1 - 4.1 of Compiler Construction
+- watch day 2 of Bitwise 

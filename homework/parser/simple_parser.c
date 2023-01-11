@@ -1,51 +1,11 @@
 /*
+ * Grammar for simple arithmetic expressions:
  *
- * Implement an expression parser for a simple arithmetic language:
- *
- * Parse an infix expression composed of integer literals and the following
- * operators, highest to lowest precedence:
- * 
- *     unary -, unary ~    (right associative)
- *     * / % << >> &       (left associative)
- *     + - | ^             (left associative)
- * 
- * Output an S-expression that corresponds to the parse tree, e.g.
- * 12 * (34 + 45) / 56 + ~25
- * 
- * should generate an S-expression that looks like this
- * (+ (+ (* 12 34) (/ 45 56)) (~ 25))
- *
- * Extra credit:
- * 
- * Q1: How would you support right associative binary operators like **
- *     (exponentiation)?
- * 
- * A1: Right associativity can be achieved in a particular grammar rule, by
- *     recurring on the right hand side of the binary operator. For example:
- *
- *     expr0 = expr1 (** expr0)*
- *
- *     This works because the expr0 on the right will effectively "consume" all
- *     expressions at this precedence level before the operator to its left is
- *     applied. You can think about this in the same way that the expr1 on the left 
- *     will "consume" all expressions of higher precedence before the current
- *     (lower) precedence rules will be matched.
- *
- * Q2: How would you support parenthesized expressions for explicit grouping?
- *
- * A2: At the highest level of precedence, you can add a matching rule for
- *     parenthesis and recur down to the lowest level of precedence to match
- *     whatever is inside the parenthesis. i.e. you add '(' expr ')'
- * 
- * While still using recursive descent, factor out the repetitive structure so
- * that the parsing for operators is driven by table information for what
- * operators exist and their precedence and associativity.
- * 
- * How might you use this to implement a language that supports user defined
- * operator symbols with user defined precedence and associativity?
- *
- * For more info see: 
- * https://github.com/pervognsen/bitwise/blob/master/notes/streams.md 
+ * expr3 = integer | '(' expr ')'
+ * expr2 = ([~-] expr2)* | expr3
+ * expr1 = expr2 ([* % / >> << &] expr2)*
+ * expr0 = expr1 ([+-^] expr1)*
+ * expr  = expr0
  */
 
 #include <assert.h>
@@ -101,16 +61,6 @@ void next_token(void) {
         ++stream;
 	}
 }
-
-
-/*
- * Grammar for simple arithmetic expressions:
- * expr3 = integer | '(' expr ')'
- * expr2 = ([~-] expr2)* | expr3
- * expr1 = expr2 ([* % / >> << &] expr2)*
- * expr0 = expr1 ([+-^] expr1)*
- * expr  = expr0
- */
 
 
 int parse_expr(void);
