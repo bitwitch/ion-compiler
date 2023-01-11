@@ -48,14 +48,13 @@
  * https://github.com/pervognsen/bitwise/blob/master/notes/streams.md 
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
-#define STB_DS_IMPLEMENTATION
-#include "../stb_ds.h"
 
 typedef enum {
     // reserving values 0 - 127 for tokens that are single ascii characters
@@ -66,12 +65,6 @@ typedef struct {
 	TokenKind kind;
 	int val;
 } Token;
-
-/*typedef struct AST_Node AST_Node;*/
-/*struct AST_Node {*/
-    /*[>AST_NodeKind kind;<]*/
-	/*AST_Node *left, *right;	*/
-/*};*/
 
 Token token = {0};
 char *stream;
@@ -203,24 +196,6 @@ int parse_expr(void) {
     return parse_expr0();
 }
 
-
-/*AST_Node *parse_expr0(Token *tokens) {*/
-
-    /*parse_expr1();*/
-
-    /*if (token.kind != '+' && token.kind != '-' && token.kind != '^') {*/
-        /*fprintf(stderr, "Expected '+', '-', or '^', got %s\n", str_token_kind(kind));*/
-        /*exit(1);*/
-    /*}*/
-
-
-
-
-	/*AST_Node *head = NULL;*/
-
-	/*return head;*/
-/*}*/
-
 int parse_expression(char *source) {
     stream = source;
     next_token();
@@ -240,9 +215,6 @@ int main(int argc, char **argv) {
     TEST_PARSE_EXPRESSION(300*2 + 33+33);
     TEST_PARSE_EXPRESSION(300*2 + 33+33);
     TEST_PARSE_EXPRESSION(300 * (2+33) + 33);
-
-	/*Token *tokens = lex(expression);*/
-	/*AST_Node *ast = parse_expr(tokens);*/
 
 
 	return 0;
