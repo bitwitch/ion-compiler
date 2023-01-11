@@ -10,19 +10,32 @@
  *     + - | ^             (left associative)
  * 
  * Output an S-expression that corresponds to the parse tree, e.g.
- * 
- * 12*34 + 45/56 + ~25
+ * 12 * (34 + 45) / 56 + ~25
  * 
  * should generate an S-expression that looks like this
- * 
  * (+ (+ (* 12 34) (/ 45 56)) (~ 25))
  *
  * Extra credit:
  * 
- * How would you support right associative binary operators like **
- * (exponentiation)?
+ * Q1: How would you support right associative binary operators like **
+ *     (exponentiation)?
  * 
- * How would you support parenthesized expressions for explicit grouping?
+ * A1: Right associativity can be achieved in a particular grammar rule, by
+ *     recurring on the right hand side of the binary operator. For example:
+ *
+ *     expr0 = expr1 (** expr0)*
+ *
+ *     This works because the expr0 on the right will effectively "consume" all
+ *     expressions at this precedence level before the operator to its left is
+ *     applied. You can think about this in the same way that the expr1 on the left 
+ *     will "consume" all expressions of higher precedence before the current
+ *     (lower) precedence rules will be matched.
+ *
+ * Q2: How would you support parenthesized expressions for explicit grouping?
+ *
+ * A2: At the highest level of precedence, you can add a matching rule for
+ *     parenthesis and recur down to the lowest level of precedence to match
+ *     whatever is inside the parenthesis. i.e. you add '(' expr ')'
  * 
  * While still using recursive descent, factor out the repetitive structure so
  * that the parsing for operators is driven by table information for what
@@ -45,6 +58,7 @@
 #include "../stb_ds.h"
 
 typedef enum {
+    // reserving values 0 - 127 for tokens that are single ascii characters
 	TOKEN_INT = 128,
 } TokenKind;
 
@@ -52,7 +66,6 @@ typedef struct {
 	TokenKind kind;
 	int val;
 } Token;
-
 
 /*typedef struct AST_Node AST_Node;*/
 /*struct AST_Node {*/
@@ -96,15 +109,15 @@ void next_token(void) {
 	}
 }
 
-Token *lex(char *expression) {
-	Token *tokens = NULL;
-	stream = expression;
-	do {
-		next_token();
-		arrput(tokens, token);
-	} while (*stream != '\0');
-	return tokens;
-}
+
+/*
+ * Grammar for simple arithmetic expressions:
+ * expr3 = integer | '(' expr ')'
+ * expr2 = ([~-] expr2)* | expr3
+ * expr1 = expr2 ([* % / >> << &] expr2)*
+ * expr0 = expr1 ([+-^] expr1)*
+ * expr  = expr0
+ */
 
 
 int parse_expr(void);
@@ -191,15 +204,6 @@ int parse_expr(void) {
 }
 
 
-/*
- * Language for simple arithmetic expressions:
- * expr3 = integer | '(' expr ')'
- * expr2 = ([~-] expr2)* | expr3
- * expr1 = expr2 ([* % / >> << &] expr2)*
- * expr0 = expr1 ([+-^] expr1)*
- * expr  = expr0
- */
-
 /*AST_Node *parse_expr0(Token *tokens) {*/
 
     /*parse_expr1();*/
@@ -226,15 +230,16 @@ int parse_expression(char *source) {
 int main(int argc, char **argv) {
 	(void)argc; (void)argv;
 
-    assert(parse_expression("3") == 3);
-    assert(parse_expression("-3") == -3);
-    assert(parse_expression("7+-4") == 3);
-    assert(parse_expression("(3)") == 3);
-    assert(parse_expression("60 + 9") == 69);
-    assert(parse_expression("60 + 9 + 351") == 420);
-    assert(parse_expression("300*2 + 33+33") == 666);
-
-	/*parse_expression("12*34 + 45/56 + ~25");*/
+#define TEST_PARSE_EXPRESSION(e) assert(parse_expression(#e) == (e))
+    TEST_PARSE_EXPRESSION(3);
+    TEST_PARSE_EXPRESSION(-3);
+    TEST_PARSE_EXPRESSION(7+-4);
+    TEST_PARSE_EXPRESSION((3));
+    TEST_PARSE_EXPRESSION(60 + 9);
+    TEST_PARSE_EXPRESSION(60 + 9 + 351);
+    TEST_PARSE_EXPRESSION(300*2 + 33+33);
+    TEST_PARSE_EXPRESSION(300*2 + 33+33);
+    TEST_PARSE_EXPRESSION(300 * (2+33) + 33);
 
 	/*Token *tokens = lex(expression);*/
 	/*AST_Node *ast = parse_expr(tokens);*/
