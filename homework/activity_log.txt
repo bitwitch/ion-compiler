@@ -1,3 +1,11 @@
+2022-01-12
+- watch Bitwise day 4 Extra
+- implement stack based virtual machine with basic arithmetic instructions
+
+2022-01-11
+- watch day 4 of Bitwise
+- hw parser: generate AST and walk the tree to print s-expressions
+
 2022-01-10
 - begin day 2 homework, arithmetic expression lexer
 - watch day 3 of Bitwise
