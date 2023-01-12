@@ -117,6 +117,16 @@ typedef struct {
 Token token;
 char *stream;
 
+uint64_t scan_int(void) {
+    uint64_t val = 0;
+    while (isdigit(*stream)) {
+        val *= 10;
+        val += *stream - '0';
+        ++stream;
+    }
+    return val;
+}
+
 void next_token() {
     token.start = stream;
 	switch (*stream) {
@@ -131,15 +141,9 @@ void next_token() {
 		case '8':
 		case '9':
 		{
-			uint64_t val = 0;
-			while (isdigit(*stream)) {
-				val *= 10;
-				val += *stream - '0';
-				++stream;
-			}
-			token.kind = TOKEN_INT;
-			token.int_val = val;
-			break;
+            token.kind = TOKEN_INT;
+            token.int_val = scan_int();
+            break;
 		}
 
 		case 'a': case 'b': case 'c': case 'd': case 'e':
