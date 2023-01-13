@@ -8,15 +8,6 @@
  * expr  = expr0
  */
 
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
-#include <ctype.h>
-
 typedef enum {
     // reserving values 0 - 127 for tokens that are single ascii characters
 	TOKEN_INT = 128,
@@ -24,13 +15,14 @@ typedef enum {
 
 typedef struct {
 	TokenKind kind;
-	int val;
+	int32_t val;
 } Token;
 
 typedef struct AST_Node AST_Node;
 struct AST_Node {
     Token token;
-    AST_Node *left, *right;
+    // NOTE(shaw): unary operators will have left = NULL
+    AST_Node *left, *right; 
 };
 
 Token token = {0};
@@ -170,14 +162,74 @@ AST_Node *parse_expression(char *source) {
     return parse_expr();
 }
 
+uint8_t *append_lit(uint8_t *code, int32_t val) {
+    printf("before append lit da len: %d\n", da_len(code));
+    da_push(code, OP_LIT);
+    printf("after append lit da len: %d\n", da_len(code));
+    for (int num_bytes = sizeof(val); num_bytes > 0; --num_bytes) {
+        da_push(code, val & 0xFF);
+        val >>= 8;
+    }
+    printf("after append 4 byte int da len: %d\n", da_len(code));
+    return code;
+}
+
+uint8_t ascii_to_opcode[128] = {
+    ['~'] = OP_NOT,
+    // ['-'] = OP_NEG, // this is the same as OP_SUB, need to discriminate the two elsewhere
+    ['*'] = OP_MUL,
+    ['/'] = OP_DIV,
+    ['%'] = OP_MOD,
+    ['<'] = OP_SHL, // FIXME(shaw): this is lying, use a real shift left token
+    ['>'] = OP_SHR, // FIXME(shaw): this is lying, use a real shift right token
+    ['&'] = OP_AND,
+
+    ['+'] = OP_ADD,
+    ['-'] = OP_SUB,
+    ['|'] = OP_OR,
+    ['^'] = OP_XOR,
+};
+
+uint8_t *append_op(uint8_t *code, AST_Node *node) {
+    uint8_t op = ascii_to_opcode[token.kind];
+    if (op == OP_SUB && node->left == NULL)
+        op = OP_NEG;
+    da_push(code, op);
+    return code;
+}
+
+
+uint8_t *generate_bytecode_recur(uint8_t *code, AST_Node *head) {
+    if (head == NULL) return code;
+
+    TokenKind kind = head->token.kind;
+    assert(kind != 0);
+
+    if (kind == TOKEN_INT)
+        code = append_lit(code, head->token.val);
+    else {
+        code = generate_bytecode_recur(code, head->left);
+        code = generate_bytecode_recur(code, head->right);
+        code = append_op(code, head);
+    }
+
+    return code;
+}
+
+uint8_t *generate_bytecode(AST_Node *head) {
+    uint8_t *code = NULL;
+    code = generate_bytecode_recur(code, head);
+    da_push(code, OP_HALT);
+    return code;
+}
+
 void print_s_expression(AST_Node *head) {
     if (head == NULL) return;
 
+    assert(head->token.kind != 0);
+
     if (head->token.kind == TOKEN_INT) 
         printf("%d", head->token.val);
-    else if (head->token.kind == 0) {
-
-    } 
     else
         printf("(%c ", head->token.kind);
 
@@ -206,18 +258,6 @@ void parse_test(void) {
 }
 #undef TEST_PARSE_EXPRESSION
 */
-
-int main(int argc, char **argv) {
-	(void)argc; (void)argv;
-    /*parse_test();*/
-
-    AST_Node *head = parse_expression("12*34 + 45/56 + ~25");
-    print_s_expression(head);
-    printf("\n");
-
-	return 0;
-}
-
 
 
 

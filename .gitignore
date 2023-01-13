@@ -1,3 +1,4 @@
 ion
 *.dSYM/
 build/
+tags
