@@ -1,6 +1,10 @@
+2022-01-13
+- generate bytecode from AST, and execute in virtual machine (i.e. a compiler!)
+- watch Bitwise day 5
+
 2022-01-12
-- watch Bitwise day 4 Extra
 - implement stack based virtual machine with basic arithmetic instructions
+- watch Bitwise day 4 Extra
 
 2022-01-11
 - watch day 4 of Bitwise

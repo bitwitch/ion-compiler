@@ -99,12 +99,12 @@ AST_Node *parse_expr3(void) {
 }
 
 AST_Node *parse_expr2(void) {
-    if (is_token('-') || is_token('~')) {
+    while (is_token('-') || is_token('~')) {
         AST_Node *current = malloc(sizeof(AST_Node));
         current->token = token;
         current->left = NULL;
         next_token();
-        current->right = parse_expr3();
+        current->right = parse_expr2();
         return current;
     }
     return parse_expr3();
@@ -163,14 +163,11 @@ AST_Node *parse_expression(char *source) {
 }
 
 uint8_t *append_lit(uint8_t *code, int32_t val) {
-    printf("before append lit da len: %d\n", da_len(code));
     da_push(code, OP_LIT);
-    printf("after append lit da len: %d\n", da_len(code));
     for (int num_bytes = sizeof(val); num_bytes > 0; --num_bytes) {
         da_push(code, val & 0xFF);
         val >>= 8;
     }
-    printf("after append 4 byte int da len: %d\n", da_len(code));
     return code;
 }
 
@@ -191,7 +188,7 @@ uint8_t ascii_to_opcode[128] = {
 };
 
 uint8_t *append_op(uint8_t *code, AST_Node *node) {
-    uint8_t op = ascii_to_opcode[token.kind];
+    uint8_t op = ascii_to_opcode[node->token.kind];
     if (op == OP_SUB && node->left == NULL)
         op = OP_NEG;
     da_push(code, op);

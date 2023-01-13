@@ -1,14 +1,11 @@
-#include <stdio.h>
-#include <stdarg.h>
-#include <stdint.h>
-#include <assert.h>
-
 #define MAX_STACK 2048
 
 #define POP()     (*--top)
 #define PUSH(x)   (*top++ = (x))
 #define POPS(n)   assert(top - stack >= (n))
 #define PUSHES(n) assert(top + (n) <= stack + MAX_STACK)
+
+#define test_program(code, result) assert(vm_exec(code) == (result))
 
 typedef enum {
     OP_NONE,
@@ -85,7 +82,8 @@ int32_t vm_exec(uint8_t *code) {
             POPS(1);
             return POP();
         default:
-            assert(0);
+            fprintf(stderr, "Invalid opcode: %d '%c'\n", op, op);
+            exit(1);
             return 0;
         }
     }
@@ -124,8 +122,6 @@ void make_program(uint8_t *buf, size_t buf_size, ...) {
     va_end(args);
 }
 
-#define test_program(code, result) assert(vm_exec(code) == (result))
-
 void vm_tests(void) {
     /*uint8_t code[256] = {*/
         /*OP_LIT, 0x3c, 0x00, 0x00, 0x00,       // LIT 60*/
@@ -143,11 +139,5 @@ void vm_tests(void) {
     test_program(code, 420);
     make_program(code, 256, OP_LIT, 300, OP_LIT, 2, OP_MUL, OP_LIT, 100, OP_ADD, OP_LIT, 34, OP_SUB, OP_HALT);
     test_program(code, 666);
-
 }
 
-int main(int argc, char **argv) {
-    (void)argc; (void)argv;
-    vm_tests();
-    return 0;
-}
