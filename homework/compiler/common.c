@@ -1,3 +1,31 @@
+void *xmalloc(size_t size) {
+    void *ptr = malloc(size);
+    if (ptr == NULL) {
+        perror("malloc");
+        exit(1);
+    }
+    return ptr;
+}
+
+void *xcalloc(size_t num_items, size_t item_size) {
+    void *ptr = calloc(num_items, item_size);
+    if (ptr == NULL) {
+        perror("calloc");
+        exit(1);
+    }
+    return ptr;
+}
+
+void *xrecalloc(void *ptr, size_t size) {
+    void *result = realloc(ptr, size);
+    if (result == NULL) {
+        perror("recalloc");
+        exit(1);
+    }
+    return result;
+}
+
+
 // dynamic array or "stretchy buffers", a la sean barrett
 
 typedef struct {
@@ -31,10 +59,11 @@ void *da__grow(void *buf, size_t new_len, size_t elem_size) {
 	if (buf) {
 		new_header = realloc(da__header(buf), new_size);
 	} else {
-		new_header = malloc(new_size);
+		new_header = xmalloc(new_size);
 		new_header->len = 0;
 	}
 	new_header->cap = new_cap;
 	return new_header->buf;
 }
+
 

@@ -8,14 +8,14 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "da.c"
+#include "common.c"
 #include "vm.c"
 #include "parser.c"
 
 
 #define test_compile_and_run(expr) \
 do { \
-    AST_Node *head = parse_expression(#expr); \
+    Expr *head = parse_expression(#expr); \
     uint8_t *code = generate_bytecode(head); \
     uint32_t result = vm_exec(code); \
     assert(vm_exec(code) == (expr)); \
@@ -25,9 +25,9 @@ do { \
 int main(int argc, char **argv) {
 	(void)argc; (void)argv;
 
-    AST_Node *head = parse_expression("~~~~~~~~~~~~~~~42");
-    print_s_expression(head);
-    uint8_t *code = generate_bytecode(head);
+    Expr *expr = parse_expression("8 >> 1");
+    print_expression(expr); printf("\n");
+    uint8_t *code = generate_bytecode(expr);
     uint32_t result = vm_exec(code);
     printf("result = %d\n", result);
 
@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
     test_compile_and_run(-5 - -4);
     test_compile_and_run(-(-(-(-(-(-(-(-(-(-69))))))))));
     test_compile_and_run(~~~~~~~~~~~~~~~42);
+    test_compile_and_run(8 >> 1);
 
 
 	return 0;
