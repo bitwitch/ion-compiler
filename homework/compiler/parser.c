@@ -2,6 +2,7 @@
  * Grammar for simple arithmetic expressions:
  *
  * expr_base   = integer | '(' expr ')'
+ * expr_pow    = expr_base (** expr_pow)*
  * expr_unary  = ([~-] expr_unary)* | expr_base
  * expr_mul    = expr_unary ([* % / >> << &] expr_unary)*
  * expr_add    = expr_mul ([+-^] expr_mul)*
@@ -13,7 +14,8 @@ typedef enum {
     // reserving values 0 - 127 for tokens that are single ascii characters
 	TOKEN_INT = 128,
     TOKEN_LSHIFT,
-    TOKEN_RSHIFT
+    TOKEN_RSHIFT,
+    TOKEN_EXPONENT,
 } TokenKind;
 
 typedef struct {
@@ -82,6 +84,9 @@ void next_token(void) {
             stream++;
         } else if (op == '>' && *stream == '>') {
             op = TOKEN_RSHIFT;
+            stream++;
+        } else if (op == '*' && *stream == '*') {
+            op = TOKEN_EXPONENT;
             stream++;
         }
 		token.kind = op;
@@ -155,13 +160,26 @@ Expr *parse_expr_base(void) {
     return expr;
 }
 
+Expr *parse_expr_exponent(void) {
+    Expr *expr = parse_expr_base();
+    
+    while (is_token(TOKEN_EXPONENT)) {
+        TokenKind op = token.kind;
+        next_token();
+        expr = expr_binary(op, expr, parse_expr_exponent());
+    }
+
+    return expr;
+}
+
+
 Expr *parse_expr_unary(void) {
     if (is_token('-') || is_token('~')) {
         TokenKind op = token.kind;
         next_token();
         return expr_unary(op, parse_expr_unary());
     }
-    return parse_expr_base();
+    return parse_expr_exponent();
 }
 
 Expr *parse_expr_mul(void) {
@@ -222,8 +240,10 @@ uint8_t ascii_to_opcode[256] = {
     ['|'] = OP_OR,
     ['^'] = OP_XOR,
 
-    [TOKEN_LSHIFT] = OP_SHL,
-    [TOKEN_RSHIFT] = OP_SHR
+    [TOKEN_LSHIFT]   = OP_SHL,
+    [TOKEN_RSHIFT]   = OP_SHR,
+    [TOKEN_EXPONENT] = OP_POW,
+
 };
 
 uint8_t *append_op(uint8_t *code, Expr *expr) {

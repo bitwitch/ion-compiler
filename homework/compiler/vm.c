@@ -10,6 +10,8 @@
 typedef enum {
     OP_NONE,
 
+    OP_POW,
+
     OP_NOT,
     OP_NEG,
 
@@ -48,6 +50,13 @@ int32_t vm_exec(uint8_t *code) {
     for (;;) {
         uint8_t op = *code++;
         switch (op) {
+        case OP_POW:
+            POPS(2);
+            int32_t right = POP();
+            int32_t left = POP();
+            PUSHES(1);
+            PUSH((int32_t)pow(left, right));
+            break;
         case OP_NOT: 
             POPS(1);
             val = POP();
@@ -139,5 +148,7 @@ void vm_tests(void) {
     test_program(code, 420);
     make_program(code, 256, OP_LIT, 300, OP_LIT, 2, OP_MUL, OP_LIT, 100, OP_ADD, OP_LIT, 34, OP_SUB, OP_HALT);
     test_program(code, 666);
+    make_program(code, 256, OP_LIT, 2, OP_LIT, 16, OP_POW, OP_HALT);
+    test_program(code, (int32_t)pow(2,16));
 }
 

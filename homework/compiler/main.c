@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 #include <ctype.h>
 
 #include "common.c"
@@ -17,8 +18,14 @@
 do { \
     Expr *head = parse_expression(#expr); \
     uint8_t *code = generate_bytecode(head); \
-    uint32_t result = vm_exec(code); \
     assert(vm_exec(code) == (expr)); \
+} while(0)
+
+#define test_compile_and_run_expect(source, expected) \
+do { \
+    Expr *expr = parse_expression(source); \
+    uint8_t *code = generate_bytecode(expr); \
+    assert(vm_exec(code) == (expected)); \
 } while(0)
 
 
@@ -40,7 +47,9 @@ int main(int argc, char **argv) {
     test_compile_and_run(-(-(-(-(-(-(-(-(-(-69))))))))));
     test_compile_and_run(~~~~~~~~~~~~~~~42);
     test_compile_and_run(8 >> 1);
-
+    test_compile_and_run_expect("2**16", pow(2, 16));
+    test_compile_and_run_expect("4 * 3 ** 2 ** 2", 4 * pow(3, pow(2, 2)));
+    test_compile_and_run_expect("2 * 4 ** 6 - 8", 2 * pow(4, 6) - 8);
 
 	return 0;
 }
