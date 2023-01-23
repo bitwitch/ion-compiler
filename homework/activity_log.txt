@@ -1,3 +1,6 @@
+2022-01-15
+- implement exponentiation operator 
+
 2022-01-13
 - generate bytecode from AST, and execute in virtual machine (i.e. a compiler!)
 - watch Bitwise day 5

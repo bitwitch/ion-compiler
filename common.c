@@ -19,7 +19,7 @@ void *xcalloc(size_t num_items, size_t item_size) {
 void *xrealloc(void *ptr, size_t size) {
     void *result = realloc(ptr, size);
     if (result == NULL) {
-        perror("realloc");
+        perror("recalloc");
         exit(1);
     }
     return result;
@@ -27,6 +27,7 @@ void *xrealloc(void *ptr, size_t size) {
 
 
 // dynamic array or "stretchy buffers", a la sean barrett
+// ---------------------------------------------------------------------------
 
 typedef struct {
 	size_t len;
@@ -64,6 +65,78 @@ void *da__grow(void *buf, size_t new_len, size_t elem_size) {
 	}
 	new_header->cap = new_cap;
 	return new_header->buf;
+}
+
+void da_test(void) {
+	int *buf = NULL;
+
+    assert(da_len(buf) == 0);
+
+    int n = 1024;
+	for (int i=0; i < n; ++i) {
+		da_push(buf, i);
+	}
+	assert(da_len(buf) == n);
+
+	for (int i=0; i < n; ++i) {
+		assert(buf[i] == i);
+	}
+
+	da_free(buf);
+    assert(buf == NULL);
+    assert(da_len(buf) == 0);
+}
+
+
+
+
+// String Interning
+// ---------------------------------------------------------------------------
+typedef struct {
+    size_t len;
+    char *str;
+} InternStr;
+
+static InternStr *interns;
+
+char *str_intern_range(char *start, char *end) {
+    size_t len = end - start;
+
+    // check if string is already interned
+    for (size_t i=0; i<da_lenu(interns); ++i) {
+        if (len == interns[i].len && strncmp(interns[i].str, start, len) == 0) {
+            return interns[i].str;
+        }
+    }
+
+    char *str = xmalloc(len + 1);
+    strncpy(str, start, len);
+    str[len] = 0;
+    /*InternStr intern_str = { len, str };*/
+
+    da_push(interns, (InternStr){ len, str });
+
+    return str;
+}
+
+char *str_intern(char *str) {
+    // FIXME(shaw): just wrapping the range version for now with a wasteful
+    // call to strlen. we can be smarter about this but its fine for now.
+    return str_intern_range(str, str + strlen(str));
+}
+
+void str_intern_test(void) {
+    char a[] = "boobies";
+    char b[] = "boobies";
+    char c[] = "boobies!";
+
+    char *start = a; 
+    char *end = a + strlen(a);
+
+    assert(a != b);
+    assert(str_intern(a) == str_intern(b));
+    assert(str_intern(a) != str_intern(c));
+    assert(str_intern(a) == str_intern_range(start, end));
 }
 
 
