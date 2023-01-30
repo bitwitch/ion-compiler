@@ -1,0 +1,49 @@
+
+enum {
+  A, B, C,
+}
+
+enum {
+  A = 13, 
+  B, 
+  C,
+}
+
+struct Point {
+  x: int,
+  y: int,
+};
+
+union Reg {
+  i: int,
+  f: float,
+};
+
+var x: int;
+var y: int = 69;
+
+func fib(int: n) : int {
+  int result = 1;
+  for (i := 1; i<n; ++i) {
+    result += i;
+  }
+  return result;
+}
+
+
+
+func some_shit() {
+  x := 420;
+  y := 69;
+
+  x += 1;
+  x -= 2;
+
+  y *= 1;
+  y /= 2;
+  y %= 3;
+
+  y >>= 4;
+  y <<= 5;
+
+}
