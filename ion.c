@@ -73,6 +73,28 @@ void *da__grow(void *buf, size_t new_len, size_t elem_size) {
 	return new_header->buf;
 }
 
+void buf_test(void) {
+	int *buf = NULL;
+
+    assert(da_len(buf) == 0);
+
+    int n = 1024;
+	for (int i=0; i < n; ++i) {
+		da_push(buf, i);
+	}
+	assert(da_len(buf) == n);
+
+	for (int i=0; i < n; ++i) {
+		assert(buf[i] == i);
+	}
+
+	da_free(buf);
+    assert(buf == NULL);
+    assert(da_len(buf) == 0);
+}
+
+
+
 // String Interning
 typedef struct {
     size_t len;
@@ -122,12 +144,16 @@ void str_intern_test(void) {
 }
 
 
+
+
 // lexing: translating char stream to token stream
 
 typedef enum {
     // NOTE(shaw): reserving values 0-127 for ascii chars to use
 	TOKEN_INT = 128,
+	TOKEN_CHR,
 	TOKEN_FLOAT,
+	TOKEN_STR,
 	TOKEN_NAME,
 } TokenKind;
 
@@ -145,9 +171,14 @@ typedef struct {
 	union {
 		uint64_t int_val;
         double float_val;
+        char *str_val;
         char *name;
 	};
 } Token;
+
+bool match_token(TokenKind kind);
+void expect_token(TokenKind kind);
+
 
 Token token;
 char *stream;
@@ -215,7 +246,7 @@ void scan_int(void) {
     token.int_val = val;
 }
 
-void scan_float() {
+void scan_float(void) {
     char *start = stream;
     while (isdigit(*stream))
         ++stream;
@@ -239,6 +270,33 @@ void scan_float() {
     token.float_val = val;
 }
 
+void scan_str(void) {
+    ++stream; // skip opening quote
+    char *str_start = stream;
+    while (*stream != '"') {
+        if (!isprint(*stream)) {
+            syntax_error("Invalid character found in string literal, '%c'", *stream);
+        }
+        ++stream;
+    }
+    token.kind = TOKEN_STR;
+    token.str_val = str_intern_range(str_start, stream-1);
+    ++stream;
+}
+
+void scan_chr(void) {
+    ++stream; // skip opening quote
+    token.kind = TOKEN_CHR;
+    token.int_val = *stream;
+    if (*stream != '\'') {
+        syntax_error("Expected closing single quote for character literal, but got '%c'", *stream);
+    }
+    ++stream;
+}
+
+
+
+
 void next_token() {
 repeat:
     token.start = stream;
@@ -250,11 +308,15 @@ repeat:
             break;
         }
 
+        /*case '\'':*/
+            /*scan_chr();*/
+            /*break;*/
+        case '"':
+            scan_str();
+            break;
         case '.':
-        {
             scan_float();
             break;
-        }
 
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
@@ -308,8 +370,23 @@ bool match_token(TokenKind kind) {
         next_token();
         return true;
     } 
-    else return false;
+    return false;
 }
+
+char *str_token_kind(TokenKind kind) {
+    (void)kind;
+    return "str_token_kind_stub";
+}
+
+void expect_token(TokenKind kind) {
+    if (token.kind == kind) {
+        next_token();
+    } else {
+        syntax_error("Expected token '%s', got '%s'", str_token_kind(kind), str_token_kind(token.kind));
+        exit(1);
+    }
+}
+
 
 void print_token(Token token) {
 	switch(token.kind) {
@@ -326,10 +403,12 @@ void print_token(Token token) {
 	printf("\n");
 }
 
+
 #define assert_token(k) assert(match_token(k))
 #define assert_token_name(s) assert(str_intern(token.name) == str_intern(s) && match_token(TOKEN_NAME))
 #define assert_token_int(i) assert(token.int_val == (i) && match_token(TOKEN_INT))
 #define assert_token_float(f) assert(token.float_val == (f) && match_token(TOKEN_FLOAT))
+#define assert_token_str(s) assert(token.str_val == str_intern(s) && match_token(TOKEN_STR))
 #define assert_token_eof() assert(token.kind == 0)
 void lex_test(void) {
     {
@@ -394,6 +473,16 @@ void lex_test(void) {
         assert_token_float(0.33);
         assert_token_eof();
     }
+    {
+        char *source = "\"sally\" \"Geronimo\" fart poop 69";
+        init_stream(source);
+        assert_token_str("sally");
+        assert_token_str("Geronimo");
+        assert_token_name("fart");
+        assert_token_name("poop");
+        assert_token_int(69);
+        assert_token_eof();
+    }
 }
 #undef assert_token
 #undef assert_token_name
@@ -401,25 +490,7 @@ void lex_test(void) {
 #undef assert_token_float
 #undef assert_token_eof
 
-void buf_test(void) {
-	int *buf = NULL;
 
-    assert(da_len(buf) == 0);
-
-    int n = 1024;
-	for (int i=0; i < n; ++i) {
-		da_push(buf, i);
-	}
-	assert(da_len(buf) == n);
-
-	for (int i=0; i < n; ++i) {
-		assert(buf[i] == i);
-	}
-
-	da_free(buf);
-    assert(buf == NULL);
-    assert(da_len(buf) == 0);
-}
 
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
