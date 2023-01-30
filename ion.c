@@ -8,6 +8,7 @@
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
+#include <math.h>
 
 #include "common.c"
 #include "parser.c"
@@ -22,6 +23,4 @@ void run_tests(void) {
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
     run_tests();
-
-	return 0;
 }

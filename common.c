@@ -1,3 +1,8 @@
+// Helper Utilities
+
+#define array_count(a) sizeof(a)/sizeof(*(a))
+
+
 void *xmalloc(size_t size) {
     void *ptr = malloc(size);
     if (ptr == NULL) {
@@ -24,6 +29,26 @@ void *xrealloc(void *ptr, size_t size) {
     }
     return result;
 }
+
+void fatal(char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    printf("FATAL: ");
+    vprintf(fmt, args);
+    printf("\n");
+    va_end(args);
+    exit(1);
+}
+
+void syntax_error(char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    printf("Syntax Error: ");
+    vprintf(fmt, args);
+    printf("\n");
+    va_end(args);
+}
+
 
 
 // dynamic array or "stretchy buffers", a la sean barrett
@@ -86,6 +111,7 @@ void da_test(void) {
     assert(buf == NULL);
     assert(da_len(buf) == 0);
 }
+
 
 
 
