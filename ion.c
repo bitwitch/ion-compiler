@@ -10,8 +10,13 @@
 #include <ctype.h>
 #include <math.h>
 
+
 #include "common.c"
+#include "lexer.c"
+#include "ast.h"
+#include "ast.c"
 #include "parser.c"
+
 
 void run_tests(void) {
 	da_test();

@@ -1,47 +1,56 @@
-
 /*
-Grammar:
+Grammar
 
-
-expr_base   = integer | '(' expr ')'
-expr_pow    = expr_bas _(** expr_pow)*
-expr_unary  = ([~-] expr_unary)* | expr_base
-expr_mul    = expr_unary ([* % / >> << &] expr_unary)*
-expr_add    = expr_mul ([+-^] expr_mul)*
-expr        = expr_add
-
-
-
-stmt = 'return' expr
-     | 'for' for_stmt
-     | 'do' do_stmt
-     | 'while' while_stmt
-     | ASSIGNMENT 
-
-
-
-stmt_block = '{' stmt* '}'
-
-    
-enum_item = NAME ('=' expr)? ','?
-enum_decl = '{' enum_item* '}'
-
-field_item = NAME ':' type ','?
-aggregate_decl = NAME '{' field_item+ '}'
-
-var_decl = NAME ':' type ('=' expr)?
-const_decl = NAME '=' expr
-
-func_decl = NAME '(' func_parameter* ')' (':' type)? stmt_block
+Declarations:
 
 decl = 'enum' enum_decl
      | 'struct' aggregate_decl
      | 'union' aggregate_decl
      | 'var' var_decl
      | 'const' const_decl
+     | 'typedef' typedef_decl
      | 'func' func_decl
-*/
 
+Statements:
+
+stmt_block = '{' stmt* '}'
+stmt = 'return' expr? ';'
+     | 'continue' ';'
+     | 'break' ';'
+     | stmt_block
+     | 'if' '(' expr ')' stmt_block elseif* ('else' stmt_block)?
+     | 'for' '(' for_init? ';' expr? ';' for_next? ')' stmt_block
+     | 'do' stmt_block 'while' '(' expr ')' ';'
+     | 'while' '(' expr ')' stmt_block
+     | 'switch' '(' expr ')' case* ('default' ':' stmt*)?
+     | expr (INC | DEC | assign_op expr)?
+
+
+
+Expressions:
+
+typespec = NAME | '(' ':' type ')'
+base_expr = INT
+          | FLOAT
+          | STR
+          | NAME
+          | typespec? '{' expr_list '}'
+          | CAST '(' expr ')'
+          | '(' expr ')'
+compound_expr =  base_expr ('(' param* ')' | '[' expr ']' | '.' NAME)*
+unary_expr = [+-&*~] unary_expr
+           | compound_expr
+mul_op = '*' | '/' | '%' | '&' | LSHIFT | RSHIFT
+mul_expr = unary_expr (mul_op unary_expr)*
+add_op = '+' | '-' | '|' | '^'
+add_expr = mul_expr (add_op mul_expr)*
+cmp_op = EQ | NOTEQ | LT | GT | LTEQ | GTEQ
+cmp_expr = add_expr (cmp_op add_expr)*
+and_expr = cmp_expr (AND cmp_expr)*
+or_expr = and_expr (OR and_expr)*
+ternary_expr = or_expr ('?' ternary_expr ':' ternary_expr)?
+expr = ternary_expr
+*/
 
 typedef struct Decl Decl;
 typedef struct Expr Expr;
@@ -58,7 +67,10 @@ typedef enum {
 struct Expr {
     ExprKind kind;
     TokenKind op;
-    int32_t val;
+    union {
+        int32_t int_val;
+        double float_val;
+    };
     Expr *left, *right;
 };
 
@@ -67,22 +79,18 @@ typedef struct {
     Expr *expr;
 } EnumItem;
 
-struct Typespec {
-
-};
-
 typedef struct {
     char *name;
-    Typespec typespec;
+    Typespec *typespec;
 } AggregateField;
 
-typedef struct {
+typedef enum {
     AGGREGATE_NONE,
     AGGREGATE_STRUCT,
     AGGREGATE_UNION,
 } AggregateKind;
 
-typedef struct {
+typedef enum {
     DECL_NONE,
     DECL_ENUM,
     DECL_AGGREGATE,
@@ -91,20 +99,112 @@ typedef struct {
     DECL_FUNC,
 } DeclKind;
 
+typedef struct {
+    char *name;
+    Typespec *type;
+} FuncParam;
+
+typedef struct {
+    BUF(FuncParam *params);
+    Typespec *ret_type;
+} FuncDecl;
+
 struct Decl {
     DeclKind kind;
     char *name;
-    Expr *expr;
     union {
-        EnumItem *enum_items;
-        AggregateField *fields;
+        BUF(EnumItem *enum_items); 
+        BUF(AggregateField *aggregate_fields);
+        FuncDecl func_decl;
+        struct {
+            Typespec *type;
+            Expr *expr;
+        };
     };
 };
 
 
-Expr *parse_expr(void);
-Expr *expr_unary(TokenKind op, Expr *expr);
-Expr *expr_binary(TokenKind op, Expr *left, Expr *right);
-Expr *expr_int(int32_t val);
+typedef enum {
+    STMT_NONE,
+    STMT_RETURN,
+    STMT_CONTINUE,
+    STMT_BREAK,
+    STMT_BLOCK,
+    STMT_IF,
+    STMT_FOR,
+    STMT_DO,
+    STMT_WHILE,
+    STMT_SWITCH,
+    STMT_ASSIGN,
+    STMT_AUTO_ASSIGN,
+    STMT_EXPR,
+} StmtKind;
+
+typedef enum {
+    TYPESPEC_NONE,
+    TYPESPEC_PAREN,
+    TYPESPEC_FUNC,
+    TYPESPEC_NAME,
+    TYPESPEC_ARRAY,
+    TYPESPEC_POINTER,
+} TypespecKind;
+
+typedef struct {
+    BUF(Typespec **arg_types);
+    Typespec *ret_type;
+} FuncTypespec;
+
+struct Typespec {
+    TypespecKind kind;
+    struct {
+        char *name;
+        Expr *index;
+        FuncTypespec func;
+    };
+};
+
+typedef struct {
+    BUF(Stmt *statements);
+} StmtBlock;
+
+typedef struct {
+    Expr *cond;
+    StmtBlock block;
+} ElseIf;
+
+typedef struct {
+    BUF(Expr **exprs);
+    StmtBlock block;
+} SwitchCase;
+
+struct Stmt {
+    StmtKind kind;
+    Expr *expr;
+    StmtBlock block;
+    union {
+        struct {
+            char *var_name;
+        };
+        struct {
+            ElseIf *else_ifs;
+            StmtBlock else_block;
+        };
+        struct {
+            BUF(SwitchCase *cases);
+        };
+        struct {
+            StmtBlock for_init;
+            StmtBlock for_next;
+        };
+        // Auto Assignment
+        struct {
+            char *name;
+        };
+        // Assignment operators
+        struct {
+            Expr *rhs;
+        };
+    };
+};
 
 

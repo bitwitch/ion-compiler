@@ -69,6 +69,7 @@ typedef struct {
 // if n new elements will not fit in the array, grow the array by reallocating 
 #define da__fit(b, n) (da__fits(b, n) ? 0 : ((b) = da__grow((b), da_lenu(b) + (n), sizeof(*(b)))))
 
+#define BUF(x) x // annotates that x is a stretchy buffer
 #define da_len(b)  ((b) ? (int32_t)da__header(b)->len : 0)
 #define da_lenu(b) ((b) ?          da__header(b)->len : 0)
 #define da_cap(b) ((b) ? da__header(b)->cap : 0)

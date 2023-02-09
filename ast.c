@@ -1,6 +1,4 @@
 /*
-
-
 Declarations:
 
 decl = 'enum' enum_decl
@@ -52,164 +50,75 @@ ternary_expr = or_expr ('?' ternary_expr ':' ternary_expr)?
 expr = ternary_expr
 */
 
-typedef struct Stmt Stmt;
-typedef struct Decl Decl;
-typedef struct Expr Expr;
-typedef struct Typespec Typespec;
 
-typedef enum {
-    STMT_NONE,
-    STMT_RETURN,
-    STMT_CONTINUE,
-    STMT_BREAK,
-    STMT_BLOCK,
-    STMT_IF,
-    STMT_FOR,
-    STMT_DO,
-    STMT_WHILE,
-    STMT_SWITCH,
-    STMT_ASSIGN,
-    STMT_AUTO_ASSIGN,
-    STMT_EXPR,
-} StmtKind;
+// Expressions
+Expr *expr_unary(TokenKind op, Expr *expr);
+Expr *expr_binary(TokenKind op, Expr *left, Expr *right);
+Expr *expr_int(int32_t val);
 
-typedef enum {
-    TYPESPEC_NONE,
-    TYPESPEC_PAREN,
-    TYPESPEC_FUNC,
-    TYPESPEC_NAME,
-    TYPESPEC_ARRAY,
-    TYPESPEC_POINTER,
-} TypespecKind;
 
-typedef struct {
-    BUF(Typespec **arg_types);
-    Typespec *ret_type;
-} FuncTypespec;
-
-struct Typespec {
-    TypespecKind kind;
-    struct {
-        char *name;
-        Expr *index;
-        FuncTypespec func;
-    };
-};
-
-typedef struct StmtBlock {
-    BUF(Stmt *statements);
+Expr *expr_alloc(ExprKind kind) {
+    Expr *expr = xcalloc(1, sizeof(Expr));
+    expr->kind = kind;
+    return expr;
 }
 
-typedef struct {
-    Expr *cond;
-    StmtBlock block;
-} ElseIf;
-
-typedef struct {
-    BUF(Expr **exprs);
-    StmtBlock block;
-} SwitchCase;
-
-struct Stmt {
-    StmtKind kind;
-    Expr *expr;
-    StmtBlock block;
-    union {
-        struct {
-            char *var_name;
-        };
-        struct {
-            ElseIf *else_ifs;
-            StmtBlock else_block;
-        };
-        struct {
-            BUF(SwitchCase *cases);
-        };
-        struct {
-            StmtBlock for_init;
-            StmtBlock for_next;
-        };
-        // Auto Assignment
-        struct {
-            char *name;
-        };
-        // Assignment operators
-        struct {
-            Expr *rhs;
-        };
-    };
-};
-
-typedef struct FuncParam {
-    char *name;
-    Typespec *type;
+Expr *expr_int(int32_t val) {
+    Expr *expr = expr_alloc(EXPR_INT);
+    expr->int_val = val;
+    return expr;
 }
 
-typedef struct FuncDecl {
-    BUF(FuncParam *params);
-    Typespec *ret_type;
-};
-
-struct Decl {
-    DeclKind kind;
-    char *name;
-    union {
-        BUF(EnumItem *enum_items); 
-        BUF(AggregateItem *aggregate_items);
-        FuncDecl func_decl;
-        struct {
-            Typespec *type;
-            Expr *expr;
-        };
-    };
-};
-
-Decl *parse_decl_const(void) {
-    char *name = parse_name();
-    expect_token('=');
-    Expr *expr = parse_expr();
-    return decl_const(name, expr);
+Expr *expr_unary(TokenKind op, Expr *operand) {
+    Expr *expr  = expr_alloc(EXPR_UNARY);
+    expr->op    = op;
+    expr->left  = NULL;
+    expr->right = operand;
+    return expr;
 }
 
-Decl *parse_decl_func(void) {
-
+Expr *expr_binary(TokenKind op, Expr *left, Expr *right) {
+    Expr *expr  = expr_alloc(EXPR_BINARY);
+    expr->op    = op;
+    expr->left  = left;
+    expr->right = right;
+    return expr;
 }
 
-void print_decl(Decl *decl) {
-    switch (decl->kind) {
-        case DECL_CONST:
-            printf("(const %s ", decl->name);
-            if (decl->type
-
-            break;
-        case DECL_FUNC:
-            break;
-        default:
-            assert(0 && "Unknown decl kind");
-            break;
-    }
-}
-
-
-void parse_test(void) {
-    char *declarations[] = {
-        "const a = 69;"
-        "const b = 420;"
-    };
-    for (int i=0; i<array_size(declarations); ++i) {
-        init_stream(declarations[i]);
-        Decl *decl = parse_decl();
-        print_decl(decl);
-    }
-
-}
 
 void expr_test(void) {
     Expr *expr = expr_int(69);
     assert(expr->kind == EXPR_INT);
     assert(expr->int_val == 69);
-
 }
+
+
+// Declarations
+Decl *decl_const(char *name, Expr *expr) {
+    assert(0);
+    Decl *decl = NULL;
+    return decl;
+}
+
+Decl *decl_var(char *name, Expr *expr) {
+    assert(0);
+    Decl *decl = NULL;
+    return decl;
+}
+
+Decl *decl_enum(char *name, EnumItem *items) {
+    assert(0);
+    Decl *decl = NULL;
+    return decl;
+}
+
+Decl *decl_aggregate(AggregateKind kind, char *name, AggregateField *fields) {
+    assert(0);
+    Decl *decl = NULL;
+    return decl;
+}
+
+
 
 
 
