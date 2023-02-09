@@ -279,9 +279,9 @@ void print_type(Typespec *type) {
         break;
     case TYPESPEC_ARRAY:
         printf("(array ");
-        print_type(type->array.elem);
-        printf(" ");
         print_expr(type->array.size);
+        printf(" ");
+        print_type(type->array.elem);
         printf(")");
         break;
     default:
@@ -332,8 +332,15 @@ void print_decl(Decl *decl) {
 
         break;
 
+    case DECL_UNION:
     case DECL_STRUCT:
-        printf("(struct %s ", decl->name);
+        if (decl->kind == DECL_STRUCT) {
+            printf("(struct %s ", decl->name);
+        } else {
+            assert(decl->kind == DECL_UNION);
+            printf("(union %s ", decl->name);
+        }
+
         ++indent;
         for (int i=0; i<decl->aggregate.num_fields; ++i) {
             printf("\n%*s", indent*INDENT_WIDTH, " ");
@@ -355,9 +362,9 @@ void print_decl(Decl *decl) {
 
 void parse_test(void) {
     init_keywords();
-
     char *declarations[] = {
         "struct Node { x: int; next: Node*; }",
+        "union bag { a: int; b: float; c: bool; d: Node*; e: int[2][4]; f: Fart[32]}",
         "func doodle(x: int, y: int): bool;",
         "var speed: float = 35.7;",
         "const a = 420;",

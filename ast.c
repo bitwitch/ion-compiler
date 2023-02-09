@@ -1,56 +1,3 @@
-/*
-Declarations:
-
-decl = 'enum' enum_decl
-     | 'struct' aggregate_decl
-     | 'union' aggregate_decl
-     | 'var' var_decl
-     | 'const' const_decl
-     | 'typedef' typedef_decl
-     | 'func' func_decl
-
-Statements:
-
-stmt_block = '{' stmt* '}'
-stmt = 'return' expr? ';'
-     | 'continue' ';'
-     | 'break' ';'
-     | stmt_block
-     | 'if' '(' expr ')' stmt_block elseif* ('else' stmt_block)?
-     | 'for' '(' for_init? ';' expr? ';' for_next? ')' stmt_block
-     | 'do' stmt_block 'while' '(' expr ')' ';'
-     | 'while' '(' expr ')' stmt_block
-     | 'switch' '(' expr ')' case* ('default' ':' stmt*)?
-     | expr (INC | DEC | assign_op expr)?
-
-
-
-Expressions:
-
-typespec = NAME | '(' ':' type ')'
-base_expr = INT
-          | FLOAT
-          | STR
-          | NAME
-          | typespec? '{' expr_list '}'
-          | CAST '(' expr ')'
-          | '(' expr ')'
-compound_expr =  base_expr ('(' param* ')' | '[' expr ']' | '.' NAME)*
-unary_expr = [+-&*~] unary_expr
-           | compound_expr
-mul_op = '*' | '/' | '%' | '&' | LSHIFT | RSHIFT
-mul_expr = unary_expr (mul_op unary_expr)*
-add_op = '+' | '-' | '|' | '^'
-add_expr = mul_expr (add_op mul_expr)*
-cmp_op = EQ | NOTEQ | LT | GT | LTEQ | GTEQ
-cmp_expr = add_expr (cmp_op add_expr)*
-and_expr = cmp_expr (AND cmp_expr)*
-or_expr = and_expr (OR and_expr)*
-ternary_expr = or_expr ('?' ternary_expr ':' ternary_expr)?
-expr = ternary_expr
-*/
-
-
 // Expressions
 Expr *expr_alloc(ExprKind kind) {
     Expr *expr = xcalloc(1, sizeof(Expr));
@@ -91,7 +38,7 @@ void expr_test(void) {
     assert(expr->int_val == 69);
 }
 
-// Typespecs
+// Types
 Typespec *typespec_alloc(TypespecKind kind) {
     Typespec *typespec = xcalloc(1, sizeof(Typespec));
     typespec->kind = kind;
@@ -171,9 +118,5 @@ Decl *decl_func(char *name, FuncParam *params, int num_params, Typespec *ret_typ
     decl->func.block = block;
     return decl;
 }
-
-
-
-
 
 
