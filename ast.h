@@ -1,8 +1,6 @@
 /*
 Grammar
 
-Declarations:
-
 decl = 'enum' enum_decl
      | 'struct' aggregate_decl
      | 'union' aggregate_decl
@@ -10,8 +8,6 @@ decl = 'enum' enum_decl
      | 'const' const_decl
      | 'typedef' typedef_decl
      | 'func' func_decl
-
-Statements:
 
 stmt_block = '{' stmt* '}'
 stmt = 'return' expr? ';'
@@ -25,11 +21,12 @@ stmt = 'return' expr? ';'
      | 'switch' '(' expr ')' case* ('default' ':' stmt*)?
      | expr (INC | DEC | assign_op expr)?
 
-
-
-Expressions:
-
+base_type = NAME
+          | 'func' '(' type_list? ')' (':' type)?
+          | '(' type ')'
+type = base_type ('[' expr? ']' | '*')*
 typespec = NAME | '(' ':' type ')'
+
 base_expr = INT
           | FLOAT
           | STR
@@ -61,17 +58,28 @@ typedef enum {
     EXPR_NONE,
     EXPR_UNARY,
     EXPR_BINARY,
-    EXPR_INT
+    EXPR_INT,
+    EXPR_FLOAT,
+    EXPR_STR,
+    EXPR_TYPESPEC,
+    EXPR_CAST
 } ExprKind;
 
 struct Expr {
     ExprKind kind;
-    TokenKind op;
     union {
         int32_t int_val;
         double float_val;
+        char *str_val;
+        struct {
+            TokenKind op;
+            Expr *expr;
+        } unary;
+        struct {
+            TokenKind op;
+            Expr *left, *right;
+        } binary;
     };
-    Expr *left, *right;
 };
 
 typedef struct {
@@ -81,48 +89,8 @@ typedef struct {
 
 typedef struct {
     char *name;
-    Typespec *typespec;
-} AggregateField;
-
-typedef enum {
-    AGGREGATE_NONE,
-    AGGREGATE_STRUCT,
-    AGGREGATE_UNION,
-} AggregateKind;
-
-typedef enum {
-    DECL_NONE,
-    DECL_ENUM,
-    DECL_AGGREGATE,
-    DECL_VAR,
-    DECL_CONST,
-    DECL_FUNC,
-} DeclKind;
-
-typedef struct {
-    char *name;
     Typespec *type;
-} FuncParam;
-
-typedef struct {
-    BUF(FuncParam *params);
-    Typespec *ret_type;
-} FuncDecl;
-
-struct Decl {
-    DeclKind kind;
-    char *name;
-    union {
-        BUF(EnumItem *enum_items); 
-        BUF(AggregateField *aggregate_fields);
-        FuncDecl func_decl;
-        struct {
-            Typespec *type;
-            Expr *expr;
-        };
-    };
-};
-
+} AggregateField;
 
 typedef enum {
     STMT_NONE,
@@ -142,9 +110,8 @@ typedef enum {
 
 typedef enum {
     TYPESPEC_NONE,
-    TYPESPEC_PAREN,
-    TYPESPEC_FUNC,
     TYPESPEC_NAME,
+    TYPESPEC_FUNC,
     TYPESPEC_ARRAY,
     TYPESPEC_POINTER,
 } TypespecKind;
@@ -156,10 +123,20 @@ typedef struct {
 
 struct Typespec {
     TypespecKind kind;
-    struct {
+    union {
         char *name;
-        Expr *index;
-        FuncTypespec func;
+        struct {
+            Typespec **args;
+            size_t num_args;
+            Typespec *ret;
+        } func;
+        struct {
+            Typespec *elem;
+            Expr *size;
+        } array;
+        struct {
+            Typespec *elem;
+        } ptr;
     };
 };
 
@@ -204,6 +181,54 @@ struct Stmt {
         struct {
             Expr *rhs;
         };
+    };
+};
+
+typedef enum {
+    DECL_NONE,
+    DECL_ENUM,
+    DECL_STRUCT,
+    DECL_UNION,
+    DECL_FUNC,
+    DECL_VAR,
+    DECL_CONST,
+} DeclKind;
+
+typedef struct {
+    char *name;
+    Typespec *type;
+} FuncParam;
+
+typedef struct {
+    BUF(FuncParam *params);
+    Typespec *ret_type;
+} FuncDecl;
+
+struct Decl {
+    DeclKind kind;
+    char *name;
+    union {
+        struct {
+            EnumItem *items;
+            int num_items;
+        } enum_decl;
+        struct {
+            AggregateField *fields;
+            int num_fields;
+        } aggregate;
+        struct {
+            FuncParam *params;
+            int num_params;
+            Typespec *ret_type;
+            StmtBlock block;
+        } func;
+        struct {
+            Typespec *type;
+            Expr *expr;
+        } var;
+        struct {
+            Expr *expr;
+        } const_decl;
     };
 };
 

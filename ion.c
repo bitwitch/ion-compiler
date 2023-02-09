@@ -22,6 +22,7 @@ void run_tests(void) {
 	da_test();
     str_intern_test();
 	lex_test();
+    parse_test();
     printf("Tests Succeeded.\n");
 }
 

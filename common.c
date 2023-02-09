@@ -2,7 +2,6 @@
 
 #define array_count(a) sizeof(a)/sizeof(*(a))
 
-
 void *xmalloc(size_t size) {
     void *ptr = malloc(size);
     if (ptr == NULL) {

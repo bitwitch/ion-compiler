@@ -56,6 +56,16 @@ void init_keywords(void) {
     first = false;
 }
 
+bool is_keyword(char *check) {
+    char *s = str_intern(check);
+    return s == keyword_enum   ||
+           s == keyword_struct ||
+           s == keyword_union  ||
+           s == keyword_var    ||
+           s == keyword_const  ||
+           s == keyword_func;
+}
+
 uint8_t char_to_digit[256] = {
     ['0'] = 0,
     ['1'] = 1,
@@ -153,7 +163,7 @@ void scan_str(void) {
         ++stream;
     }
     token.kind = TOKEN_STR;
-    token.str_val = str_intern_range(str_start, stream-1);
+    token.str_val = str_intern_range(str_start, stream);
     ++stream;
 }
 
@@ -214,10 +224,10 @@ repeat:
 		case 'T': case 'U': case 'V': case 'W': case 'X':
 		case 'Y': case 'Z': case '_':
 		{
-			while (isalnum(*stream) || *stream == '_')
-				++stream;
-			token.kind = TOKEN_NAME;
+            while (isalnum(*stream) || *stream == '_')
+                ++stream;
             token.name = str_intern_range(token.start, stream);
+            token.kind = is_keyword(token.name) ? TOKEN_KEYWORD : TOKEN_NAME;
 			break;
 		}
 		default:
@@ -255,7 +265,11 @@ char *str_token_kind(TokenKind kind) {
     return str;
 }
 
-
+char *token_info(void) {
+    if (token.kind == TOKEN_NAME || token.kind == TOKEN_KEYWORD)
+        return token.name;
+    return str_token_kind(token.kind);
+}
 
 bool is_token(TokenKind kind) {
     return token.kind == kind;
@@ -281,7 +295,7 @@ void expect_token(TokenKind kind) {
     if (token.kind == kind) {
         next_token();
     } else {
-        fprintf(stderr, "Syntax Error: Expected token '%s', got '%s'\n", 
+        syntax_error("Expected token '%s', got '%s'\n", 
                 str_token_kind(kind), str_token_kind(token.kind));
         exit(1);
     }
@@ -303,12 +317,14 @@ void print_token(Token token) {
 }
 
 #define assert_token(k) assert(match_token(k))
-#define assert_token_name(s) assert(str_intern(token.name) == str_intern(s) && match_token(TOKEN_NAME))
+#define assert_token_name(s) assert(token.name == str_intern(s) && match_token(TOKEN_NAME))
+#define assert_token_keyword(s) assert(token.name == s && match_token(TOKEN_KEYWORD))
 #define assert_token_int(i) assert(token.int_val == (i) && match_token(TOKEN_INT))
 #define assert_token_float(f) assert(token.float_val == (f) && match_token(TOKEN_FLOAT))
 #define assert_token_str(s) assert(token.str_val == str_intern(s) && match_token(TOKEN_STR))
 #define assert_token_eof() assert(token.kind == 0)
 void lex_test(void) {
+    init_keywords();
     {
         char *source = "+()_HELLO1,234+FOO!666";
         init_stream(source);
@@ -338,19 +354,16 @@ void lex_test(void) {
     {
         char *source = "const a = 69;\nfunc pancake(i: int) { bake(); }";
         init_stream(source);
-        /*assert_token_keyword(keyword_const);*/
-        assert_token_name("const");
+        assert_token_keyword(keyword_const);
         assert_token_name("a");
         assert_token('=');
         assert_token_int(69);
         assert_token(';');
-        /*assert_token_keyword(keyword_func);*/
-        assert_token_name("func");
+        assert_token_keyword(keyword_func);
         assert_token_name("pancake");
         assert_token('(');
         assert_token_name("i");
         assert_token(':');
-        /*assert_token_keyword(keyword_int);*/
         assert_token_name("int");
         assert_token(')');
         assert_token('{');
