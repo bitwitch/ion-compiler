@@ -1,3 +1,12 @@
+Arena ast_arena;
+
+void *ast_memdup(void *src, size_t size) {
+    void *new_mem = arena_alloc(&ast_arena, size);
+    memcpy(new_mem, src, size);
+    return new_mem;
+}
+
+
 // Expressions
 Expr *expr_alloc(ExprKind kind) {
     Expr *expr = xcalloc(1, sizeof(Expr));
@@ -25,12 +34,39 @@ Expr *expr_unary(TokenKind op, Expr *operand) {
 }
 
 Expr *expr_binary(TokenKind op, Expr *left, Expr *right) {
-    Expr *expr  = expr_alloc(EXPR_BINARY);
+    Expr *expr = expr_alloc(EXPR_BINARY);
     expr->binary.op    = op;
     expr->binary.left  = left;
     expr->binary.right = right;
     return expr;
 }
+
+Expr *expr_call(Expr *expr, Expr **args, int num_args) {
+    Expr *new_expr = expr_alloc(EXPR_CALL);
+    new_expr->call.expr = expr;
+    new_expr->call.args = args;
+    new_expr->call.num_args = num_args;
+    return new_expr;
+}
+
+
+Expr *expr_index(Expr *expr, Expr *index) {
+    Expr *new_expr = expr_alloc(EXPR_INDEX);
+    new_expr->index.expr = expr;
+    new_expr->index.index = index;
+    return new_expr;
+}
+
+Expr *expr_field(Expr *expr, char *field) {
+    Expr *new_expr = expr_alloc(EXPR_FIELD);
+    new_expr->field.expr = expr;
+    new_expr->field.name = str_intern(field);
+    return new_expr;
+}
+
+
+
+
 
 void expr_test(void) {
     Expr *expr = expr_int(69);
@@ -71,6 +107,48 @@ Typespec *typespec_func(Typespec **args, int num_args, Typespec *ret) {
     typespec->func.ret = ret;
     return typespec;
 }
+
+// Statements
+Stmt *stmt_alloc(StmtKind kind) {
+    Stmt *stmt = xcalloc(1, sizeof(Stmt));
+    stmt->kind = kind;
+    return stmt;
+}
+
+StmtBlock stmt_block(Stmt **stmts, int num_stmts) {
+    return (StmtBlock){
+        .stmts = ast_memdup(stmts, num_stmts * sizeof(*stmts)),
+        .num_stmts = num_stmts,
+    };
+}
+
+Stmt *stmt_brace_block(StmtBlock block) {
+    Stmt *stmt = stmt_alloc(STMT_BRACE_BLOCK);
+    stmt->block = block;
+    return stmt;
+}
+
+Stmt *stmt_expr(Expr *expr) {
+    Stmt *stmt = stmt_alloc(STMT_EXPR);
+    stmt->expr = expr;
+    return stmt;
+}
+
+Stmt *stmt_assign(TokenKind op, Expr *left, Expr *right) {
+    Stmt *stmt = stmt_alloc(STMT_ASSIGN);
+    stmt->assign.op = op;
+    stmt->assign.left = left;
+    stmt->assign.right = right;
+    return stmt;
+}
+
+Stmt *stmt_init(char *name, Expr *expr) {
+    Stmt *stmt = stmt_alloc(STMT_INIT);
+    stmt->init.name = name;
+    stmt->init.expr = expr;
+    return stmt;
+}
+
 
 // Declarations
 Decl *decl_alloc(DeclKind kind) {
@@ -118,5 +196,4 @@ Decl *decl_func(char *name, FuncParam *params, int num_params, Typespec *ret_typ
     decl->func.block = block;
     return decl;
 }
-
 

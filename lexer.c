@@ -11,6 +11,21 @@ typedef enum {
 	TOKEN_KEYWORD,
     TOKEN_LSHIFT,
     TOKEN_RSHIFT,
+    TOKEN_AUTO_ASSIGN,
+    TOKEN_EQ,
+    TOKEN_EQ_EQ,
+    TOKEN_ADD_EQ,
+    TOKEN_SUB_EQ,
+    TOKEN_MUL_EQ,
+    TOKEN_DIV_EQ,
+    TOKEN_MOD_EQ,
+    TOKEN_AND_EQ,
+    TOKEN_OR_EQ,
+    TOKEN_XOR_EQ,
+    TOKEN_LSHIFT_EQ,
+    TOKEN_RSHIFT_EQ,
+    TOKEN_INC,
+    TOKEN_DEC,
 } TokenKind;
 
 typedef enum {
@@ -42,6 +57,14 @@ char *keyword_union;
 char *keyword_var;
 char *keyword_const;
 char *keyword_func;
+char *keyword_return;
+char *keyword_continue;
+char *keyword_break;
+char *keyword_if;
+char *keyword_for;
+char *keyword_do;
+char *keyword_while;
+char *keyword_switch;
 
 void init_keywords(void) {
     static bool first = true;
@@ -52,18 +75,34 @@ void init_keywords(void) {
         keyword_var = str_intern("var");
         keyword_const = str_intern("const");
         keyword_func = str_intern("func");
+        keyword_return = str_intern("return");
+        keyword_continue = str_intern("continue");
+        keyword_break = str_intern("break");
+        keyword_if = str_intern("if");
+        keyword_for = str_intern("for");
+        keyword_do = str_intern("do");
+        keyword_while = str_intern("while");
+        keyword_switch = str_intern("switch");
     }
     first = false;
 }
 
 bool is_keyword(char *check) {
     char *s = str_intern(check);
-    return s == keyword_enum   ||
-           s == keyword_struct ||
-           s == keyword_union  ||
-           s == keyword_var    ||
-           s == keyword_const  ||
-           s == keyword_func;
+    return s == keyword_enum     ||
+           s == keyword_struct   ||
+           s == keyword_union    ||
+           s == keyword_var      ||
+           s == keyword_const    ||
+           s == keyword_func     ||
+           s == keyword_return   ||
+           s == keyword_continue ||
+           s == keyword_break    ||
+           s == keyword_if       ||
+           s == keyword_for      ||
+           s == keyword_do       ||
+           s == keyword_while    ||
+           s == keyword_switch;
 }
 
 uint8_t char_to_digit[256] = {

@@ -166,3 +166,40 @@ void str_intern_test(void) {
 }
 
 
+// Arena Allocator
+#define ARENA_BLOCK_SIZE 65536
+
+typedef struct {
+    char *ptr;
+    char *end;
+    BUF(char **blocks);
+} Arena;
+
+void arena_grow(Arena *arena, size_t min_size) {
+    size_t size = MAX(ARENA_BLOCK_SIZE, min_size);
+    arena->ptr = xmalloc(size);
+    arena->end = arena->ptr + size;
+    da_push(arena->blocks, arena->ptr);
+}
+
+void *arena_alloc(Arena *arena, size_t size) {
+    if (arena->ptr + size > arena->end) {
+        arena_grow(arena, size); 
+    }
+    void *ptr = arena->ptr;
+    arena->ptr += size;
+    return ptr;
+}
+
+void arena_free(Arena *arena) {
+    for (int i=0; i<da_len(arena->blocks); ++i) {
+        free(arena->blocks[i]);
+    }
+    da_free(arena->blocks);
+}
+
+
+
+
+
+

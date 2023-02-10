@@ -1,4 +1,5 @@
 Expr *parse_expr(void);
+Stmt *parse_stmt(void);
 
 char *parse_name(void) {
     if (is_token(TOKEN_NAME)) {
@@ -10,6 +11,7 @@ char *parse_name(void) {
         return NULL;
     }
 }
+
 
 Expr *parse_expr_base(void) {
     Expr *expr = NULL;
@@ -29,13 +31,42 @@ Expr *parse_expr_base(void) {
     return expr;
 }
 
+Expr *parse_expr_call(void) {
+    Expr *expr = parse_expr_base();
+
+    while (is_token('(') || is_token('[') || is_token('.')) {
+        if (match_token('(')) {
+            Expr **args = NULL;
+            if (!is_token(')')) {
+                do {
+                    da_push(args, parse_expr());
+                } while (match_token(','));
+            }
+            expect_token(')');
+            expr = expr_call(expr, args, da_len(args));
+        } else if (match_token('[')) {
+            Expr *index = parse_expr();
+            expect_token(']');
+            expr = expr_index(expr, index);
+        } else {
+            assert(is_token('.'));
+            next_token();
+            char *field = token.name;
+            expect_token(TOKEN_NAME);
+            expr = expr_field(expr, field);
+        }
+    }
+    return expr;
+}
+
+
 Expr *parse_expr_unary(void) {
     if (is_token('-') || is_token('~')) {
         TokenKind op = token.kind;
         next_token();
         return expr_unary(op, parse_expr_unary());
     }
-    return parse_expr_base();
+    return parse_expr_call();
 }
 
 Expr *parse_expr_mul(void) {
@@ -103,11 +134,106 @@ Typespec *parse_type(void) {
     return type;
 }
 
+Stmt *parse_stmt_return(void) {
+    assert(0);
+    return NULL;
+}
+
+Stmt *parse_stmt_if(void) {
+    assert(0);
+    return NULL;
+}
+
+Stmt *parse_stmt_for(void) {
+    assert(0);
+    return NULL;
+}
+
+Stmt *parse_stmt_do(void) {
+    assert(0);
+    return NULL;
+}
+
+Stmt *parse_stmt_while(void) {
+    assert(0);
+    return NULL;
+}
+
+Stmt *parse_stmt_switch(void) {
+    assert(0);
+    return NULL;
+}
+
+bool is_assign_op(void) {
+    return token.kind == TOKEN_EQ        ||
+           token.kind == TOKEN_ADD_EQ    ||
+           token.kind == TOKEN_SUB_EQ    ||
+           token.kind == TOKEN_MUL_EQ    ||
+           token.kind == TOKEN_DIV_EQ    ||
+           token.kind == TOKEN_MOD_EQ    ||
+           token.kind == TOKEN_AND_EQ    ||
+           token.kind == TOKEN_OR_EQ     ||
+           token.kind == TOKEN_XOR_EQ    ||
+           token.kind == TOKEN_LSHIFT_EQ ||
+           token.kind == TOKEN_RSHIFT_EQ;
+}
+
+Stmt *parse_simple_stmt(void) {
+    Expr *expr = parse_expr();
+    Stmt *stmt = NULL;
+    if (match_token(TOKEN_AUTO_ASSIGN)) {
+        if (expr->kind != EXPR_NAME) {
+            syntax_error(":= must be preceded by a name");
+            return NULL;
+        }
+        stmt = stmt_init(expr->name, parse_expr());
+    } else if (is_assign_op()) {
+        TokenKind op = token.kind;
+        next_token();
+        stmt = stmt_assign(op, expr, parse_expr());
+    } else if (match_token(TOKEN_INC)) {
+        stmt = stmt_assign(TOKEN_INC, expr, NULL);
+    } else if (match_token(TOKEN_DEC)) {
+        stmt = stmt_assign(TOKEN_DEC, expr, NULL);
+    } else {
+        stmt = stmt_expr(expr);
+    }
+    return stmt;
+}
+
 
 StmtBlock parse_stmt_block(void) {
-    assert(0);
-    StmtBlock block = {0};
-    return block;
+    Stmt **stmts = NULL;
+    expect_token('{');
+    while (!is_token('}'))
+        da_push(stmts, parse_stmt());
+    expect_token('}');
+    return stmt_block(stmts, da_len(stmts));
+}
+
+
+Stmt *parse_stmt(void) {
+    if (match_keyword(keyword_return))
+        return parse_stmt_return();
+    else if (match_keyword(keyword_continue))
+        return stmt_alloc(STMT_CONTINUE);
+    else if (match_keyword(keyword_break))
+        return stmt_alloc(STMT_BREAK);
+    else if (match_keyword(keyword_if))
+        return parse_stmt_if();
+    else if (match_keyword(keyword_for))
+        return parse_stmt_for();
+    else if (match_keyword(keyword_do))
+        return parse_stmt_do();
+    else if (match_keyword(keyword_while))
+        return parse_stmt_while();
+    else if (match_keyword(keyword_switch))
+        return parse_stmt_switch();
+    else if (match_token('{'))
+        return stmt_brace_block(parse_stmt_block());
+    else {
+        return parse_simple_stmt();
+    }
 }
 
 
@@ -192,10 +318,9 @@ Decl *parse_decl_func(void) {
     expect_token('(');
     FuncParam *params = NULL;
     if (!is_token(')')) {
-        da_push(params, parse_decl_func_param());
-        while (match_token(',')) {
+        do {
             da_push(params, parse_decl_func_param());
-        }
+        } while (match_token(','));
     }
     expect_token(')');
 
@@ -204,9 +329,7 @@ Decl *parse_decl_func(void) {
         ret_type = parse_type();
     }
 
-    // TODO(shaw): change this back after implementing parse_stmt_block
-    /*StmtBlock block = parse_stmt_block();*/
-    StmtBlock block = {0};
+    StmtBlock block = parse_stmt_block();
 
     return decl_func(name, params, da_len(params), ret_type, block);
 }
@@ -290,12 +413,6 @@ void print_type(Typespec *type) {
     }
 }
 
-// struct Node { i: int; next: Node* }
-// (struct Node 
-//   (i int) 
-//   (next (ptr Node)))
-// 
-
 #define INDENT_WIDTH 4
 void print_decl(Decl *decl) {
     static int indent = 0;
@@ -363,6 +480,7 @@ void print_decl(Decl *decl) {
 void parse_test(void) {
     init_keywords();
     char *declarations[] = {
+        "func main(argc: int, argv: char**): int { printf(\"Well, hello friends\\n\"); return 0; }",
         "struct Node { x: int; next: Node*; }",
         "union bag { a: int; b: float; c: bool; d: Node*; e: int[2][4]; f: Fart[32]}",
         "func doodle(x: int, y: int): bool;",

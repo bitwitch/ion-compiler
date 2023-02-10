@@ -34,9 +34,9 @@ base_expr = INT
           | typespec? '{' expr_list '}'
           | CAST '(' expr ')'
           | '(' expr ')'
-compound_expr =  base_expr ('(' param* ')' | '[' expr ']' | '.' NAME)*
+call_expr =  base_expr ('(' param* ')' | '[' expr ']' | '.' NAME)*
 unary_expr = [+-&*~] unary_expr
-           | compound_expr
+           | call_expr
 mul_op = '*' | '/' | '%' | '&' | LSHIFT | RSHIFT
 mul_expr = unary_expr (mul_op unary_expr)*
 add_op = '+' | '-' | '|' | '^'
@@ -58,11 +58,16 @@ typedef enum {
     EXPR_NONE,
     EXPR_UNARY,
     EXPR_BINARY,
+    EXPR_TERNARY,
     EXPR_INT,
     EXPR_FLOAT,
     EXPR_STR,
+    EXPR_NAME,
     EXPR_TYPESPEC,
-    EXPR_CAST
+    EXPR_CAST,
+    EXPR_CALL,
+    EXPR_INDEX,
+    EXPR_FIELD,
 } ExprKind;
 
 struct Expr {
@@ -71,6 +76,7 @@ struct Expr {
         int32_t int_val;
         double float_val;
         char *str_val;
+        char *name;
         struct {
             TokenKind op;
             Expr *expr;
@@ -79,6 +85,19 @@ struct Expr {
             TokenKind op;
             Expr *left, *right;
         } binary;
+        struct {
+            Expr *expr;
+            Expr **args;
+            int num_args;
+        } call;
+        struct {
+            Expr *expr;
+            Expr *index;
+        } index;
+        struct {
+            Expr *expr;
+            char *name;
+        } field;
     };
 };
 
@@ -97,14 +116,14 @@ typedef enum {
     STMT_RETURN,
     STMT_CONTINUE,
     STMT_BREAK,
-    STMT_BLOCK,
+    STMT_BRACE_BLOCK,
     STMT_IF,
     STMT_FOR,
     STMT_DO,
     STMT_WHILE,
     STMT_SWITCH,
     STMT_ASSIGN,
-    STMT_AUTO_ASSIGN,
+    STMT_INIT,
     STMT_EXPR,
 } StmtKind;
 
@@ -141,7 +160,8 @@ struct Typespec {
 };
 
 typedef struct {
-    BUF(Stmt *statements);
+    Stmt **stmts;
+    int num_stmts;
 } StmtBlock;
 
 typedef struct {
@@ -154,33 +174,43 @@ typedef struct {
     StmtBlock block;
 } SwitchCase;
 
+
 struct Stmt {
     StmtKind kind;
-    Expr *expr;
-    StmtBlock block;
     union {
+        Expr *expr;
+        Decl *decl;
+        StmtBlock block;
         struct {
-            char *var_name;
-        };
-        struct {
-            ElseIf *else_ifs;
-            StmtBlock else_block;
-        };
-        struct {
-            BUF(SwitchCase *cases);
-        };
-        struct {
-            StmtBlock for_init;
-            StmtBlock for_next;
-        };
-        // Auto Assignment
+            TokenKind op;
+            Expr *left, *right;
+        } assign;
         struct {
             char *name;
-        };
-        // Assignment operators
+            Expr *expr;
+        } init;
         struct {
-            Expr *rhs;
-        };
+            Expr *cond;
+            StmtBlock then_block;
+            ElseIf *else_ifs;
+            int num_else_ifs;
+            StmtBlock else_block;
+        } if_stmt;
+        struct {
+            Stmt *init;
+            Expr *cond;
+            Stmt *next;
+            StmtBlock block;
+        } for_stmt;
+        struct {
+            Expr *cond;
+            StmtBlock block;
+        } while_stmt;
+        struct {
+            Expr *expr;
+            SwitchCase *cases;
+            int num_cases;
+        } switch_stmt;
     };
 };
 
