@@ -65,6 +65,7 @@ char *keyword_for;
 char *keyword_do;
 char *keyword_while;
 char *keyword_switch;
+char *keyword_cast;
 
 void init_keywords(void) {
     static bool first = true;
@@ -83,6 +84,7 @@ void init_keywords(void) {
         keyword_do = str_intern("do");
         keyword_while = str_intern("while");
         keyword_switch = str_intern("switch");
+        keyword_cast = str_intern("cast");
     }
     first = false;
 }
@@ -102,7 +104,8 @@ bool is_keyword(char *check) {
            s == keyword_for      ||
            s == keyword_do       ||
            s == keyword_while    ||
-           s == keyword_switch;
+           s == keyword_switch   ||
+           s == keyword_cast;
 }
 
 uint8_t char_to_digit[256] = {

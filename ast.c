@@ -26,6 +26,25 @@ Expr *expr_float(double val) {
     return expr;
 }
 
+Expr *expr_str(char *val) {
+    Expr *expr = expr_alloc(EXPR_STR);
+    expr->str_val = val;
+    return expr;
+}
+
+Expr *expr_name(char *name) {
+    Expr *expr = expr_alloc(EXPR_NAME);
+    expr->name = name;
+    return expr;
+}
+
+Expr *expr_cast(Typespec *type, Expr *expr) {
+    Expr *new_expr = expr_alloc(EXPR_CAST);
+    new_expr->cast.type = type;
+    new_expr->cast.expr = expr;
+    return new_expr;
+}
+
 Expr *expr_unary(TokenKind op, Expr *operand) {
     Expr *expr = expr_alloc(EXPR_UNARY);
     expr->unary.op = op;
@@ -146,6 +165,12 @@ Stmt *stmt_init(char *name, Expr *expr) {
     Stmt *stmt = stmt_alloc(STMT_INIT);
     stmt->init.name = name;
     stmt->init.expr = expr;
+    return stmt;
+}
+
+Stmt *stmt_return(Expr *expr) {
+    Stmt *stmt = stmt_alloc(STMT_RETURN);
+    stmt->return_stmt.expr = expr;
     return stmt;
 }
 

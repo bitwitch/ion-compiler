@@ -31,9 +31,9 @@ base_expr = INT
           | FLOAT
           | STR
           | NAME
-          | typespec? '{' expr_list '}'
           | CAST '(' expr ')'
           | '(' expr ')'
+          | typespec? '{' expr_list '}'
 call_expr =  base_expr ('(' param* ')' | '[' expr ']' | '.' NAME)*
 unary_expr = [+-&*~] unary_expr
            | call_expr
@@ -90,6 +90,10 @@ struct Expr {
             Expr **args;
             int num_args;
         } call;
+        struct {
+            Typespec *type;
+            Expr *expr;
+        } cast;
         struct {
             Expr *expr;
             Expr *index;
@@ -211,6 +215,9 @@ struct Stmt {
             SwitchCase *cases;
             int num_cases;
         } switch_stmt;
+        struct {
+            Expr *expr;
+        } return_stmt;
     };
 };
 

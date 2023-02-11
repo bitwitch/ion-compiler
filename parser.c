@@ -12,6 +12,39 @@ char *parse_name(void) {
     }
 }
 
+Typespec *parse_type_base(void) {
+    if (is_token(TOKEN_NAME)) {
+        char *name = parse_name();
+        return typespec_name(name);
+    } else {
+        syntax_error("Unexpected token in type: %s", token_info());
+        return NULL;
+    }
+}
+
+// int[2][4]
+Typespec *parse_type(void) {
+    Typespec *type = parse_type_base();
+    while (is_token('[') || is_token('*')) {
+        if (match_token('[')) {
+            Expr *size = parse_expr();
+            expect_token(']');
+            type = typespec_array(type, size);
+        } else {
+            assert(is_token('*'));
+            next_token();
+            type = typespec_ptr(type);
+        }
+    }
+
+    return type;
+}
+
+
+Expr *parse_expr_compound(Typespec *type) {
+    assert(0);
+    return NULL;
+}
 
 Expr *parse_expr_base(void) {
     Expr *expr = NULL;
@@ -21,11 +54,34 @@ Expr *parse_expr_base(void) {
     } else if (is_token(TOKEN_FLOAT)) {
         expr = expr_float(token.float_val);
         next_token();
-    } else if (match_token('(')) {
-        expr = parse_expr();
+    } else if (is_token(TOKEN_STR)) {
+        expr = expr_str(token.str_val);
+        next_token();
+    } else if (is_token(TOKEN_NAME)) {
+        char *name = token.name;
+        next_token();
+        if (match_token('{'))
+            expr = parse_expr_compound(NULL);
+        else
+            expr = expr_name(name);
+    } else if (match_keyword(keyword_cast)) {
+        expect_token('(');
+        Typespec *type = parse_type();
+        expect_token(',');
+        Expr *sub_expr = parse_expr();
         expect_token(')');
+        expr = expr_cast(type, sub_expr);
+    } else if (match_token('(')) {
+        if (match_token(':')) {
+            Typespec *type = parse_type();
+            expect_token(')');
+            expr = parse_expr_compound(type);
+        } else {
+            expr = parse_expr();
+            expect_token(')');
+        }
     } else {
-        syntax_error("Expected integer or '(', got %s", str_token_kind(token.kind));
+        syntax_error("Unexpected token in base expression: '%s'", str_token_kind(token.kind));
     }
 
     return expr;
@@ -106,37 +162,12 @@ Expr *parse_expression(char *source) {
 }
 
 
-Typespec *parse_type_base(void) {
-    if (is_token(TOKEN_NAME)) {
-        char *name = parse_name();
-        return typespec_name(name);
-    } else {
-        syntax_error("Unexpected token in type: %s", token_info());
-        return NULL;
-    }
-}
-
-// int[2][4]
-Typespec *parse_type(void) {
-    Typespec *type = parse_type_base();
-    while (is_token('[') || is_token('*')) {
-        if (match_token('[')) {
-            Expr *size = parse_expr();
-            expect_token(']');
-            type = typespec_array(type, size);
-        } else {
-            assert(is_token('*'));
-            next_token();
-            type = typespec_ptr(type);
-        }
-    }
-
-    return type;
-}
-
 Stmt *parse_stmt_return(void) {
-    assert(0);
-    return NULL;
+    Expr *expr = NULL;
+    if (!is_token(';'))
+        expr = parse_expr();
+    expect_token(';');
+    return stmt_return(expr);
 }
 
 Stmt *parse_stmt_if(void) {
@@ -198,6 +229,9 @@ Stmt *parse_simple_stmt(void) {
     } else {
         stmt = stmt_expr(expr);
     }
+
+    expect_token(';');
+
     return stmt;
 }
 
@@ -483,7 +517,7 @@ void parse_test(void) {
         "func main(argc: int, argv: char**): int { printf(\"Well, hello friends\\n\"); return 0; }",
         "struct Node { x: int; next: Node*; }",
         "union bag { a: int; b: float; c: bool; d: Node*; e: int[2][4]; f: Fart[32]}",
-        "func doodle(x: int, y: int): bool;",
+        "func doodle(x: int, y: int): bool {}",
         "var speed: float = 35.7;",
         "const a = 420;",
         "const b = 69;",
