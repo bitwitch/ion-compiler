@@ -1,6 +1,9 @@
 Expr *parse_expr(void);
 Stmt *parse_stmt(void);
 
+#define INDENT_WIDTH 4
+static int indent = 0; // for printing
+
 char *parse_name(void) {
     if (is_token(TOKEN_NAME)) {
         char *name = token.name;
@@ -401,6 +404,9 @@ void print_expr(Expr *expr) {
     case EXPR_FLOAT: 
         printf("%f", expr->float_val); 
         break;
+    case EXPR_STR: 
+        printf("\"%s\"", expr->str_val); 
+        break;
     case EXPR_UNARY: 
         printf("(%c ", expr->unary.op); 
         print_expr(expr->unary.expr);
@@ -413,11 +419,75 @@ void print_expr(Expr *expr) {
         print_expr(expr->binary.right);
         printf(")");
         break;
+    case EXPR_CALL: 
+        printf("(%s", expr->call.expr->name);
+        for (int i=0; i<expr->call.num_args; ++i) {
+            if (i > 0) printf(",");
+            printf(" ");
+            print_expr(expr->call.args[i]);
+        }
+        printf(")");
+        break;
+
     default:
         assert(0);
         break;
     }
 }
+
+
+
+
+void print_stmt(Stmt *stmt) {
+    if (stmt == NULL) {
+        printf("NULL");
+        return;
+    }
+
+    switch (stmt->kind) {
+    case STMT_RETURN:
+        printf("(return");
+        if (stmt->return_stmt.expr) {
+            printf(" ");
+            print_expr(stmt->return_stmt.expr);
+        }
+        printf(")");
+        break;
+    case STMT_CONTINUE:
+        printf("continue");
+        break;
+    case STMT_BREAK:
+        printf("break");
+        break;
+    case STMT_BRACE_BLOCK:
+        printf("{");
+        printf("}");
+        break;
+    case STMT_EXPR:
+        print_expr(stmt->expr);
+        break;
+    case STMT_IF:
+        assert(0);
+        /*printf("(if ");*/
+        /*print_expr(stmt->if_stmt.cond);*/
+        /*++indent;*/
+        /*printf("\n%*s", indent*INDENT_WIDTH, " ");*/
+        /*print_stmt_block(stmt->if_stmt.then_block);*/
+        /*printf("\n%*s", indent*INDENT_WIDTH, " ");*/
+        /*--indent;*/
+        break;
+    case STMT_FOR:
+    case STMT_DO:
+    case STMT_WHILE:
+    case STMT_SWITCH:
+    case STMT_ASSIGN:
+    case STMT_INIT:
+    default:
+        assert(0);
+        break;
+    }
+}
+
 
 void print_type(Typespec *type) {
     if (type == NULL) {
@@ -447,11 +517,7 @@ void print_type(Typespec *type) {
     }
 }
 
-#define INDENT_WIDTH 4
 void print_decl(Decl *decl) {
-    static int indent = 0;
-    printf("%*s", indent*INDENT_WIDTH, " ");
-
     switch (decl->kind) {
     case DECL_CONST:
         printf("(const %s ", decl->name);
@@ -469,18 +535,26 @@ void print_decl(Decl *decl) {
         printf("(func %s (", decl->name);
         for (int i=0; i<decl->func.num_params; ++i) {
             FuncParam p = decl->func.params[i];
-            printf(" %s ", p.name);
+            if (i > 0) printf(" ");
+            printf("%s ", p.name);
             print_type(p.type);
         }
-        printf(" )");
+        printf(")");
         if (decl->func.ret_type) {
             printf(" ");
             print_type(decl->func.ret_type);
         }
+
+        printf(" (block");
+        ++indent;
+        StmtBlock block = decl->func.block;
+        for (int i=0; i<block.num_stmts; ++i) {
+            printf("\n%*s", indent*INDENT_WIDTH, " ");
+            print_stmt(block.stmts[i]);
+        }
+        --indent;
         printf(")");
-
-        // TODO(shaw): print statement block
-
+        printf(")");
         break;
 
     case DECL_UNION:
@@ -509,7 +583,6 @@ void print_decl(Decl *decl) {
         break;
     }
 }
-#undef INDENT_WIDTH
 
 void parse_test(void) {
     init_keywords();
