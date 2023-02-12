@@ -15,6 +15,7 @@
 #include "lexer.c"
 #include "ast.h"
 #include "ast.c"
+#include "printer.c"
 #include "parser.c"
 
 
