@@ -30,4 +30,5 @@ void run_tests(void) {
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
     run_tests();
+    return 0;
 }

@@ -14,6 +14,9 @@ decl = 'enum' enum_decl
      | 'typedef' typedef_decl
      | 'func' func_decl
 
+
+for_init = 
+assign_op = EQ | AUTO_EQ | ADD_EQ | SUB_EQ | MUL_EQ | DIV_EQ | MOD_EQ | LSHIFT_EQ | RSHIFT_EQ | XOR_EQ | AND_EQ | OR_EQ
 stmt_block = '{' stmt* '}'
 stmt = 'return' expr? ';'
      | 'continue' ';'
@@ -91,6 +94,11 @@ struct Expr {
             TokenKind op;
             Expr *left, *right;
         } binary;
+        struct {
+            Expr *cond;
+            Expr *then_expr;
+            Expr *else_expr;
+        } ternary;
         struct {
             Expr *expr;
             Expr **args;

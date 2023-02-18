@@ -60,6 +60,15 @@ Expr *expr_binary(TokenKind op, Expr *left, Expr *right) {
     return expr;
 }
 
+Expr *expr_ternary(Expr *cond, Expr *then_expr, Expr *else_expr) {
+    Expr *expr = expr_alloc(EXPR_TERNARY);
+    expr->ternary.cond = cond;
+    expr->ternary.else_expr = else_expr;
+    expr->ternary.then_expr = then_expr;
+    return expr;
+}
+
+
 Expr *expr_call(Expr *expr, Expr **args, int num_args) {
     Expr *new_expr = expr_alloc(EXPR_CALL);
     new_expr->call.expr = expr;
@@ -180,6 +189,16 @@ Stmt *stmt_return(Expr *expr) {
     stmt->return_stmt.expr = expr;
     return stmt;
 }
+
+Stmt *stmt_for(Stmt *init, Expr *cond, Stmt *next, StmtBlock block) {
+    Stmt *stmt = stmt_alloc(STMT_FOR);
+    stmt->for_stmt.init = init;
+    stmt->for_stmt.cond = cond;
+    stmt->for_stmt.next = next;
+    stmt->for_stmt.block = block;
+    return stmt;
+}
+
 
 
 // Declarations

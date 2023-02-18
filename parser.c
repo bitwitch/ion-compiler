@@ -159,8 +159,36 @@ Expr *parse_expr_add(void) {
     return expr;
 }
 
-Expr *parse_expr(void) {
+Expr *parse_expr_cmp(void) {
+    assert(0);
+    return NULL;
+}
+
+Expr *parse_expr_and(void) {
+    assert(0);
+    return NULL;
+}
+
+Expr *parse_expr_or(void) {
     return parse_expr_add();
+    /*while (match_token(TOKEN_LOGICAL_OR)) {*/
+        /*expr = parse_expr_and();*/
+    /*}*/
+}
+
+Expr *parse_expr_ternary(void) {
+    Expr *expr = parse_expr_or();
+    if (match_token('?')) {
+        Expr *then_expr = parse_expr_ternary();
+        expect_token(':');
+        Expr *else_expr = parse_expr_ternary();
+        expr = expr_ternary(expr, then_expr, else_expr);
+    }
+    return expr;
+}
+
+Expr *parse_expr(void) {
+    return parse_expr_ternary();
 }
 
 Expr *parse_expression(char *source) {
@@ -171,6 +199,15 @@ Expr *parse_expression(char *source) {
 
 
 
+StmtBlock parse_stmt_block(void) {
+    Stmt **stmts = NULL;
+    expect_token('{');
+    while (!is_token('}'))
+        da_push(stmts, parse_stmt());
+    expect_token('}');
+    return stmt_block(stmts, da_len(stmts));
+}
+
 Stmt *parse_stmt_return(void) {
     Expr *expr = NULL;
     if (!is_token(';'))
@@ -180,26 +217,6 @@ Stmt *parse_stmt_return(void) {
 }
 
 Stmt *parse_stmt_if(void) {
-    assert(0);
-    return NULL;
-}
-
-Stmt *parse_stmt_for(void) {
-    assert(0);
-    return NULL;
-}
-
-Stmt *parse_stmt_do(void) {
-    assert(0);
-    return NULL;
-}
-
-Stmt *parse_stmt_while(void) {
-    assert(0);
-    return NULL;
-}
-
-Stmt *parse_stmt_switch(void) {
     assert(0);
     return NULL;
 }
@@ -217,6 +234,7 @@ bool is_assign_op(void) {
            token.kind == TOKEN_LSHIFT_EQ ||
            token.kind == TOKEN_RSHIFT_EQ;
 }
+
 
 Stmt *parse_simple_stmt(void) {
     Expr *expr = parse_expr();
@@ -239,19 +257,35 @@ Stmt *parse_simple_stmt(void) {
         stmt = stmt_expr(expr);
     }
 
-    expect_token(';');
-
     return stmt;
 }
 
 
-StmtBlock parse_stmt_block(void) {
-    Stmt **stmts = NULL;
-    expect_token('{');
-    while (!is_token('}'))
-        da_push(stmts, parse_stmt());
-    expect_token('}');
-    return stmt_block(stmts, da_len(stmts));
+Stmt *parse_stmt_for(void) {
+    expect_token('(');
+    Stmt *init = parse_simple_stmt();
+    expect_token(';');
+    Expr *cond = parse_expr();
+    expect_token(';');
+    Stmt *next = parse_simple_stmt();
+    expect_token(')');
+    StmtBlock block = parse_stmt_block();
+    return stmt_for(init, cond, next, block);
+}
+
+Stmt *parse_stmt_do(void) {
+    assert(0);
+    return NULL;
+}
+
+Stmt *parse_stmt_while(void) {
+    assert(0);
+    return NULL;
+}
+
+Stmt *parse_stmt_switch(void) {
+    assert(0);
+    return NULL;
 }
 
 
@@ -275,7 +309,9 @@ Stmt *parse_stmt(void) {
     else if (match_token('{'))
         return stmt_brace_block(parse_stmt_block());
     else {
-        return parse_simple_stmt();
+        Stmt *stmt = parse_simple_stmt();
+        expect_token(';');
+        return stmt;
     }
 }
 
@@ -397,7 +433,41 @@ Decl *parse_decl(void) {
     return NULL;
 }
 
-void parse_test(void) {
+void parse_expr_test(void) {
+    init_keywords();
+    char *exprs[] = {
+        "dis_true ? 69 : 420",
+        "a ? b ? 0 : 1 : c ? 2 : 3",
+        "a ? (b ? 0 : 1) : 2",
+    };
+
+    for (size_t i = 0; i<array_count(exprs); ++i) {
+        init_stream(exprs[i]);
+        Expr *expr = parse_expr();
+        print_expr(expr);
+        printf("\n");
+    }
+}
+
+void parse_stmt_test(void) {
+    init_keywords();
+    char *stmts[] = {
+        /*"sum := 0;",*/
+        "for (i := 1; i < 101; ++i) { sum += i; }",
+        /*"return sum;",*/
+
+        /*"up := Vec3{0,1,0};",*/
+    };
+
+    for (size_t i = 0; i<array_count(stmts); ++i) {
+        init_stream(stmts[i]);
+        Stmt *stmt = parse_stmt();
+        print_stmt(stmt);
+        printf("\n");
+    }
+}
+
+void parse_decl_test(void) {
     init_keywords();
     char *declarations[] = {
         "func pancake(count: int) { bake(ITEM_PANCAKE, count); }",
@@ -421,5 +491,11 @@ void parse_test(void) {
         print_decl(decl);
         printf("\n");
     }
+}
+
+void parse_test(void) {
+    parse_expr_test();
+    /*parse_stmt_test();*/
+    /*parse_decl_test();*/
 }
 

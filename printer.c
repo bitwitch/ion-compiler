@@ -34,6 +34,15 @@ void print_expr(Expr *expr) {
         print_expr(expr->binary.right);
         printf(")");
         break;
+    case EXPR_TERNARY: 
+        printf("(ternary ");
+        print_expr(expr->ternary.cond);
+        printf(" ");
+        print_expr(expr->ternary.then_expr);
+        printf(" ");
+        print_expr(expr->ternary.else_expr);
+        printf(")");
+        break;
     case EXPR_CALL: 
         printf("(%s", expr->call.expr->name);
         for (int i=0; i<expr->call.num_args; ++i) {
@@ -98,12 +107,17 @@ void print_stmt(Stmt *stmt) {
         /*printf("\n%*s", indent*INDENT_WIDTH, " ");*/
         /*--indent;*/
         break;
+    case STMT_INIT:
+        printf("(auto-assign %s ", stmt->init.name);
+        print_expr(stmt->init.expr);
+        printf(")");
+        break;
+
     case STMT_FOR:
     case STMT_DO:
     case STMT_WHILE:
     case STMT_SWITCH:
     case STMT_ASSIGN:
-    case STMT_INIT:
     default:
         assert(0);
         break;

@@ -240,6 +240,15 @@ repeat:
             scan_float();
             break;
 
+        case ':':
+			token.kind = *stream;
+			++stream;
+            if (*stream == '=') {
+                token.kind = TOKEN_AUTO_ASSIGN;
+                ++stream;
+            }
+			break;
+
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
 		{
@@ -294,6 +303,12 @@ char *str_token_kind(TokenKind kind) {
     static char str[64] = {0};
     if (kind == TOKEN_INT) {
         sprintf(str, "integer");
+    } else if (kind == TOKEN_FLOAT) {
+        sprintf(str, "float");
+    } else if (kind == TOKEN_AUTO_ASSIGN) {
+        sprintf(str, ":=");
+    } else if (kind == TOKEN_NAME) {
+        sprintf(str, "name");
     } else {
         if (kind < 128 && isprint(kind))
             sprintf(str, "%c", kind);
@@ -337,8 +352,12 @@ void expect_token(TokenKind kind) {
     if (token.kind == kind) {
         next_token();
     } else {
+        // FIXME(shaw): str_token_kind needs to be fixed to not return a
+        // pointer to a static buffer, arenas will probably be good for that
+        char *tmp = str_token_kind(kind);
+        char *expected = strdup(tmp);
         syntax_error("Expected token '%s', got '%s'\n", 
-                str_token_kind(kind), str_token_kind(token.kind));
+                expected, str_token_kind(token.kind));
         exit(1);
     }
 }
