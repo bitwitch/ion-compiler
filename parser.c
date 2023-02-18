@@ -1,7 +1,6 @@
 Expr *parse_expr(void);
 Stmt *parse_stmt(void);
 
-
 char *parse_name(void) {
     if (is_token(TOKEN_NAME)) {
         char *name = token.name;
@@ -23,7 +22,6 @@ Typespec *parse_type_base(void) {
     }
 }
 
-// int[2][4]
 Typespec *parse_type(void) {
     Typespec *type = parse_type_base();
     while (is_token('[') || is_token('*')) {
@@ -41,10 +39,14 @@ Typespec *parse_type(void) {
     return type;
 }
 
-
 Expr *parse_expr_compound(Typespec *type) {
-    assert(0);
-    return NULL;
+    expect_token('{');
+    Expr **exprs = NULL;
+    do {
+        da_push(exprs, parse_expr());
+    } while (match_token(','));
+    expect_token('}');
+    return expr_compound(type, exprs, da_len(exprs));
 }
 
 Expr *parse_expr_base(void) {
@@ -61,10 +63,12 @@ Expr *parse_expr_base(void) {
     } else if (is_token(TOKEN_NAME)) {
         char *name = token.name;
         next_token();
-        if (match_token('{'))
-            expr = parse_expr_compound(NULL);
-        else
+        if (is_token('{')) {
+            Typespec *type = typespec_name(name);
+            expr = parse_expr_compound(type);
+        } else {
             expr = expr_name(name);
+        }
     } else if (match_keyword(keyword_cast)) {
         expect_token('(');
         Typespec *type = parse_type();
@@ -73,6 +77,7 @@ Expr *parse_expr_base(void) {
         expect_token(')');
         expr = expr_cast(type, sub_expr);
     } else if (match_token('(')) {
+        // compound literal
         if (match_token(':')) {
             Typespec *type = parse_type();
             expect_token(')');
@@ -81,6 +86,9 @@ Expr *parse_expr_base(void) {
             expr = parse_expr();
             expect_token(')');
         }
+
+    } else if (is_token('{')) {
+        expr = parse_expr_compound(NULL);
     } else {
         syntax_error("Unexpected token in base expression: '%s'", str_token_kind(token.kind));
     }
@@ -115,7 +123,6 @@ Expr *parse_expr_call(void) {
     }
     return expr;
 }
-
 
 Expr *parse_expr_unary(void) {
     if (is_token('-') || is_token('~')) {
@@ -161,6 +168,7 @@ Expr *parse_expression(char *source) {
     next_token();
     return parse_expr();
 }
+
 
 
 Stmt *parse_stmt_return(void) {
@@ -272,6 +280,7 @@ Stmt *parse_stmt(void) {
 }
 
 
+
 EnumItem *parse_enum_items(void) {
     assert(0);
     EnumItem *items = NULL;
@@ -279,7 +288,7 @@ EnumItem *parse_enum_items(void) {
 }
 
 AggregateField *parse_decl_aggregate_fields(void) {
-
+    assert(0);
     AggregateField *fields = NULL;
     return fields;
 }
@@ -393,14 +402,17 @@ void parse_test(void) {
     char *declarations[] = {
         "func pancake(count: int) { bake(ITEM_PANCAKE, count); }",
         "func main(argc: int, argv: char**): int { printf(\"Well, hello friends\\n\"); return 0; }",
+        "func doodle(x: int, y: int): bool {}",
         "struct Node { x: int; next: Node*; }",
         "union bag { a: int; b: float; c: bool; d: Node*; e: int[2][4]; f: Fart[32]}",
-        "func doodle(x: int, y: int): bool {}",
-        "var speed: float = 35.7;",
         "const a = 420;",
         "const b = 69;",
+        "var speed: float = 35.7;",
         "var c = 69 + 420 * 666;",
-        /*"var up: Vec3 = {0,1,0};",*/
+        "var d = Vec3{0,1,0};",
+        "var e = (:Vec3){1,2,3};",
+        "var f = {3, 6, 9};",
+        "var g: Vec3 = {3, 6, 9};",
     };
 
     for (size_t i = 0; i<array_count(declarations); ++i) {

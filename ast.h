@@ -1,6 +1,11 @@
 /*
 Grammar
 
+var_decl = NAME '=' expr
+         | NAME ':' type ('=' expr)?
+const_decl = NAME '=' expr
+typedef_decl = NAME '=' type
+
 decl = 'enum' enum_decl
      | 'struct' aggregate_decl
      | 'union' aggregate_decl
@@ -68,6 +73,7 @@ typedef enum {
     EXPR_CALL,
     EXPR_INDEX,
     EXPR_FIELD,
+    EXPR_COMPOUND,
 } ExprKind;
 
 struct Expr {
@@ -102,6 +108,11 @@ struct Expr {
             Expr *expr;
             char *name;
         } field;
+        struct {
+            Typespec *type;
+            Expr **args;
+            int num_args;
+        } compound;
     };
 };
 

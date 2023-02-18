@@ -1,3 +1,5 @@
+void print_type(Typespec *type);
+
 #define INDENT_WIDTH 4
 static int indent = 0; // for printing
                        //
@@ -40,9 +42,19 @@ void print_expr(Expr *expr) {
         }
         printf(")");
         break;
-
+    case EXPR_COMPOUND: 
+        printf("(");
+        print_type(expr->compound.type);
+        ++indent;
+        for (int i=0; i<expr->compound.num_args; ++i) {
+            printf("\n%*s", indent*INDENT_WIDTH, " ");
+            print_expr(expr->compound.args[i]);
+        }
+        --indent;
+        printf(")");
+        break;
     default:
-        syntax_error("Unkown expr kind: %d", expr->kind);
+        fprintf(stderr, "Error: Printer: Unkown expr kind: %d\n", expr->kind);
         assert(0);
         break;
     }

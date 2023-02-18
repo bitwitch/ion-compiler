@@ -83,6 +83,13 @@ Expr *expr_field(Expr *expr, char *field) {
     return new_expr;
 }
 
+Expr *expr_compound(Typespec* type, Expr **args, int num_args) {
+    Expr *expr = expr_alloc(EXPR_COMPOUND);
+    expr->compound.type = type;
+    expr->compound.args = args;
+    expr->compound.num_args = num_args;
+    return expr;
+}
 
 
 
