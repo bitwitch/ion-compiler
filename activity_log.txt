@@ -1,22 +1,33 @@
-2022-01-15
+2023-02-15
+- watch Bitwise day 10
+
+2023-02-11
+- successfully parsing hello world program
+- watch Bitwise day 9
+
+2023-02-09
+- parsing some basic declarations
+- sometime over the last month I watched Bitwise days 6-8
+
+2023-01-15
 - implement exponentiation operator 
 
-2022-01-13
+2023-01-13
 - generate bytecode from AST, and execute in virtual machine (i.e. a compiler!)
 - watch Bitwise day 5
 
-2022-01-12
+2023-01-12
 - implement stack based virtual machine with basic arithmetic instructions
 - watch Bitwise day 4 Extra
 
-2022-01-11
+2023-01-11
 - watch day 4 of Bitwise
 - hw parser: generate AST and walk the tree to print s-expressions
 
-2022-01-10
+2023-01-10
 - begin day 2 homework, arithmetic expression lexer
 - watch day 3 of Bitwise
 
-2022-01-09
+2023-01-09
 - read chapters 1 - 4.1 of Compiler Construction
 - watch day 2 of Bitwise 
