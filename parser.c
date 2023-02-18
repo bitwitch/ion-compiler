@@ -160,20 +160,29 @@ Expr *parse_expr_add(void) {
 }
 
 Expr *parse_expr_cmp(void) {
-    assert(0);
-    return NULL;
+    Expr *expr = parse_expr_add();
+    while (is_token_cmp()) {
+        TokenKind op = token.kind;
+        next_token();
+        expr = expr_cmp(op, expr, parse_expr_add());
+    }
+    return expr;
 }
 
 Expr *parse_expr_and(void) {
-    assert(0);
-    return NULL;
+    Expr *expr = parse_expr_cmp();
+    while (match_token(TOKEN_LOGICAL_AND)) {
+        expr = expr_and(expr, parse_expr_cmp());
+    }
+    return expr;
 }
 
 Expr *parse_expr_or(void) {
-    return parse_expr_add();
-    /*while (match_token(TOKEN_LOGICAL_OR)) {*/
-        /*expr = parse_expr_and();*/
-    /*}*/
+    Expr *expr = parse_expr_and();
+    while (match_token(TOKEN_LOGICAL_OR)) {
+        expr = expr_or(expr, parse_expr_and());
+    }
+    return expr;
 }
 
 Expr *parse_expr_ternary(void) {
@@ -367,9 +376,6 @@ AggregateField parse_decl_aggregate_field(void) {
     };
 }
 
-
-// struct Node { i: int; next: Node*; }
-
 Decl *parse_decl_aggregate(DeclKind kind) {
     char *name = parse_name();
     expect_token('{');
@@ -436,6 +442,20 @@ Decl *parse_decl(void) {
 void parse_expr_test(void) {
     init_keywords();
     char *exprs[] = {
+        // cmp
+        "x == y",
+        "1+1 != 2*13",
+        "poop() <= fart()",
+        "32/6 >= t",
+        "i < j",
+        "k > 9999",
+        // and
+        "j && k",
+        "(y & 1) && ((x >> 16) & 1)",
+        // or
+        "a || b",
+        "x - 99 || b - 32",
+        // ternary
         "dis_true ? 69 : 420",
         "a ? b ? 0 : 1 : c ? 2 : 3",
         "a ? (b ? 0 : 1) : 2",
@@ -452,11 +472,14 @@ void parse_expr_test(void) {
 void parse_stmt_test(void) {
     init_keywords();
     char *stmts[] = {
-        /*"sum := 0;",*/
-        "for (i := 1; i < 101; ++i) { sum += i; }",
-        /*"return sum;",*/
+        "count := 100;",
+        "sum := 0;",
+        "for (i := 1; i < count + 1; i++) { sum += i; }",
+        "return sum / count;",
 
-        /*"up := Vec3{0,1,0};",*/
+        "up := Vec3{0,1,0};",
+        "i++;",
+        "k--;",
     };
 
     for (size_t i = 0; i<array_count(stmts); ++i) {
@@ -494,8 +517,8 @@ void parse_decl_test(void) {
 }
 
 void parse_test(void) {
-    parse_expr_test();
-    /*parse_stmt_test();*/
+    /*parse_expr_test();*/
+    parse_stmt_test();
     /*parse_decl_test();*/
 }
 

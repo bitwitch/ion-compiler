@@ -1,4 +1,5 @@
 void print_type(Typespec *type);
+void print_stmt(Stmt *stmt);
 
 #define INDENT_WIDTH 4
 static int indent = 0; // for printing
@@ -62,11 +63,44 @@ void print_expr(Expr *expr) {
         --indent;
         printf(")");
         break;
+    case EXPR_OR:
+        printf("(or ");
+        print_expr(expr->or_expr.left);
+        printf(" ");
+        print_expr(expr->or_expr.right);
+        printf(")");
+        break;
+    case EXPR_AND:
+        printf("(and ");
+        print_expr(expr->and_expr.left);
+        printf(" ");
+        print_expr(expr->and_expr.right);
+        printf(")");
+        break;
+    case EXPR_CMP:
+        printf("(%s ", str_token_kind(expr->cmp.op)); 
+        print_expr(expr->cmp.left);
+        printf(" ");
+        print_expr(expr->cmp.right);
+        printf(")");
+        break;
+ 
     default:
         fprintf(stderr, "Error: Printer: Unkown expr kind: %d\n", expr->kind);
         assert(0);
         break;
     }
+}
+
+void print_stmt_block(StmtBlock block) {
+    printf("(block");
+    ++indent;
+    for (int i=0; i<block.num_stmts; ++i) {
+        printf("\n%*s", indent*INDENT_WIDTH, " ");
+        print_stmt(block.stmts[i]);
+    }
+    --indent;
+    printf(")");
 }
 
 void print_stmt(Stmt *stmt) {
@@ -112,12 +146,29 @@ void print_stmt(Stmt *stmt) {
         print_expr(stmt->init.expr);
         printf(")");
         break;
-
-    case STMT_FOR:
+    case STMT_ASSIGN:
+        printf("(%s ", str_token_kind(stmt->assign.op));
+        print_expr(stmt->assign.left);
+        if (stmt->assign.right) {
+            printf(" ");
+            print_expr(stmt->assign.right);
+        }
+        printf(")");
+        break;
+    case STMT_FOR: 
+        printf("(for ");
+        print_stmt(stmt->for_stmt.init);
+        printf(" ");
+        print_expr(stmt->for_stmt.cond);
+        printf(" ");
+        print_stmt(stmt->for_stmt.next);
+        printf(" ");
+        print_stmt_block(stmt->for_stmt.block);
+        printf(")");
+        break;
     case STMT_DO:
     case STMT_WHILE:
     case STMT_SWITCH:
-    case STMT_ASSIGN:
     default:
         assert(0);
         break;
@@ -179,15 +230,19 @@ void print_decl(Decl *decl) {
             printf(" ");
             print_type(decl->func.ret_type);
         }
-        printf(" (block");
-        ++indent;
-        StmtBlock block = decl->func.block;
-        for (int i=0; i<block.num_stmts; ++i) {
-            printf("\n%*s", indent*INDENT_WIDTH, " ");
-            print_stmt(block.stmts[i]);
-        }
-        --indent;
-        printf(")"); // close block
+        printf(" ");
+        print_stmt_block(decl->func.block);
+
+        /*printf(" (block");*/
+        /*++indent;*/
+        /*StmtBlock block = decl->func.block;*/
+        /*for (int i=0; i<block.num_stmts; ++i) {*/
+            /*printf("\n%*s", indent*INDENT_WIDTH, " ");*/
+            /*print_stmt(block.stmts[i]);*/
+        /*}*/
+        /*--indent;*/
+        /*printf(")"); // close block*/
+
         printf(")"); // close func
         break;
     case DECL_UNION:

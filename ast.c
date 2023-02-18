@@ -100,6 +100,29 @@ Expr *expr_compound(Typespec* type, Expr **args, int num_args) {
     return expr;
 }
 
+Expr *expr_or(Expr *left, Expr *right) {
+    Expr *expr = expr_alloc(EXPR_OR);
+    expr->or_expr.left = left;
+    expr->or_expr.right = right;
+    return expr;
+}
+
+Expr *expr_and(Expr *left, Expr *right) {
+    Expr *expr = expr_alloc(EXPR_AND);
+    expr->and_expr.left = left;
+    expr->and_expr.right = right;
+    return expr;
+}
+
+Expr *expr_cmp(TokenKind op, Expr *left, Expr *right) {
+    Expr *expr = expr_alloc(EXPR_CMP);
+    expr->cmp.op = op;
+    expr->cmp.left = left;
+    expr->cmp.right = right;
+    return expr;
+}
+
+
 
 
 

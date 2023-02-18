@@ -49,7 +49,7 @@ mul_op = '*' | '/' | '%' | '&' | LSHIFT | RSHIFT
 mul_expr = unary_expr (mul_op unary_expr)*
 add_op = '+' | '-' | '|' | '^'
 add_expr = mul_expr (add_op mul_expr)*
-cmp_op = EQ | NOTEQ | LT | GT | LTEQ | GTEQ
+cmp_op = EQ_EQ | NOTEQ | LT | GT | LTEQ | GTEQ
 cmp_expr = add_expr (cmp_op add_expr)*
 and_expr = cmp_expr (AND cmp_expr)*
 or_expr = and_expr (OR and_expr)*
@@ -77,6 +77,9 @@ typedef enum {
     EXPR_INDEX,
     EXPR_FIELD,
     EXPR_COMPOUND,
+    EXPR_OR,
+    EXPR_AND,
+    EXPR_CMP,
 } ExprKind;
 
 struct Expr {
@@ -121,6 +124,16 @@ struct Expr {
             Expr **args;
             int num_args;
         } compound;
+        struct {
+            Expr *left, *right;
+        } or_expr;
+        struct {
+            Expr *left, *right;
+        } and_expr;
+        struct {
+            TokenKind op;
+            Expr *left, *right;
+        } cmp;
     };
 };
 

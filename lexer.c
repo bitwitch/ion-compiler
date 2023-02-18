@@ -13,7 +13,6 @@ typedef enum {
     TOKEN_RSHIFT,
     TOKEN_AUTO_ASSIGN,
     TOKEN_EQ,
-    TOKEN_EQ_EQ,
     TOKEN_ADD_EQ,
     TOKEN_SUB_EQ,
     TOKEN_MUL_EQ,
@@ -26,6 +25,12 @@ typedef enum {
     TOKEN_RSHIFT_EQ,
     TOKEN_INC,
     TOKEN_DEC,
+    TOKEN_LOGICAL_OR,
+    TOKEN_LOGICAL_AND,
+    TOKEN_EQ_EQ,
+    TOKEN_NOT_EQ,
+    TOKEN_LT_EQ,
+    TOKEN_GT_EQ,
 } TokenKind;
 
 typedef enum {
@@ -240,7 +245,7 @@ repeat:
             scan_float();
             break;
 
-        case ':':
+        case ':': {
 			token.kind = *stream;
 			++stream;
             if (*stream == '=') {
@@ -248,6 +253,114 @@ repeat:
                 ++stream;
             }
 			break;
+        }
+
+        case '=': {
+			token.kind = *stream;
+			++stream;
+            if (*stream == '=') {
+                token.kind = TOKEN_EQ_EQ;
+                ++stream;
+            }
+            break;
+        }
+	
+        case '!': {
+			token.kind = *stream;
+			++stream;
+            if (*stream == '=') {
+                token.kind = TOKEN_NOT_EQ;
+                ++stream;
+            }
+            break;
+        }
+	
+        case '|': {
+			token.kind = *stream;
+			++stream;
+            if (*stream == '|') {
+                token.kind = TOKEN_LOGICAL_OR;
+                ++stream;
+            } else if (*stream == '=') {
+                token.kind = TOKEN_OR_EQ;
+                ++stream;
+            }
+			break;
+        }
+
+        case '&': {
+			token.kind = *stream;
+			++stream;
+            if (*stream == '&') {
+                token.kind = TOKEN_LOGICAL_AND;
+                ++stream;
+            } else if (*stream == '=') {
+                token.kind = TOKEN_AND_EQ;
+                ++stream;
+            }
+            break;
+        }
+
+        case '>': {
+			token.kind = *stream;
+			++stream;
+            if (*stream == '>') {
+                token.kind = TOKEN_RSHIFT;
+                ++stream;
+                if (*stream == '=') {
+                    token.kind = TOKEN_RSHIFT_EQ;
+                    ++stream;
+                }
+            } else if (*stream == '=') {
+                token.kind = TOKEN_GT_EQ;
+                ++stream;
+            }
+            break;
+        }
+
+        case '<': {
+			token.kind = *stream;
+			++stream;
+            if (*stream == '<') {
+                token.kind = TOKEN_LSHIFT;
+                ++stream;
+                if (*stream == '=') {
+                    token.kind = TOKEN_LSHIFT_EQ;
+                    ++stream;
+                }
+            } else if (*stream == '=') {
+                token.kind = TOKEN_LT_EQ;
+                ++stream;
+            }
+            break;
+        }
+
+        case '+': {
+			token.kind = *stream;
+			++stream;
+            if (*stream == '+') {
+                token.kind = TOKEN_INC;
+                ++stream;
+            } else if (*stream == '=') {
+                token.kind = TOKEN_ADD_EQ;
+                ++stream;
+            }
+            break;
+        }
+
+        case '-': {
+			token.kind = *stream;
+			++stream;
+            if (*stream == '-') {
+                token.kind = TOKEN_DEC;
+                ++stream;
+            } else if (*stream == '=') {
+                token.kind = TOKEN_SUB_EQ;
+                ++stream;
+            }
+            break;
+        }
+
 
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
@@ -301,24 +414,38 @@ void init_stream(char *source) {
 // change on each call
 char *str_token_kind(TokenKind kind) {
     static char str[64] = {0};
-    if (kind == TOKEN_INT) {
-        sprintf(str, "integer");
-    } else if (kind == TOKEN_FLOAT) {
-        sprintf(str, "float");
-    } else if (kind == TOKEN_AUTO_ASSIGN) {
-        sprintf(str, ":=");
-    } else if (kind == TOKEN_NAME) {
-        sprintf(str, "name");
-    } else {
-        if (kind < 128 && isprint(kind))
+    switch(kind) {
+    case TOKEN_INT:         sprintf(str, "integer"); break;
+    case TOKEN_FLOAT:       sprintf(str, "float");   break;
+    case TOKEN_AUTO_ASSIGN: sprintf(str, ":=");      break;
+    case TOKEN_NAME:        sprintf(str, "name");    break;
+    case TOKEN_EQ_EQ:       sprintf(str, "==");      break;
+    case TOKEN_NOT_EQ:      sprintf(str, "!=");      break;
+    case TOKEN_LT_EQ:       sprintf(str, "<=");      break;
+    case TOKEN_GT_EQ:       sprintf(str, ">=");      break;
+    case TOKEN_LSHIFT_EQ:   sprintf(str, "<<=");     break;
+    case TOKEN_RSHIFT_EQ:   sprintf(str, ">>=");     break;
+    case TOKEN_LSHIFT:      sprintf(str, "<<");      break;
+    case TOKEN_RSHIFT:      sprintf(str, ">>");      break;
+    case TOKEN_INC:         sprintf(str, "inc");     break;
+    case TOKEN_DEC:         sprintf(str, "dec");     break;
+    case TOKEN_ADD_EQ:      sprintf(str, "+=");      break;
+    case TOKEN_SUB_EQ:      sprintf(str, "-=");      break;
+    case TOKEN_MUL_EQ:      sprintf(str, "*=");      break;
+    case TOKEN_DIV_EQ:      sprintf(str, "/=");      break;
+    case TOKEN_MOD_EQ:      sprintf(str, "%=");      break;
+    case TOKEN_AND_EQ:      sprintf(str, "&=");      break;
+    case TOKEN_OR_EQ:       sprintf(str, "|=");      break;
+    case TOKEN_XOR_EQ:      sprintf(str, "^=");      break;
+    default:
+        if (kind < 128 && isprint(kind)) {
             sprintf(str, "%c", kind);
-        else if (kind == TOKEN_LSHIFT)
-            sprintf(str, "<<");
-        else if (kind == TOKEN_RSHIFT)
-            sprintf(str, ">>");
-        else 
+        } else {
             sprintf(str, "<ASCII %d>", kind);
+        }
+        break;
     }
+
     return str;
 }
 
@@ -331,6 +458,16 @@ char *token_info(void) {
 bool is_token(TokenKind kind) {
     return token.kind == kind;
 }
+
+bool is_token_cmp(void) {
+    return token.kind == TOKEN_EQ_EQ  ||
+           token.kind == TOKEN_NOT_EQ ||
+           token.kind == TOKEN_LT_EQ  ||
+           token.kind == TOKEN_GT_EQ  ||
+           token.kind == '<'          ||
+           token.kind == '>';
+}
+
 
 bool match_token(TokenKind kind) {
     if (token.kind == kind) {
