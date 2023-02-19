@@ -29,7 +29,7 @@ void print_expr(Expr *expr) {
         printf(")");
         break;
     case EXPR_BINARY: 
-        printf("(%c ", expr->binary.op); 
+        printf("(%s ", str_token_kind(expr->binary.op)); 
         print_expr(expr->binary.left);
         printf(" ");
         print_expr(expr->binary.right);
@@ -51,6 +51,18 @@ void print_expr(Expr *expr) {
             print_expr(expr->call.args[i]);
         }
         printf(")");
+        break;
+    case EXPR_INDEX: 
+        printf("(index ");
+        print_expr(expr->index.expr);
+        printf(" ");
+        print_expr(expr->index.index);
+        printf(")");
+        break;
+    case EXPR_FIELD: 
+        printf("(field ");
+        print_expr(expr->field.expr);
+        printf(" %s)", expr->field.name);
         break;
     case EXPR_COMPOUND: 
         printf("(");
@@ -84,7 +96,13 @@ void print_expr(Expr *expr) {
         print_expr(expr->cmp.right);
         printf(")");
         break;
- 
+    case EXPR_CAST:
+        printf("(cast ");
+        print_type(expr->cast.type);
+        printf(" ");
+        print_expr(expr->cast.expr);
+        printf(")");
+        break;
     default:
         fprintf(stderr, "Error: Printer: Unkown expr kind: %d\n", expr->kind);
         assert(0);

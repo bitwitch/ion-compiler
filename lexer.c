@@ -244,9 +244,16 @@ repeat:
         case '"':
             scan_str();
             break;
-        case '.':
-            scan_float();
+
+        case '.': {
+            if (isdigit(stream[1])) {
+                scan_float();
+            } else {
+                token.kind = *stream;
+                ++stream;
+            }
             break;
+        }
 
         case ':': {
 			token.kind = *stream;

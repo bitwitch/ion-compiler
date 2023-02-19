@@ -39,7 +39,7 @@ base_expr = INT
           | FLOAT
           | STR
           | NAME
-          | CAST '(' expr ')'
+          | CAST '(' type ',' expr ')'
           | '(' expr ')'
           | typespec? '{' expr_list '}'
 call_expr =  base_expr ('(' param* ')' | '[' expr ']' | '.' NAME)*

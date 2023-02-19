@@ -125,7 +125,7 @@ Expr *parse_expr_call(void) {
 }
 
 Expr *parse_expr_unary(void) {
-    if (is_token('-') || is_token('~')) {
+    if (is_token('-') || is_token('~') || is_token('&') || is_token('*')) {
         TokenKind op = token.kind;
         next_token();
         return expr_unary(op, parse_expr_unary());
@@ -150,7 +150,7 @@ Expr *parse_expr_mul(void) {
 Expr *parse_expr_add(void) {
     Expr *expr = parse_expr_mul();
 
-    while (is_token('+') || is_token('-') || is_token('^')) {
+    while (is_token('+') || is_token('-') || is_token('^') || is_token('|')) {
         TokenKind op = token.kind;
         next_token();
         expr = expr_binary(op, expr, parse_expr_mul());
@@ -469,6 +469,35 @@ Decl *parse_decl(void) {
 void parse_expr_test(void) {
     init_keywords();
     char *exprs[] = {
+        // base exprs
+        "\"hey dude\"",
+        "69",
+        "3.14159",
+        "fart",
+        "cast(int, x)",
+        "cast(float*, x)",
+        "cast(Thing[32], x)",
+        "(expr)",
+        "Vec3{3,6,9}",
+        // call exprs
+        "image.width / image.height",
+        "engage()",
+        "draw_rect(0, 0, 25, 25, blue)",
+        "nums[i]",
+        // unary
+        "-x + ~y + -j",
+        "&window",
+        "*P + *q",
+        // mul ops
+        "(x*x + y*y + z*z) / t",
+        "(count % 4) + 1",
+        "red << (3*8) | green << (2*8) | blue << (1*8) | alpha",
+        "(gr >> 24) & 1",
+        "num & mask",
+        // add ops
+        "q + b + (2 - j) - 11",
+        "num ^ 0xc0ffee",
+        "flag1 | flag2 | flag3",
         // cmp
         "x == y",
         "1+1 != 2*13",
@@ -499,17 +528,17 @@ void parse_expr_test(void) {
 void parse_stmt_test(void) {
     init_keywords();
     char *stmts[] = {
-        "if (type == A) { procA(); } else if (type == B) { procB(); } else if (type == C) { procC(); } else { proc_default(); }",
+        "if (type == A) { procA(); } else if (type == B) { return; } else if (type == C) { procC(); } else { proc_default(); }",
         "if (dis_true) { x += 1; } else { x += 5; }",
 
-        /*"count := 100;",*/
-        /*"sum := 0;",*/
-        /*"for (i := 1; i < count + 1; i++) { sum += i; }",*/
-        /*"return sum / count;",*/
+        "count := 100;",
+        "sum := 0;",
+        "for (i := 1; i < count + 1; i++) { sum += i; }",
+        "return sum / count;",
 
-        /*"up := Vec3{0,1,0};",*/
-        /*"i++;",*/
-        /*"k--;",*/
+        "up := Vec3{0,1,0};",
+        "i++;",
+        "k--;",
     };
 
     for (size_t i = 0; i<array_count(stmts); ++i) {

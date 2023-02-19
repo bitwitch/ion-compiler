@@ -147,7 +147,7 @@ char *str_intern_range(char *start, char *end) {
 
 char *str_intern(char *str) {
     // FIXME(shaw): just wrapping the range version for now with a wasteful
-    // call to strlen. we can be smarter about this but its fine for now.
+    // call to strlen. can be smarter about this but its fine for now.
     return str_intern_range(str, str + strlen(str));
 }
 

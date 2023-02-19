@@ -68,7 +68,6 @@ Expr *expr_ternary(Expr *cond, Expr *then_expr, Expr *else_expr) {
     return expr;
 }
 
-
 Expr *expr_call(Expr *expr, Expr **args, int num_args) {
     Expr *new_expr = expr_alloc(EXPR_CALL);
     new_expr->call.expr = expr;
@@ -76,7 +75,6 @@ Expr *expr_call(Expr *expr, Expr **args, int num_args) {
     new_expr->call.num_args = num_args;
     return new_expr;
 }
-
 
 Expr *expr_index(Expr *expr, Expr *index) {
     Expr *new_expr = expr_alloc(EXPR_INDEX);
