@@ -225,9 +225,36 @@ Stmt *parse_stmt_return(void) {
     return stmt_return(expr);
 }
 
+
 Stmt *parse_stmt_if(void) {
-    assert(0);
-    return NULL;
+    expect_token('(');
+    Expr *cond = parse_expr();
+    expect_token(')');
+
+    StmtBlock then_block = parse_stmt_block();
+
+    ElseIf *else_ifs = NULL;
+    bool else_block_exists = false;
+    while (true) {
+        if (!match_keyword(keyword_else)) break;
+
+        if (!match_keyword(keyword_if)) {
+            else_block_exists = true;
+            break;
+        }
+
+        expect_token('(');
+        Expr *cond = parse_expr();
+        expect_token(')');
+        StmtBlock block = parse_stmt_block();
+        da_push(else_ifs, (ElseIf){cond, block});
+    }
+
+    StmtBlock else_block = {0};
+    if (else_block_exists)
+        else_block = parse_stmt_block();
+
+    return stmt_if(cond, then_block, else_ifs, da_len(else_ifs), else_block);
 }
 
 bool is_assign_op(void) {
@@ -472,14 +499,17 @@ void parse_expr_test(void) {
 void parse_stmt_test(void) {
     init_keywords();
     char *stmts[] = {
-        "count := 100;",
-        "sum := 0;",
-        "for (i := 1; i < count + 1; i++) { sum += i; }",
-        "return sum / count;",
+        "if (type == A) { procA(); } else if (type == B) { procB(); } else if (type == C) { procC(); } else { proc_default(); }",
+        "if (dis_true) { x += 1; } else { x += 5; }",
 
-        "up := Vec3{0,1,0};",
-        "i++;",
-        "k--;",
+        /*"count := 100;",*/
+        /*"sum := 0;",*/
+        /*"for (i := 1; i < count + 1; i++) { sum += i; }",*/
+        /*"return sum / count;",*/
+
+        /*"up := Vec3{0,1,0};",*/
+        /*"i++;",*/
+        /*"k--;",*/
     };
 
     for (size_t i = 0; i<array_count(stmts); ++i) {
@@ -517,8 +547,8 @@ void parse_decl_test(void) {
 }
 
 void parse_test(void) {
-    /*parse_expr_test();*/
+    parse_expr_test();
     parse_stmt_test();
-    /*parse_decl_test();*/
+    parse_decl_test();
 }
 

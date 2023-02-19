@@ -132,14 +132,27 @@ void print_stmt(Stmt *stmt) {
         print_expr(stmt->expr);
         break;
     case STMT_IF:
-        assert(0);
-        /*printf("(if ");*/
-        /*print_expr(stmt->if_stmt.cond);*/
-        /*++indent;*/
-        /*printf("\n%*s", indent*INDENT_WIDTH, " ");*/
-        /*print_stmt_block(stmt->if_stmt.then_block);*/
-        /*printf("\n%*s", indent*INDENT_WIDTH, " ");*/
-        /*--indent;*/
+        printf("(if ");
+        print_expr(stmt->if_stmt.cond);
+        ++indent;
+        printf("\n%*s", indent*INDENT_WIDTH, " ");
+        print_stmt_block(stmt->if_stmt.then_block);
+        --indent;
+        for (int i=0; i<stmt->if_stmt.num_else_ifs; ++i) {
+            ElseIf else_if = stmt->if_stmt.else_ifs[i];
+            printf("\n%*s", indent*INDENT_WIDTH, " ");
+            printf("(elseif ");
+            print_expr(else_if.cond);
+            ++indent;
+            printf("\n%*s", indent*INDENT_WIDTH, " ");
+            print_stmt_block(else_if.block);
+            --indent;
+        }
+        if (stmt->if_stmt.else_block.num_stmts > 0) {
+            printf("\n%*s", indent*INDENT_WIDTH, " ");
+            print_stmt_block(stmt->if_stmt.else_block);
+        }
+        printf(")");
         break;
     case STMT_INIT:
         printf("(auto-assign %s ", stmt->init.name);

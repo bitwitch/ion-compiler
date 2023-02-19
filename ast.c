@@ -222,6 +222,17 @@ Stmt *stmt_for(Stmt *init, Expr *cond, Stmt *next, StmtBlock block) {
     return stmt;
 }
 
+Stmt *stmt_if(Expr *cond, StmtBlock then_block, ElseIf *else_ifs, int num_else_ifs, StmtBlock else_block) {
+    Stmt *stmt = stmt_alloc(STMT_IF);
+    stmt->if_stmt.cond = cond;
+    stmt->if_stmt.then_block = then_block;
+    stmt->if_stmt.else_ifs = else_ifs;
+    stmt->if_stmt.num_else_ifs = num_else_ifs;
+    stmt->if_stmt.else_block = else_block;
+    return stmt;
+}
+
+
 
 
 // Declarations

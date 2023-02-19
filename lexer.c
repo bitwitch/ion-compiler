@@ -66,6 +66,7 @@ char *keyword_return;
 char *keyword_continue;
 char *keyword_break;
 char *keyword_if;
+char *keyword_else;
 char *keyword_for;
 char *keyword_do;
 char *keyword_while;
@@ -85,6 +86,7 @@ void init_keywords(void) {
         keyword_continue = str_intern("continue");
         keyword_break = str_intern("break");
         keyword_if = str_intern("if");
+        keyword_else = str_intern("else");
         keyword_for = str_intern("for");
         keyword_do = str_intern("do");
         keyword_while = str_intern("while");
@@ -106,6 +108,7 @@ bool is_keyword(char *check) {
            s == keyword_continue ||
            s == keyword_break    ||
            s == keyword_if       ||
+           s == keyword_else     ||
            s == keyword_for      ||
            s == keyword_do       ||
            s == keyword_while    ||
