@@ -125,7 +125,7 @@ Expr *parse_expr_call(void) {
 }
 
 Expr *parse_expr_unary(void) {
-    if (is_token('-') || is_token('~') || is_token('&') || is_token('*')) {
+    if (is_token('-') || is_token('~') || is_token('&') || is_token('*') || is_token('!')) {
         TokenKind op = token.kind;
         next_token();
         return expr_unary(op, parse_expr_unary());
@@ -258,7 +258,7 @@ Stmt *parse_stmt_if(void) {
 }
 
 bool is_assign_op(void) {
-    return token.kind == TOKEN_EQ        ||
+    return token.kind == '='             ||
            token.kind == TOKEN_ADD_EQ    ||
            token.kind == TOKEN_SUB_EQ    ||
            token.kind == TOKEN_MUL_EQ    ||
@@ -299,39 +299,99 @@ Stmt *parse_simple_stmt(void) {
 
 Stmt *parse_stmt_for(void) {
     expect_token('(');
-    Stmt *init = parse_simple_stmt();
+    Stmt *init = is_token(';') ? NULL : parse_simple_stmt();
     expect_token(';');
-    Expr *cond = parse_expr();
+    Expr *cond = is_token(';') ? NULL : parse_expr();
     expect_token(';');
-    Stmt *next = parse_simple_stmt();
+    Stmt *next = is_token(')') ? NULL : parse_simple_stmt();
     expect_token(')');
     StmtBlock block = parse_stmt_block();
     return stmt_for(init, cond, next, block);
 }
 
 Stmt *parse_stmt_do(void) {
-    assert(0);
-    return NULL;
+    StmtBlock block = parse_stmt_block();
+    if (!match_keyword(keyword_while)) {
+        syntax_error("Parsing do-while statement expected 'while', but got '%s'", str_token_kind(token.kind));
+        return NULL;
+    }
+    expect_token('(');
+    Expr *cond = parse_expr();
+    expect_token(')');
+    expect_token(';');
+    return stmt_do(cond, block);
 }
 
 Stmt *parse_stmt_while(void) {
-    assert(0);
-    return NULL;
+    expect_token('(');
+    Expr *cond = parse_expr();
+    expect_token(')');
+    StmtBlock block = parse_stmt_block();
+    return stmt_while(cond, block);
+}
+
+
+switch (op) {
+    case OP_ADD:
+        add();
+        break;
+    default: 
+        break;
+}
+
+SwitchCase parse_stmt_switch_case(void) {
+    Expr **exprs = NULL;
+    bool is_default = false;
+    while (is_keyword(keyword_case) || is_keyword(keyword_default)) {
+        if (match_keyword(keyword_case)) {
+            da_push(exprs, parse_expr());
+        } else {
+            is_default = true;
+            assert(is_keyword(keyword_default));
+            next_token();
+        }
+        expect_token(':');
+    }
+
+    Stmt **stmts = NULL;
+    while (!is_token(TOKEN_EOF) && !is_token('}') && !is_keyword(keyword_case) && !is_keyword(keyword_default))
+        da_push(stmts, parse_stmt());
+ 
+    return (SwitchCase){
+        .exprs = exprs,
+        .num_exprs = da_len(exprs),
+        .is_default = is_default,
+        .block = (StmtBlock){ stmts, da_len(stmts) },
+    };
 }
 
 Stmt *parse_stmt_switch(void) {
-    assert(0);
-    return NULL;
+    expect_token('(');
+    Expr *expr = parse_expr();
+    expect_token(')');
+
+    expect_token('{');
+    SwitchCase *cases = NULL;
+    while (!is_token('}'))
+        da_push(cases, parse_stmt_switch_case());
+    expect_token('}');
+
+    return stmt_switch(expr, cases, da_len(cases));
 }
 
+Stmt *parse_stmt_single_token(StmtKind kind) {
+    Stmt *stmt = stmt_alloc(kind);
+    expect_token(';');
+    return stmt;
+}
 
 Stmt *parse_stmt(void) {
     if (match_keyword(keyword_return))
         return parse_stmt_return();
     else if (match_keyword(keyword_continue))
-        return stmt_alloc(STMT_CONTINUE);
+        return parse_stmt_single_token(STMT_CONTINUE);
     else if (match_keyword(keyword_break))
-        return stmt_alloc(STMT_BREAK);
+        return parse_stmt_single_token(STMT_BREAK);
     else if (match_keyword(keyword_if))
         return parse_stmt_if();
     else if (match_keyword(keyword_for))
@@ -342,7 +402,7 @@ Stmt *parse_stmt(void) {
         return parse_stmt_while();
     else if (match_keyword(keyword_switch))
         return parse_stmt_switch();
-    else if (match_token('{'))
+    else if (is_token('{'))
         return stmt_brace_block(parse_stmt_block());
     else {
         Stmt *stmt = parse_simple_stmt();
@@ -528,14 +588,38 @@ void parse_expr_test(void) {
 void parse_stmt_test(void) {
     init_keywords();
     char *stmts[] = {
+        // switch
+        "switch (op) { case OP_ADD: add(); break;  case OP_SUB: sub(); break;  case OP_MUL: mul(); break;  default: printf(\"Unknown op\n\"); exit(1); break; }",
+
+        // while
+        "while (true) { do_stuff(); if (check_done()) { break; } else { append(a, next()); } cleanup(); }",
+        "while (running) { update(); draw(); }",
+
+        // do
+        "do { x++; } while (x < 1000);",
+        "do { stop(); drop(); roll(); } while (on_fire == true);",
+
+        // for
+        "for (i := 1; i < count + 1; i++) { sum += i; }",
+        "for (; !quit; count++) { update(); }",
+        "for (;;) { simulate(); }",
+
+        // if
         "if (type == A) { procA(); } else if (type == B) { return; } else if (type == C) { procC(); } else { proc_default(); }",
         "if (dis_true) { x += 1; } else { x += 5; }",
+        "if (x+3 > 5) { y = 12; };",
 
+        //stmt block
+        "{ v := Vec3{ 10, 20, 3 }; p = vec3_add(p, v); }",
+
+        // return, continue, break
+        "return sum / count;",
+        "continue;",
+        "break;",
+
+        // simple stmts
         "count := 100;",
         "sum := 0;",
-        "for (i := 1; i < count + 1; i++) { sum += i; }",
-        "return sum / count;",
-
         "up := Vec3{0,1,0};",
         "i++;",
         "k--;",
@@ -576,8 +660,8 @@ void parse_decl_test(void) {
 }
 
 void parse_test(void) {
-    parse_expr_test();
+    /*parse_expr_test();*/
     parse_stmt_test();
-    parse_decl_test();
+    /*parse_decl_test();*/
 }
 

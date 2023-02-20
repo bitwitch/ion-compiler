@@ -2,6 +2,8 @@
 // ---------------------------------------------------------------------------
 
 typedef enum {
+    TOKEN_EOF,
+
     // NOTE(shaw): reserving values 0-127 for ascii chars to use
 	TOKEN_INT = 128,
 	TOKEN_CHR,
@@ -12,7 +14,7 @@ typedef enum {
     TOKEN_LSHIFT,
     TOKEN_RSHIFT,
     TOKEN_AUTO_ASSIGN,
-    TOKEN_EQ,
+    /*TOKEN_EQ,*/ // single literal ascii character token  for now
     TOKEN_ADD_EQ,
     TOKEN_SUB_EQ,
     TOKEN_MUL_EQ,
@@ -443,7 +445,7 @@ char *str_token_kind(TokenKind kind) {
     case TOKEN_SUB_EQ:      sprintf(str, "-=");      break;
     case TOKEN_MUL_EQ:      sprintf(str, "*=");      break;
     case TOKEN_DIV_EQ:      sprintf(str, "/=");      break;
-    case TOKEN_MOD_EQ:      sprintf(str, "%=");      break;
+    case TOKEN_MOD_EQ:      sprintf(str, "%%=");     break;
     case TOKEN_AND_EQ:      sprintf(str, "&=");      break;
     case TOKEN_OR_EQ:       sprintf(str, "|=");      break;
     case TOKEN_XOR_EQ:      sprintf(str, "^=");      break;
@@ -485,6 +487,10 @@ bool match_token(TokenKind kind) {
         return true;
     } 
     else return false;
+}
+
+bool is_keyword(char *keyword) {
+    return token.kind == TOKEN_KEYWORD && token.name == keyword;
 }
 
 bool match_keyword(char *keyword) {

@@ -230,6 +230,19 @@ Stmt *stmt_if(Expr *cond, StmtBlock then_block, ElseIf *else_ifs, int num_else_i
     return stmt;
 }
 
+Stmt *stmt_do(Expr *cond, StmtBlock block) {
+    Stmt *stmt = stmt_alloc(STMT_DO);
+    stmt->while_stmt.cond = cond;
+    stmt->while_stmt.block = block;
+    return stmt;
+}
+
+Stmt *stmt_while(Expr *cond, StmtBlock block) {
+    Stmt *stmt = stmt_alloc(STMT_WHILE);
+    stmt->while_stmt.cond = cond;
+    stmt->while_stmt.block = block;
+    return stmt;
+}
 
 
 
@@ -256,6 +269,8 @@ Decl *decl_var(char *name, Typespec *type, Expr *expr) {
 }
 
 Decl *decl_enum(char *name, EnumItem *items) {
+    (void)name;
+    (void)items;
     assert(0);
     Decl *decl = NULL;
     return decl;

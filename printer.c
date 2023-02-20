@@ -3,7 +3,14 @@ void print_stmt(Stmt *stmt);
 
 #define INDENT_WIDTH 4
 static int indent = 0; // for printing
-                       //
+
+void print_newline(void) {
+    if (indent > 0)
+        printf("\n%*s", indent*INDENT_WIDTH, " ");
+    else
+        printf("\n");
+}
+
 void print_expr(Expr *expr) {
     if (expr == NULL) {
         printf("NULL");
@@ -24,7 +31,10 @@ void print_expr(Expr *expr) {
         printf("%s", expr->name); 
         break;
     case EXPR_UNARY: 
-        printf("(%c ", expr->unary.op); 
+        if (expr->unary.op == '!')
+            printf("(not ");
+        else
+            printf("(%c ", expr->unary.op); 
         print_expr(expr->unary.expr);
         printf(")");
         break;
@@ -69,7 +79,7 @@ void print_expr(Expr *expr) {
         print_type(expr->compound.type);
         ++indent;
         for (int i=0; i<expr->compound.num_args; ++i) {
-            printf("\n%*s", indent*INDENT_WIDTH, " ");
+            print_newline();
             print_expr(expr->compound.args[i]);
         }
         --indent;
@@ -114,7 +124,7 @@ void print_stmt_block(StmtBlock block) {
     printf("(block");
     ++indent;
     for (int i=0; i<block.num_stmts; ++i) {
-        printf("\n%*s", indent*INDENT_WIDTH, " ");
+        print_newline();
         print_stmt(block.stmts[i]);
     }
     --indent;
@@ -143,8 +153,7 @@ void print_stmt(Stmt *stmt) {
         printf("break");
         break;
     case STMT_BRACE_BLOCK:
-        printf("{");
-        printf("}");
+        print_stmt_block(stmt->block);
         break;
     case STMT_EXPR:
         print_expr(stmt->expr);
@@ -153,21 +162,21 @@ void print_stmt(Stmt *stmt) {
         printf("(if ");
         print_expr(stmt->if_stmt.cond);
         ++indent;
-        printf("\n%*s", indent*INDENT_WIDTH, " ");
+        print_newline();
         print_stmt_block(stmt->if_stmt.then_block);
         --indent;
         for (int i=0; i<stmt->if_stmt.num_else_ifs; ++i) {
             ElseIf else_if = stmt->if_stmt.else_ifs[i];
-            printf("\n%*s", indent*INDENT_WIDTH, " ");
+            print_newline();
             printf("(elseif ");
             print_expr(else_if.cond);
             ++indent;
-            printf("\n%*s", indent*INDENT_WIDTH, " ");
+            print_newline();
             print_stmt_block(else_if.block);
             --indent;
         }
         if (stmt->if_stmt.else_block.num_stmts > 0) {
-            printf("\n%*s", indent*INDENT_WIDTH, " ");
+            print_newline();
             print_stmt_block(stmt->if_stmt.else_block);
         }
         printf(")");
@@ -198,8 +207,49 @@ void print_stmt(Stmt *stmt) {
         printf(")");
         break;
     case STMT_DO:
+        printf("(do ");
+        print_stmt_block(stmt->while_stmt.block);
+        print_newline();
+        printf("(while ");
+        print_expr(stmt->while_stmt.cond);
+        printf(")");
+        printf(")");
+        break;
     case STMT_WHILE:
+        printf("(while ");
+        print_expr(stmt->while_stmt.cond);
+        printf(" ");
+        print_stmt_block(stmt->while_stmt.block);
+        printf(")");
+        break;
+
+
+/*
+    (switch x
+         (case a b c (block 
+             (+ x 1)))
+ */
+
+
     case STMT_SWITCH:
+        printf("(switch ");
+        print_expr(stmt->switch_stmt.expr);
+        ++indent;
+        print_newline();
+        for (int i=0; i<stmt->switch_stmt.num_cases; ++i) {
+            SwitchCase sc = stmt->switch_stmt.cases[i];
+            printf("(case");
+            for (int j=0; j<sc.num_exprs; ++j) {
+                printf(" ");
+                print_expr(sc.exprs[i]);
+            }
+            printf(" ");
+            print_stmt_block(sc.block);
+            printf(")");
+        }
+        --indent;
+        printf(")");
+        break;
     default:
         assert(0);
         break;
@@ -263,17 +313,6 @@ void print_decl(Decl *decl) {
         }
         printf(" ");
         print_stmt_block(decl->func.block);
-
-        /*printf(" (block");*/
-        /*++indent;*/
-        /*StmtBlock block = decl->func.block;*/
-        /*for (int i=0; i<block.num_stmts; ++i) {*/
-            /*printf("\n%*s", indent*INDENT_WIDTH, " ");*/
-            /*print_stmt(block.stmts[i]);*/
-        /*}*/
-        /*--indent;*/
-        /*printf(")"); // close block*/
-
         printf(")"); // close func
         break;
     case DECL_UNION:
@@ -287,7 +326,7 @@ void print_decl(Decl *decl) {
 
         ++indent;
         for (int i=0; i<decl->aggregate.num_fields; ++i) {
-            printf("\n%*s", indent*INDENT_WIDTH, " ");
+            print_newline();
             AggregateField f = decl->aggregate.fields[i];
             printf("(%s ", f.name);
             print_type(f.type);

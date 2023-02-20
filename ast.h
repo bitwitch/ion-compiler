@@ -43,7 +43,7 @@ base_expr = INT
           | '(' expr ')'
           | typespec? '{' expr_list '}'
 call_expr =  base_expr ('(' param* ')' | '[' expr ']' | '.' NAME)*
-unary_expr = [+-&*~] unary_expr
+unary_expr = [+-&*~!] unary_expr
            | call_expr
 mul_op = '*' | '/' | '%' | '&' | LSHIFT | RSHIFT
 mul_expr = unary_expr (mul_op unary_expr)*
@@ -206,7 +206,9 @@ typedef struct {
 } ElseIf;
 
 typedef struct {
-    BUF(Expr **exprs);
+    Expr **exprs;
+    int num_exprs;
+    bool is_default;
     StmtBlock block;
 } SwitchCase;
 
