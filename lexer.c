@@ -73,6 +73,8 @@ char *keyword_for;
 char *keyword_do;
 char *keyword_while;
 char *keyword_switch;
+char *keyword_case;
+char *keyword_default;
 char *keyword_cast;
 
 void init_keywords(void) {
@@ -93,12 +95,14 @@ void init_keywords(void) {
         keyword_do = str_intern("do");
         keyword_while = str_intern("while");
         keyword_switch = str_intern("switch");
+        keyword_case = str_intern("case");
+        keyword_default = str_intern("default");
         keyword_cast = str_intern("cast");
     }
     first = false;
 }
 
-bool is_keyword(char *check) {
+bool is_keyword_name(char *check) {
     char *s = str_intern(check);
     return s == keyword_enum     ||
            s == keyword_struct   ||
@@ -115,6 +119,8 @@ bool is_keyword(char *check) {
            s == keyword_do       ||
            s == keyword_while    ||
            s == keyword_switch   ||
+           s == keyword_case     ||
+           s == keyword_default  ||
            s == keyword_cast;
 }
 
@@ -205,6 +211,7 @@ void scan_float(void) {
     token.float_val = val;
 }
 
+// TODO(shaw): handle escape sequences in strings
 void scan_str(void) {
     ++stream; // skip opening quote
     char *str_start = stream;
@@ -228,6 +235,35 @@ void scan_chr(void) {
     }
     ++stream;
 }
+
+
+// this is meant to match potential two character tokens
+#define CASE2(c1, c2, k2) \
+    case c1: \
+        token.kind = c1; \
+        stream++; \
+        if (*stream == c2) { \
+            token.kind = k2; \
+            stream++; \
+        } \
+        break;
+
+
+// this is meant to match potential two character tokens that have two possible
+// combinations: c1-c2 or c1-c3
+#define CASE2_ALT(c1, c2, k2, c3, k3) \
+    case c1: \
+        token.kind = c1; \
+        ++stream; \
+        if (*stream == c2) { \
+            token.kind = k2; \
+            ++stream; \
+        } else if (*stream == c3) { \
+            token.kind = k3; \
+            ++stream; \
+        } \
+        break;
+
 
 void next_token(void) {
 repeat:
@@ -257,61 +293,18 @@ repeat:
             break;
         }
 
-        case ':': {
-			token.kind = *stream;
-			++stream;
-            if (*stream == '=') {
-                token.kind = TOKEN_AUTO_ASSIGN;
-                ++stream;
-            }
-			break;
-        }
+        CASE2('=', '=', TOKEN_EQ_EQ)
+        CASE2('!', '=', TOKEN_NOT_EQ)
+        CASE2('*', '=', TOKEN_MUL_EQ)
+        CASE2('/', '=', TOKEN_DIV_EQ)
+        CASE2('%', '=', TOKEN_MOD_EQ)
+        CASE2('^', '=', TOKEN_XOR_EQ)
+        CASE2(':', '=', TOKEN_AUTO_ASSIGN)
 
-        case '=': {
-			token.kind = *stream;
-			++stream;
-            if (*stream == '=') {
-                token.kind = TOKEN_EQ_EQ;
-                ++stream;
-            }
-            break;
-        }
-	
-        case '!': {
-			token.kind = *stream;
-			++stream;
-            if (*stream == '=') {
-                token.kind = TOKEN_NOT_EQ;
-                ++stream;
-            }
-            break;
-        }
-	
-        case '|': {
-			token.kind = *stream;
-			++stream;
-            if (*stream == '|') {
-                token.kind = TOKEN_LOGICAL_OR;
-                ++stream;
-            } else if (*stream == '=') {
-                token.kind = TOKEN_OR_EQ;
-                ++stream;
-            }
-			break;
-        }
-
-        case '&': {
-			token.kind = *stream;
-			++stream;
-            if (*stream == '&') {
-                token.kind = TOKEN_LOGICAL_AND;
-                ++stream;
-            } else if (*stream == '=') {
-                token.kind = TOKEN_AND_EQ;
-                ++stream;
-            }
-            break;
-        }
+        CASE2_ALT('+', '+', TOKEN_INC,         '=', TOKEN_ADD_EQ)
+        CASE2_ALT('-', '-', TOKEN_DEC,         '=', TOKEN_SUB_EQ)
+        CASE2_ALT('&', '&', TOKEN_LOGICAL_AND, '=', TOKEN_AND_EQ)
+        CASE2_ALT('|', '|', TOKEN_LOGICAL_OR,  '=', TOKEN_OR_EQ)
 
         case '>': {
 			token.kind = *stream;
@@ -347,33 +340,6 @@ repeat:
             break;
         }
 
-        case '+': {
-			token.kind = *stream;
-			++stream;
-            if (*stream == '+') {
-                token.kind = TOKEN_INC;
-                ++stream;
-            } else if (*stream == '=') {
-                token.kind = TOKEN_ADD_EQ;
-                ++stream;
-            }
-            break;
-        }
-
-        case '-': {
-			token.kind = *stream;
-			++stream;
-            if (*stream == '-') {
-                token.kind = TOKEN_DEC;
-                ++stream;
-            } else if (*stream == '=') {
-                token.kind = TOKEN_SUB_EQ;
-                ++stream;
-            }
-            break;
-        }
-
-
 		case '0': case '1': case '2': case '3': case '4':
 		case '5': case '6': case '7': case '8': case '9':
 		{
@@ -403,7 +369,7 @@ repeat:
             while (isalnum(*stream) || *stream == '_')
                 ++stream;
             token.name = str_intern_range(token.start, stream);
-            token.kind = is_keyword(token.name) ? TOKEN_KEYWORD : TOKEN_NAME;
+            token.kind = is_keyword_name(token.name) ? TOKEN_KEYWORD : TOKEN_NAME;
 			break;
 		}
 		default:

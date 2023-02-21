@@ -222,29 +222,23 @@ void print_stmt(Stmt *stmt) {
         print_stmt_block(stmt->while_stmt.block);
         printf(")");
         break;
-
-
-/*
-    (switch x
-         (case a b c (block 
-             (+ x 1)))
- */
-
-
     case STMT_SWITCH:
         printf("(switch ");
         print_expr(stmt->switch_stmt.expr);
         ++indent;
-        print_newline();
         for (int i=0; i<stmt->switch_stmt.num_cases; ++i) {
-            SwitchCase sc = stmt->switch_stmt.cases[i];
-            printf("(case");
-            for (int j=0; j<sc.num_exprs; ++j) {
+            SwitchCase *sc = &stmt->switch_stmt.cases[i];
+            print_newline();
+            if (sc->is_default) 
+                printf("(default");
+            else
+                printf("(case");
+            for (int j=0; j<sc->num_exprs; ++j) {
                 printf(" ");
-                print_expr(sc.exprs[i]);
+                print_expr(sc->exprs[j]);
             }
             printf(" ");
-            print_stmt_block(sc.block);
+            print_stmt_block(sc->block);
             printf(")");
         }
         --indent;

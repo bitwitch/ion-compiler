@@ -244,6 +244,14 @@ Stmt *stmt_while(Expr *cond, StmtBlock block) {
     return stmt;
 }
 
+Stmt *stmt_switch(Expr *expr, SwitchCase *cases, int num_cases) {
+    Stmt *stmt = stmt_alloc(STMT_SWITCH);
+    stmt->switch_stmt.expr = expr;
+    stmt->switch_stmt.cases = cases;
+    stmt->switch_stmt.num_cases = num_cases;
+    return stmt;
+}
+
 
 
 // Declarations

@@ -331,13 +331,13 @@ Stmt *parse_stmt_while(void) {
 }
 
 
-switch (op) {
-    case OP_ADD:
-        add();
-        break;
-    default: 
-        break;
-}
+/*switch (op) {*/
+    /*case OP_ADD:*/
+        /*add();*/
+        /*break;*/
+    /*default: */
+        /*break;*/
+/*}*/
 
 SwitchCase parse_stmt_switch_case(void) {
     Expr **exprs = NULL;
@@ -588,8 +588,25 @@ void parse_expr_test(void) {
 void parse_stmt_test(void) {
     init_keywords();
     char *stmts[] = {
+        // assign
+        "x += 1;",
+        "x -= 2;",
+        "x *= 3;",
+        "x /= 4;",
+        "x %= 5;",
+        "x &= 6;",
+        "x |= 7;",
+        "x ^= 8;",
+        "x >>= 9;",
+        "x <<= 10;",
+        "count := 100;",
+        "sum := 0;",
+        "up := Vec3{0,1,0};",
+
         // switch
-        "switch (op) { case OP_ADD: add(); break;  case OP_SUB: sub(); break;  case OP_MUL: mul(); break;  default: printf(\"Unknown op\n\"); exit(1); break; }",
+        "switch (target) { default: everyone_dies(); }",
+        "switch (op) { }",
+        "switch (op) { case OP_ADD: add(); break;  case OP_SUB: sub(); break;  case OP_MUL: mul(); break;  default: printf(\"Unknown op\"); exit(1); break; }",
 
         // while
         "while (true) { do_stuff(); if (check_done()) { break; } else { append(a, next()); } cleanup(); }",
@@ -617,10 +634,7 @@ void parse_stmt_test(void) {
         "continue;",
         "break;",
 
-        // simple stmts
-        "count := 100;",
-        "sum := 0;",
-        "up := Vec3{0,1,0};",
+        // inc, dec
         "i++;",
         "k--;",
     };
