@@ -292,6 +292,11 @@ void print_decl(Decl *decl) {
         print_expr(decl->var.expr);
         printf(")");
         break;
+    case DECL_TYPEDEF:
+        printf("(typedef %s ", decl->name);
+        print_type(decl->typedef_decl.type);
+        printf(")");
+        break;
     case DECL_FUNC:
         printf("(func %s (", decl->name);
         for (int i=0; i<decl->func.num_params; ++i) {

@@ -59,6 +59,7 @@ Token token;
 char *stream;
 
 char *keyword_enum;
+char *keyword_typedef;
 char *keyword_struct;
 char *keyword_union;
 char *keyword_var;
@@ -81,6 +82,7 @@ void init_keywords(void) {
     static bool first = true;
     if (first) {
         keyword_enum = str_intern("enum");
+        keyword_typedef = str_intern("typedef");
         keyword_struct = str_intern("struct");
         keyword_union = str_intern("union");
         keyword_var = str_intern("var");
@@ -105,6 +107,7 @@ void init_keywords(void) {
 bool is_keyword_name(char *check) {
     char *s = str_intern(check);
     return s == keyword_enum     ||
+           s == keyword_typedef  ||
            s == keyword_struct   ||
            s == keyword_union    ||
            s == keyword_var      ||

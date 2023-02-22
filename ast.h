@@ -263,6 +263,7 @@ typedef enum {
     DECL_FUNC,
     DECL_VAR,
     DECL_CONST,
+    DECL_TYPEDEF,
 } DeclKind;
 
 typedef struct {
@@ -300,6 +301,9 @@ struct Decl {
         struct {
             Expr *expr;
         } const_decl;
+        struct {
+            Typespec *type;
+        } typedef_decl;
     };
 };
 

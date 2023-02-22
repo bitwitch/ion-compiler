@@ -276,6 +276,14 @@ Decl *decl_var(char *name, Typespec *type, Expr *expr) {
     return decl;
 }
 
+Decl *decl_typedef(char *name, Typespec *type) {
+    Decl *decl = decl_alloc(DECL_TYPEDEF);
+    decl->name = name;
+    decl->typedef_decl.type = type;
+    return decl;
+}
+
+
 Decl *decl_enum(char *name, EnumItem *items) {
     (void)name;
     (void)items;

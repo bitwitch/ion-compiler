@@ -453,6 +453,13 @@ Decl *parse_decl_var(void) {
     return decl_var(name, type, expr);
 }
 
+Decl *parse_decl_typedef(void) {
+    char *name = parse_name();
+    expect_token('=');
+    Typespec *type = parse_type();
+    return decl_typedef(name, type);
+}
+
 AggregateField parse_decl_aggregate_field(void) {
     char *name = parse_name();
     expect_token(':');
@@ -521,6 +528,8 @@ Decl *parse_decl(void) {
         return parse_decl_const();
     } else if (match_keyword(keyword_func)) {
         return parse_decl_func();
+    } else if (match_keyword(keyword_typedef)) {
+        return parse_decl_typedef();
     }
     syntax_error("Expected top level declaration, got %s", str_token_kind(token.kind));
     return NULL;
@@ -602,38 +611,30 @@ void parse_stmt_test(void) {
         "count := 100;",
         "sum := 0;",
         "up := Vec3{0,1,0};",
-
         // switch
         "switch (target) { default: everyone_dies(); }",
         "switch (op) { }",
-        "switch (op) { case OP_ADD: add(); break;  case OP_SUB: sub(); break;  case OP_MUL: mul(); break;  default: printf(\"Unknown op\"); exit(1); break; }",
-
+        "switch (op) { case OP_ADD: add(); break;  case OP_SUB: sub(); break;  case OP_MUL: mul(); break;  default: printf(\"Unknown op\\n\"); exit(1); break; }",
         // while
         "while (true) { do_stuff(); if (check_done()) { break; } else { append(a, next()); } cleanup(); }",
         "while (running) { update(); draw(); }",
-
         // do
         "do { x++; } while (x < 1000);",
         "do { stop(); drop(); roll(); } while (on_fire == true);",
-
         // for
         "for (i := 1; i < count + 1; i++) { sum += i; }",
         "for (; !quit; count++) { update(); }",
         "for (;;) { simulate(); }",
-
         // if
         "if (type == A) { procA(); } else if (type == B) { return; } else if (type == C) { procC(); } else { proc_default(); }",
         "if (dis_true) { x += 1; } else { x += 5; }",
         "if (x+3 > 5) { y = 12; };",
-
         //stmt block
         "{ v := Vec3{ 10, 20, 3 }; p = vec3_add(p, v); }",
-
         // return, continue, break
         "return sum / count;",
         "continue;",
         "break;",
-
         // inc, dec
         "i++;",
         "k--;",
@@ -650,11 +651,15 @@ void parse_stmt_test(void) {
 void parse_decl_test(void) {
     init_keywords();
     char *declarations[] = {
-        "func pancake(count: int) { bake(ITEM_PANCAKE, count); }",
-        "func main(argc: int, argv: char**): int { printf(\"Well, hello friends\\n\"); return 0; }",
-        "func doodle(x: int, y: int): bool {}",
+        // enum
+        //
+        // typedef
+        "typedef Handle = int;",
+        "typedef Mesh = Vec3[1024];",
+        // struct, union
         "struct Node { x: int; next: Node*; }",
         "union bag { a: int; b: float; c: bool; d: Node*; e: int[2][4]; f: Fart[32]}",
+        // var, const
         "const a = 420;",
         "const b = 69;",
         "var speed: float = 35.7;",
@@ -663,6 +668,10 @@ void parse_decl_test(void) {
         "var e = (:Vec3){1,2,3};",
         "var f = {3, 6, 9};",
         "var g: Vec3 = {3, 6, 9};",
+        // func
+        "func pancake(count: int) { bake(ITEM_PANCAKE, count); }",
+        "func main(argc: int, argv: char**): int { printf(\"Well, hello friends\\n\"); return 0; }",
+        "func doodle(x: int, y: int): bool {}",
     };
 
     for (size_t i = 0; i<array_count(declarations); ++i) {
@@ -675,7 +684,7 @@ void parse_decl_test(void) {
 
 void parse_test(void) {
     /*parse_expr_test();*/
-    parse_stmt_test();
-    /*parse_decl_test();*/
+    /*parse_stmt_test();*/
+    parse_decl_test();
 }
 
