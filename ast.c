@@ -284,11 +284,11 @@ Decl *decl_typedef(char *name, Typespec *type) {
 }
 
 
-Decl *decl_enum(char *name, EnumItem *items) {
-    (void)name;
-    (void)items;
-    assert(0);
-    Decl *decl = NULL;
+Decl *decl_enum(char *name, EnumItem *items, int num_items) {
+    Decl *decl = decl_alloc(DECL_ENUM);
+    decl->name = name;
+    decl->enum_decl.items = items;
+    decl->enum_decl.num_items = num_items;
     return decl;
 }
 

@@ -334,6 +334,19 @@ void print_decl(Decl *decl) {
         --indent;
         printf(")");
         break;
+    case DECL_ENUM:
+        printf("(enum %s ", decl->name);
+        ++indent;
+        for (int i=0; i<decl->enum_decl.num_items; ++i) {
+            print_newline();
+            EnumItem item = decl->enum_decl.items[i];
+            printf("(%s ", item.name);
+            print_expr(item.expr);
+            printf(")");
+        }
+        --indent;
+        printf(")");
+        break;
     default:
         assert(0 && "Unknown decl kind");
         break;

@@ -1,6 +1,16 @@
 /*
 Grammar
 
+
+enum Ops {
+    OP_ADD = 0,
+    OP_SUB,
+    OP_MUL,
+}
+
+
+
+enum_decl = NAME '{' (NAME ('=' expr)? ','?)* '}'
 var_decl = NAME '=' expr
          | NAME ':' type ('=' expr)?
 const_decl = NAME '=' expr

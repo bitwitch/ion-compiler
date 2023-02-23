@@ -428,9 +428,24 @@ AggregateField *parse_decl_aggregate_fields(void) {
 Decl *parse_decl_enum(void) {
     char *name = parse_name();
     expect_token('{');
-    Decl *decl = decl_enum(name, parse_enum_items());
+
+    EnumItem *enum_items = NULL;
+
+    while(!is_token('}')) {
+        char *name = parse_name();
+        Expr *expr = NULL;
+
+        if (match_token('='))
+            expr = parse_expr();
+
+        if (!is_token('}'))
+            expect_token(',');
+
+        da_push(enum_items, (EnumItem){name, expr});
+    }
     expect_token('}');
-    return decl;
+
+    return decl_enum(name, enum_items, da_len(enum_items));
 }
 
 Decl *parse_decl_const(void) {
@@ -652,7 +667,9 @@ void parse_decl_test(void) {
     init_keywords();
     char *declarations[] = {
         // enum
-        //
+        "enum Ops { OP_ADD = 0, OP_SUB, OP_MUL, }",
+        "enum Things { A = 69, B = OP_ADD, C, D = 2+2, E = 0x32 }",
+
         // typedef
         "typedef Handle = int;",
         "typedef Mesh = Vec3[1024];",
