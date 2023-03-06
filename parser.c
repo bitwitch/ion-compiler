@@ -330,15 +330,6 @@ Stmt *parse_stmt_while(void) {
     return stmt_while(cond, block);
 }
 
-
-/*switch (op) {*/
-    /*case OP_ADD:*/
-        /*add();*/
-        /*break;*/
-    /*default: */
-        /*break;*/
-/*}*/
-
 SwitchCase parse_stmt_switch_case(void) {
     Expr **exprs = NULL;
     bool is_default = false;
@@ -412,13 +403,6 @@ Stmt *parse_stmt(void) {
 }
 
 
-
-EnumItem *parse_enum_items(void) {
-    assert(0);
-    EnumItem *items = NULL;
-    return items;
-}
-
 AggregateField *parse_decl_aggregate_fields(void) {
     assert(0);
     AggregateField *fields = NULL;
@@ -444,7 +428,6 @@ Decl *parse_decl_enum(void) {
         da_push(enum_items, (EnumItem){name, expr});
     }
     expect_token('}');
-
     return decl_enum(name, enum_items, da_len(enum_items));
 }
 
