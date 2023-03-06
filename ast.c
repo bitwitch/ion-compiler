@@ -9,7 +9,7 @@ void *ast_memdup(void *src, size_t size) {
 
 // Expressions
 Expr *expr_alloc(ExprKind kind) {
-    Expr *expr = xcalloc(1, sizeof(Expr));
+    Expr *expr = arena_alloc_zeroed(&ast_arena, sizeof(Expr));
     expr->kind = kind;
     return expr;
 }
@@ -132,7 +132,7 @@ void expr_test(void) {
 
 // Types
 Typespec *typespec_alloc(TypespecKind kind) {
-    Typespec *typespec = xcalloc(1, sizeof(Typespec));
+    Typespec *typespec = arena_alloc_zeroed(&ast_arena, sizeof(Typespec));
     typespec->kind = kind;
     return typespec;
 }
@@ -166,7 +166,7 @@ Typespec *typespec_func(Typespec **args, int num_args, Typespec *ret) {
 
 // Statements
 Stmt *stmt_alloc(StmtKind kind) {
-    Stmt *stmt = xcalloc(1, sizeof(Stmt));
+    Stmt *stmt = arena_alloc_zeroed(&ast_arena, sizeof(Stmt));
     stmt->kind = kind;
     return stmt;
 }
@@ -256,7 +256,7 @@ Stmt *stmt_switch(Expr *expr, SwitchCase *cases, int num_cases) {
 
 // Declarations
 Decl *decl_alloc(DeclKind kind) {
-    Decl *decl = xcalloc(1, sizeof(Decl));
+    Decl *decl = arena_alloc_zeroed(&ast_arena, sizeof(Decl));
     decl->kind = kind;
     return decl;
 }

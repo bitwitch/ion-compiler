@@ -191,6 +191,12 @@ void *arena_alloc(Arena *arena, size_t size) {
     return ptr;
 }
 
+void *arena_alloc_zeroed(Arena *arena, size_t size) {
+    void *ptr = arena_alloc(arena, size);
+    memset(ptr, 0, size);
+    return ptr;
+}
+
 void arena_free(Arena *arena) {
     for (int i=0; i<da_len(arena->blocks); ++i) {
         free(arena->blocks[i]);
