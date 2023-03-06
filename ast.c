@@ -71,7 +71,7 @@ Expr *expr_ternary(Expr *cond, Expr *then_expr, Expr *else_expr) {
 Expr *expr_call(Expr *expr, Expr **args, int num_args) {
     Expr *new_expr = expr_alloc(EXPR_CALL);
     new_expr->call.expr = expr;
-    new_expr->call.args = args;
+    new_expr->call.args = ast_memdup(args, num_args * sizeof(*args));
     new_expr->call.num_args = num_args;
     return new_expr;
 }
@@ -93,7 +93,7 @@ Expr *expr_field(Expr *expr, char *field) {
 Expr *expr_compound(Typespec* type, Expr **args, int num_args) {
     Expr *expr = expr_alloc(EXPR_COMPOUND);
     expr->compound.type = type;
-    expr->compound.args = args;
+    expr->compound.args = ast_memdup(args, num_args * sizeof(*args));
     expr->compound.num_args = num_args;
     return expr;
 }
@@ -158,7 +158,7 @@ Typespec *typespec_array(Typespec *elem, Expr *size) {
 
 Typespec *typespec_func(Typespec **args, int num_args, Typespec *ret) {
     Typespec *typespec = typespec_alloc(TYPESPEC_FUNC);
-    typespec->func.args = args;
+    typespec->func.args = ast_memdup(args, num_args * sizeof(*args));
     typespec->func.num_args = num_args;
     typespec->func.ret = ret;
     return typespec;
@@ -224,7 +224,7 @@ Stmt *stmt_if(Expr *cond, StmtBlock then_block, ElseIf *else_ifs, int num_else_i
     Stmt *stmt = stmt_alloc(STMT_IF);
     stmt->if_stmt.cond = cond;
     stmt->if_stmt.then_block = then_block;
-    stmt->if_stmt.else_ifs = else_ifs;
+    stmt->if_stmt.else_ifs = ast_memdup(else_ifs, num_else_ifs * sizeof(*else_ifs));
     stmt->if_stmt.num_else_ifs = num_else_ifs;
     stmt->if_stmt.else_block = else_block;
     return stmt;
@@ -247,7 +247,7 @@ Stmt *stmt_while(Expr *cond, StmtBlock block) {
 Stmt *stmt_switch(Expr *expr, SwitchCase *cases, int num_cases) {
     Stmt *stmt = stmt_alloc(STMT_SWITCH);
     stmt->switch_stmt.expr = expr;
-    stmt->switch_stmt.cases = cases;
+    stmt->switch_stmt.cases = ast_memdup(cases, num_cases * sizeof(*cases));
     stmt->switch_stmt.num_cases = num_cases;
     return stmt;
 }
@@ -287,7 +287,7 @@ Decl *decl_typedef(char *name, Typespec *type) {
 Decl *decl_enum(char *name, EnumItem *items, int num_items) {
     Decl *decl = decl_alloc(DECL_ENUM);
     decl->name = name;
-    decl->enum_decl.items = items;
+    decl->enum_decl.items = ast_memdup(items, num_items * sizeof(*items));
     decl->enum_decl.num_items = num_items;
     return decl;
 }
@@ -296,7 +296,7 @@ Decl *decl_aggregate(DeclKind kind, char *name, AggregateField *fields, int num_
     assert(kind == DECL_STRUCT || kind == DECL_UNION);
     Decl *decl = decl_alloc(kind);
     decl->name = name;
-    decl->aggregate.fields = fields;
+    decl->aggregate.fields = ast_memdup(fields, num_fields * sizeof(*fields));
     decl->aggregate.num_fields = num_fields;
     return decl;
 }
@@ -304,7 +304,7 @@ Decl *decl_aggregate(DeclKind kind, char *name, AggregateField *fields, int num_
 Decl *decl_func(char *name, FuncParam *params, int num_params, Typespec *ret_type, StmtBlock block) {
     Decl *decl = decl_alloc(DECL_FUNC);
     decl->name = name;
-    decl->func.params = params;
+    decl->func.params = ast_memdup(params, num_params * sizeof(*params));
     decl->func.num_params = num_params;
     decl->func.ret_type = ret_type;
     decl->func.block = block;
