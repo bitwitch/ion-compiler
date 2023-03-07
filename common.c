@@ -204,6 +204,14 @@ void arena_free(Arena *arena) {
     da_free(arena->blocks);
 }
 
+void *arena_memdup(Arena *arena, void *src, size_t size) {
+    if (size == 0) return NULL;
+    void *new_mem = arena_alloc(arena, size);
+    memcpy(new_mem, src, size);
+    return new_mem;
+}
+
+
 
 
 

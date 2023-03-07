@@ -281,11 +281,6 @@ typedef struct {
     Typespec *type;
 } FuncParam;
 
-typedef struct {
-    BUF(FuncParam *params);
-    Typespec *ret_type;
-} FuncDecl;
-
 struct Decl {
     DeclKind kind;
     char *name;

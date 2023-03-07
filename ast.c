@@ -1,10 +1,7 @@
 Arena ast_arena;
 
 void *ast_memdup(void *src, size_t size) {
-    if (size == 0) return NULL;
-    void *new_mem = arena_alloc(&ast_arena, size);
-    memcpy(new_mem, src, size);
-    return new_mem;
+    return arena_memdup(&ast_arena, src, size);
 }
 
 

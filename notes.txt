@@ -12,9 +12,10 @@ TODO:
 
 
 
+
+2023-03-06
 --------------------------------------------------------------------------------
 Order Independent Declarations
---------------------------------------------------------------------------------
 
 1. Create a symbol table which maps names to declarations
 
@@ -24,3 +25,47 @@ Order Independent Declarations
    if resolved, return the resolved decl
    if unresolved, set to resolving and recursively resolve it
    if resolving, there is a cycle, print error
+
+
+2023-02-07
+--------------------------------------------------------------------------------
+Current Video: Bitwise Day 8
+
+Lexing
+- transform a stream of characters into a stream of tokens
+
+Parsing
+- transform a stream of tokens into an AST
+- An ast node corresponds to a grammar production rule
+
+Resolving Symbols/Entities
+- order independent declarations
+- cyclic dependency detection
+- constant expression evaluation
+- type checking/inference
+
+
+
+Ion Compiler High Level Algorithm
+1. parse a bunch of declarations corresponding to a package
+2. install entities for each of them (entity => package level binding)
+3. go through all entities and resolve each one recursively
+
+
+resolving a typespec is turning the syntactic typespec into a semantic type
+
+incomplete types - aggregate types begin their life as incomplete types. as
+resolution proceeds, types are sort of lazily resolved where fields are only
+resolved at the time of first use, 
+
+there are two types of resolving going on: declaration level ordering and stuff,
+and then type level dependency resolution
+
+A "Type" is an interned, canonical version of a type that can be compared
+directly with pointers 
+
+
+
+difference in Type and Typespec?
+
+
