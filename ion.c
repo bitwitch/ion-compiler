@@ -12,11 +12,11 @@
 
 
 #include "common.c"
-#include "lexer.c"
+#include "lex.c"
 #include "ast.h"
 #include "ast.c"
-#include "printer.c"
-#include "parser.c"
+#include "print.c"
+#include "parse.c"
 
 
 void run_tests(void) {
