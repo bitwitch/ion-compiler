@@ -1,6 +1,7 @@
 Arena ast_arena;
 
 void *ast_memdup(void *src, size_t size) {
+    if (size == 0) return NULL;
     void *new_mem = arena_alloc(&ast_arena, size);
     memcpy(new_mem, src, size);
     return new_mem;
@@ -86,7 +87,7 @@ Expr *expr_index(Expr *expr, Expr *index) {
 Expr *expr_field(Expr *expr, char *field) {
     Expr *new_expr = expr_alloc(EXPR_FIELD);
     new_expr->field.expr = expr;
-    new_expr->field.name = str_intern(field);
+    new_expr->field.name = field;
     return new_expr;
 }
 
@@ -310,4 +311,3 @@ Decl *decl_func(char *name, FuncParam *params, int num_params, Typespec *ret_typ
     decl->func.block = block;
     return decl;
 }
-
