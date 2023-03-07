@@ -1,0 +1,26 @@
+TODO:
+
+[X] replace system allocations with arena allocator
+
+[ ] hash table
+  [ ] replace the linear search in str_intern
+  [ ] replace other naive linear searches 
+
+[ ] order independent declarations
+[ ] c code generation
+
+
+
+
+--------------------------------------------------------------------------------
+Order Independent Declarations
+--------------------------------------------------------------------------------
+
+1. Create a symbol table which maps names to declarations
+
+2. iterate over the symbol table and resolve the declarations
+
+3. Resolve:
+   if resolved, return the resolved decl
+   if unresolved, set to resolving and recursively resolve it
+   if resolving, there is a cycle, print error

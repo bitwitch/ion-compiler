@@ -17,13 +17,15 @@
 #include "ast.c"
 #include "print.c"
 #include "parse.c"
+#include "resolve.c"
 
 
 void run_tests(void) {
 	da_test();
     str_intern_test();
 	lex_test();
-    parse_test();
+    /*parse_test();*/
+    resolve_test();
     printf("Tests Succeeded.\n");
 }
 

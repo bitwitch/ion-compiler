@@ -1,0 +1,4 @@
+func main(argc: int, argv: char**): int {
+    printf("Well, hello friends\n");
+    return 0;
+}
