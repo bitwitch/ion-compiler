@@ -506,16 +506,6 @@ Decl *parse_decl_func(void) {
     return decl_func(name, params, da_len(params), ret_type, block);
 }
 
-Decl *parse_decl_preproc(void) {
-    char *start = token.start;
-    while (!is_token('\n'))
-        next_token();
-    char *end = token.end;
-    next_token(); // read newline
-    return decl_preproc(str_intern_range(start, end));
-}
-
-
 Decl *parse_decl(void) {
     if (match_keyword(keyword_enum)) {
         return parse_decl_enum();
@@ -531,8 +521,6 @@ Decl *parse_decl(void) {
         return parse_decl_func();
     } else if (match_keyword(keyword_typedef)) {
         return parse_decl_typedef();
-    } else if (match_token('#')) {
-        return parse_decl_preproc();
     }
     syntax_error("Expected top level declaration, got %s", str_token_kind(token.kind));
     return NULL;
