@@ -164,7 +164,7 @@ Expr *parse_expr_cmp(void) {
     while (is_token_cmp()) {
         TokenKind op = token.kind;
         next_token();
-        expr = expr_cmp(op, expr, parse_expr_add());
+        expr = expr_binary(op, expr, parse_expr_add());
     }
     return expr;
 }
@@ -172,7 +172,7 @@ Expr *parse_expr_cmp(void) {
 Expr *parse_expr_and(void) {
     Expr *expr = parse_expr_cmp();
     while (match_token(TOKEN_LOGICAL_AND)) {
-        expr = expr_and(expr, parse_expr_cmp());
+        expr = expr_binary(TOKEN_LOGICAL_AND, expr, parse_expr_cmp());
     }
     return expr;
 }
@@ -180,7 +180,7 @@ Expr *parse_expr_and(void) {
 Expr *parse_expr_or(void) {
     Expr *expr = parse_expr_and();
     while (match_token(TOKEN_LOGICAL_OR)) {
-        expr = expr_or(expr, parse_expr_and());
+        expr = expr_binary(TOKEN_LOGICAL_OR, expr, parse_expr_and());
     }
     return expr;
 }
@@ -676,8 +676,8 @@ void parse_decl_test(void) {
 }
 
 void parse_test(void) {
-    /*parse_expr_test();*/
+    parse_expr_test();
     /*parse_stmt_test();*/
-    parse_decl_test();
+    /*parse_decl_test();*/
 }
 

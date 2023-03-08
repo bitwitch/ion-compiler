@@ -87,9 +87,6 @@ typedef enum {
     EXPR_INDEX,
     EXPR_FIELD,
     EXPR_COMPOUND,
-    EXPR_OR,
-    EXPR_AND,
-    EXPR_CMP,
 } ExprKind;
 
 struct Expr {
@@ -134,16 +131,6 @@ struct Expr {
             Expr **args;
             int num_args;
         } compound;
-        struct {
-            Expr *left, *right;
-        } or_expr;
-        struct {
-            Expr *left, *right;
-        } and_expr;
-        struct {
-            TokenKind op;
-            Expr *left, *right;
-        } cmp;
     };
 };
 

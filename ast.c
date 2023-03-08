@@ -4,6 +4,15 @@ void *ast_memdup(void *src, size_t size) {
     return arena_memdup(&ast_arena, src, size);
 }
 
+bool is_cmp_op(TokenKind op) {
+    return op == TOKEN_EQ_EQ  ||
+           op == TOKEN_NOT_EQ ||
+           op == TOKEN_LT_EQ  ||
+           op == TOKEN_GT_EQ  ||
+           op == '<'          ||
+           op == '>';
+}
+
 
 // Expressions
 Expr *expr_alloc(ExprKind kind) {
@@ -95,29 +104,6 @@ Expr *expr_compound(Typespec* type, Expr **args, int num_args) {
     expr->compound.num_args = num_args;
     return expr;
 }
-
-Expr *expr_or(Expr *left, Expr *right) {
-    Expr *expr = expr_alloc(EXPR_OR);
-    expr->or_expr.left = left;
-    expr->or_expr.right = right;
-    return expr;
-}
-
-Expr *expr_and(Expr *left, Expr *right) {
-    Expr *expr = expr_alloc(EXPR_AND);
-    expr->and_expr.left = left;
-    expr->and_expr.right = right;
-    return expr;
-}
-
-Expr *expr_cmp(TokenKind op, Expr *left, Expr *right) {
-    Expr *expr = expr_alloc(EXPR_CMP);
-    expr->cmp.op = op;
-    expr->cmp.left = left;
-    expr->cmp.right = right;
-    return expr;
-}
-
 
 
 

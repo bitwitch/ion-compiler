@@ -1,3 +1,4 @@
+void print_expr(Expr *expr);
 void print_type(Typespec *type);
 void print_stmt(Stmt *stmt);
 
@@ -39,7 +40,13 @@ void print_expr(Expr *expr) {
         printf(")");
         break;
     case EXPR_BINARY: 
-        printf("(%s ", str_token_kind(expr->binary.op)); 
+        if (expr->binary.op == TOKEN_LOGICAL_OR) {
+            printf("(or ");
+        } else if (expr->binary.op == TOKEN_LOGICAL_AND) {
+            printf("(and ");
+        } else {
+            printf("(%s ", str_token_kind(expr->binary.op)); 
+        }
         print_expr(expr->binary.left);
         printf(" ");
         print_expr(expr->binary.right);
@@ -83,27 +90,6 @@ void print_expr(Expr *expr) {
             print_expr(expr->compound.args[i]);
         }
         --indent;
-        printf(")");
-        break;
-    case EXPR_OR:
-        printf("(or ");
-        print_expr(expr->or_expr.left);
-        printf(" ");
-        print_expr(expr->or_expr.right);
-        printf(")");
-        break;
-    case EXPR_AND:
-        printf("(and ");
-        print_expr(expr->and_expr.left);
-        printf(" ");
-        print_expr(expr->and_expr.right);
-        printf(")");
-        break;
-    case EXPR_CMP:
-        printf("(%s ", str_token_kind(expr->cmp.op)); 
-        print_expr(expr->cmp.left);
-        printf(" ");
-        print_expr(expr->cmp.right);
         printf(")");
         break;
     case EXPR_CAST:
