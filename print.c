@@ -262,7 +262,7 @@ void print_type(Typespec *type) {
         break;
     case TYPESPEC_POINTER:
         printf("(ptr ");
-        print_type(type->ptr.elem);
+        print_type(type->ptr.base);
         printf(")");
         break;
     case TYPESPEC_ARRAY:

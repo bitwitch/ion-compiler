@@ -17,6 +17,7 @@
 #include "ast.c"
 #include "print.c"
 #include "parse.c"
+#include "type.c"
 #include "resolve.c"
 
 
@@ -25,7 +26,7 @@ void run_tests(void) {
     str_intern_test();
 	lex_test();
     /*parse_test();*/
-    resolve_test();
+    order_test();
     printf("Tests Succeeded.\n");
 }
 

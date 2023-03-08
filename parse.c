@@ -577,7 +577,7 @@ void parse_expr_test(void) {
         "a ? (b ? 0 : 1) : 2",
     };
 
-    for (size_t i = 0; i<array_count(exprs); ++i) {
+    for (int i = 0; i<array_count(exprs); ++i) {
         init_stream(exprs[i]);
         Expr *expr = parse_expr();
         print_expr(expr);
@@ -631,7 +631,7 @@ void parse_stmt_test(void) {
         "k--;",
     };
 
-    for (size_t i = 0; i<array_count(stmts); ++i) {
+    for (int i = 0; i<array_count(stmts); ++i) {
         init_stream(stmts[i]);
         Stmt *stmt = parse_stmt();
         print_stmt(stmt);
@@ -667,7 +667,7 @@ void parse_decl_test(void) {
         "func doodle(x: int, y: int): bool {}",
     };
 
-    for (size_t i = 0; i<array_count(declarations); ++i) {
+    for (int i = 0; i<array_count(declarations); ++i) {
         init_stream(declarations[i]);
         Decl *decl = parse_decl();
         print_decl(decl);

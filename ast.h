@@ -192,7 +192,7 @@ struct Typespec {
         char *name;
         struct {
             Typespec **args;
-            size_t num_args;
+            int num_args;
             Typespec *ret;
         } func;
         struct {
@@ -200,7 +200,7 @@ struct Typespec {
             Expr *size;
         } array;
         struct {
-            Typespec *elem;
+            Typespec *base;
         } ptr;
     };
 };

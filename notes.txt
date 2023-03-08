@@ -1,4 +1,5 @@
 TODO:
+[ ] remove redundant expr kinds: "EXPR_OR, EXPR_AND, EXPR_CMP"
 
 [X] replace system allocations with arena allocator
 

@@ -141,9 +141,9 @@ Typespec *typespec_name(char *name) {
     return typespec;
 }
 
-Typespec *typespec_ptr(Typespec *elem) {
+Typespec *typespec_ptr(Typespec *base) {
     Typespec *typespec = typespec_alloc(TYPESPEC_POINTER);
-    typespec->ptr.elem = elem;
+    typespec->ptr.base = base;
     return typespec;
 }
 
