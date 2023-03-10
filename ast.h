@@ -52,6 +52,7 @@ base_expr = INT
           | CAST '(' type ',' expr ')'
           | '(' expr ')'
           | typespec? '{' expr_list '}'
+          | SIZEOF '(' ( ':' typespec | expr ) ')'
 call_expr =  base_expr ('(' param* ')' | '[' expr ']' | '.' NAME)*
 unary_expr = [+-&*~!] unary_expr
            | call_expr
@@ -88,6 +89,8 @@ typedef enum {
     EXPR_INDEX,
     EXPR_FIELD,
     EXPR_COMPOUND,
+    EXPR_SIZEOF_EXPR,
+    EXPR_SIZEOF_TYPE,
 } ExprKind;
 
 struct Expr {
@@ -97,6 +100,8 @@ struct Expr {
         double float_val;
         char *str_val;
         char *name;
+        Expr *sizeof_expr;
+        Typespec *sizeof_type;
         struct {
             TokenKind op;
             Expr *expr;

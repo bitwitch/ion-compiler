@@ -99,6 +99,16 @@ void print_expr(Expr *expr) {
         print_expr(expr->cast.expr);
         printf(")");
         break;
+    case EXPR_SIZEOF_EXPR:
+        printf("(sizeof ");
+        print_expr(expr->sizeof_expr);
+        printf(")");
+        break;
+    case EXPR_SIZEOF_TYPE:
+        printf("(sizeof ");
+        print_type(expr->sizeof_type);
+        printf(")");
+        break;
     default:
         fprintf(stderr, "Error: Printer: Unkown expr kind: %d\n", expr->kind);
         assert(0);

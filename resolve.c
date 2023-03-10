@@ -33,9 +33,11 @@ BUF(Sym **global_syms);
 BUF(Sym **ordered_syms);
 
 Arena resolve_arena;
+ResolvedExpr resolved_null = {0};
 
-Sym *sym_alloc(SymKind kind) {
+Sym *sym_alloc(char *name, SymKind kind) {
     Sym *sym = arena_alloc_zeroed(&resolve_arena, sizeof(Sym));
+    sym->name = name;
     sym->kind = kind;
     return sym;
 }
@@ -61,8 +63,7 @@ Sym *sym_decl(Decl *decl) {
         assert(0);
         break;
     }
-    Sym *sym = sym_alloc(kind);
-    sym->name = decl->name;
+    Sym *sym = sym_alloc(decl->name, kind);
     sym->decl = decl;
     sym->state = SYM_UNRESOLVED;
     sym->kind = kind;
@@ -75,6 +76,13 @@ Sym *sym_decl(Decl *decl) {
     return sym;
 }
 
+Sym *sym_type(char *name, Type *type) {
+    Sym *sym = sym_alloc(name, SYM_TYPE);
+    sym->type = type;
+    sym->state = SYM_RESOLVED;
+    return sym;
+}
+
 Sym *sym_get(char *name) {
     for (int i=0; i<da_len(global_syms); ++i) {
         Sym *sym = global_syms[i];
@@ -83,9 +91,16 @@ Sym *sym_get(char *name) {
     return NULL;
 }
 
-void sym_global_decl(Decl *decl) {
+
+void sym_put_decl(Decl *decl) {
     assert(sym_get(decl->name) == NULL);
     Sym *sym = sym_decl(decl);
+    da_push(global_syms, sym);
+}
+
+void sym_put_type(char *name, Type *type) {
+    assert(sym_get(name) == NULL);
+    Sym *sym = sym_type(name, type);
     da_push(global_syms, sym);
 }
 
@@ -94,35 +109,27 @@ Sym *resolve_name(char *name);
 ResolvedExpr resolve_expr(Expr *expr);
 Type *resolve_typespec(Typespec *type);
 
-char *builtin_int;
-char *builtin_char;
-char *builtin_float;
 
-void init_builtins(void) {
-    static bool first = true;
-    if (first) {
-        builtin_int = str_intern("int");
-        builtin_char = str_intern("char");
-        builtin_float = str_intern("float");
+void complete_type(Type *type) {
+    if (type->kind == TYPE_COMPLETING) {
+        fatal("Cyclic type completion");
+        return;
+    } else if (type->kind != TYPE_INCOMPLETE) {
+        return;
     }
-    first = false;
-}
 
-bool is_builtin_name(char *check) { 
-    char *s = str_intern(check);
-    return s == builtin_int   ||
-           s == builtin_char  ||
-           s == builtin_float;
+    assert(0);
 }
-
 
 Type *resolve_typespec(Typespec *typespec) {
-    Type *type = NULL;
     switch (typespec->kind) {
     case TYPESPEC_NAME:
-        if (!is_builtin_name(typespec->name))
-            resolve_name(typespec->name);
-        break;
+    {
+        Sym *sym = resolve_name(typespec->name);
+        complete_type(sym->type);
+        return sym->type;
+    }
+    /*
     case TYPESPEC_FUNC:
         for (int i=0; i<typespec->func.num_args; ++i)
             resolve_typespec(typespec->func.args[i]);
@@ -132,15 +139,16 @@ Type *resolve_typespec(Typespec *typespec) {
         resolve_typespec(typespec->array.elem);
         resolve_expr(typespec->array.size);
         break;
+    */
     case TYPESPEC_POINTER:
-        /*resolve_typespec(typespec->ptr.base);*/
-        break;
+        return type_ptr(resolve_typespec(typespec->ptr.base));
     default:
         assert(0);
         break;
     }
 
-    return type;
+    assert(0);
+    return NULL;
 }
 
 ResolvedExpr resolved_rvalue(Type *type) {
@@ -180,10 +188,25 @@ ResolvedExpr resolve_expr_unary(Expr *expr) {
         return resolved_rvalue(type_ptr(operand.type));
     default:
         assert(0);
-        return (ResolvedExpr){0};
+        return resolved_null;
     }
 }
 
+ResolvedExpr resolve_expr_name(Expr *expr) {
+    assert(expr->kind == EXPR_NAME);
+    Sym *sym = resolve_name(expr->name);
+
+    if (sym->kind == SYM_VAR) 
+        return resolved_lvalue(sym->type); 
+    else if (sym->kind == SYM_CONST)
+        return resolved_const(sym->val);
+    else if (sym->kind == SYM_FUNC) 
+        return resolved_rvalue(sym->type);
+    else {
+        fatal("%s must be a var or const", expr->name);
+        return resolved_null;
+    }
+}
 
 ResolvedExpr resolve_expr(Expr *expr) {
     ResolvedExpr resolved = {0};
@@ -193,9 +216,21 @@ ResolvedExpr resolve_expr(Expr *expr) {
     case EXPR_FLOAT:
         assert(0);
         break;
+    case EXPR_NAME:
+        return resolve_expr_name(expr);
     case EXPR_UNARY:
         return resolve_expr_unary(expr);
-        break;
+    case EXPR_SIZEOF_EXPR:
+    {
+        ResolvedExpr sizeof_expr = resolve_expr(expr->sizeof_expr);
+        return resolved_const(sizeof_expr.type->size);
+    }
+    case EXPR_SIZEOF_TYPE:
+    {
+        Type *type = resolve_typespec(expr->sizeof_type);
+        return resolved_const(type->size);
+    }
+        /*
     case EXPR_BINARY: 
         resolve_expr(expr->binary.left);
         resolve_expr(expr->binary.right);
@@ -204,9 +239,6 @@ ResolvedExpr resolve_expr(Expr *expr) {
         resolve_expr(expr->ternary.cond);
         resolve_expr(expr->ternary.then_expr);
         resolve_expr(expr->ternary.else_expr);
-        break;
-    case EXPR_NAME:
-        resolve_name(expr->name);
         break;
     case EXPR_CAST:
         resolve_typespec(expr->cast.type);
@@ -230,6 +262,7 @@ ResolvedExpr resolve_expr(Expr *expr) {
         for (int i=0; i<expr->compound.num_args; ++i)
             resolve_expr(expr->compound.args[i]);
         break;
+        */
     default:
         assert(0);
         break;
@@ -272,7 +305,7 @@ Type *resolve_decl_const(Decl *decl, int64_t *val) {
     assert(decl->kind == DECL_CONST);
     ResolvedExpr resolved = resolve_expr(decl->const_decl.expr);
     if (!resolved.is_const) {
-        fatal("Right hand side of const declaration is not a constant expression");
+        fatal("Right hand side of const declaration is not a constant");
         return NULL;
     }
     *val = resolved.val;
@@ -281,11 +314,11 @@ Type *resolve_decl_const(Decl *decl, int64_t *val) {
 
 Type *resolve_decl_var(Decl *decl) {
     assert(decl->kind == DECL_VAR);
+    // TODO (optional type here, can potentially be inferred)
     Type *type = resolve_typespec(decl->var.type);
     if (decl->var.expr) {
         ResolvedExpr resolved = resolve_expr(decl->var.expr);
         if (resolved.type != type) {
-            // FIXME: good error message
             fatal("Type mismatch in var declaration");
             return NULL;
         }
@@ -326,9 +359,6 @@ void resolve_sym(Sym *sym) {
     da_push(ordered_syms, sym);
 }
 
-void complete_type(Type *type) {
-    assert(0);
-}
 
 void complete_sym(Sym *sym) {
     resolve_sym(sym);
@@ -349,12 +379,16 @@ Sym *resolve_name(char *name) {
 
 
 void resolve_test(void) {
+    sym_put_type(str_intern("int"), type_int);
+    sym_put_type(str_intern("float"), type_float);
+    sym_put_type(str_intern("char"), type_char);
+
     char *decls[] = {
+        "const p = sizeof(*j)",
+        "const q = sizeof(:int)",
         "var y: int = x;",
         "var x: int = 69;",
         "var j: int* = &x",
-        "const p = *j",
-
 
         /*
         "const x = y;",
@@ -371,10 +405,10 @@ void resolve_test(void) {
         */
     };
 
-    for (int i = 0; i<array_count(decls); ++i) {
+    for (size_t i = 0; i<array_count(decls); ++i) {
         init_stream(decls[i]);
         Decl *decl = parse_decl();
-        sym_global_decl(decl);
+        sym_put_decl(decl);
     }
 
     for (int i = 0; i<da_len(global_syms); ++i) {

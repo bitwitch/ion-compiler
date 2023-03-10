@@ -1,3 +1,8 @@
+#define PTR_SIZE   8
+#define INT_SIZE   4
+#define FLOAT_SIZE 4
+#define CHAR_SIZE  1
+
 typedef struct Type Type;
 
 typedef enum {
@@ -5,6 +10,7 @@ typedef enum {
     TYPE_INCOMPLETE,
     TYPE_COMPLETING,
     TYPE_INT,
+    TYPE_CHAR,
     TYPE_FLOAT,
     TYPE_PTR,
     TYPE_ARRAY,
@@ -22,6 +28,7 @@ typedef struct {
 
 struct Type {
     TypeKind kind;
+    size_t size;
     union {
         struct {
             Type *base;
@@ -46,9 +53,11 @@ Arena type_arena;
 BUF(Type **cached_ptr_types);
 BUF(Type **cached_array_types);
 BUF(Type **cached_func_types);
-Type type_int_val = { .kind = TYPE_INT };
-Type type_float_val = { .kind = TYPE_FLOAT };
+Type type_int_val   = { .kind = TYPE_INT,   .size = INT_SIZE };
+Type type_char_val  = { .kind = TYPE_CHAR,  .size = CHAR_SIZE };
+Type type_float_val = { .kind = TYPE_FLOAT, .size = FLOAT_SIZE };
 Type *type_int = &type_int_val;
+Type *type_char = &type_char_val;
 Type *type_float = &type_float_val;
 
 
@@ -66,6 +75,7 @@ Type *type_ptr(Type *base) {
     }
 
     Type *t = type_alloc(TYPE_PTR);
+    t->size = PTR_SIZE;
     t->ptr.base = base;
     da_push(cached_ptr_types, t);
     return t;
@@ -79,6 +89,7 @@ Type *type_array(Type *base, int num_items) {
     }
 
     Type *t = type_alloc(TYPE_ARRAY);
+    t->size = base->size * num_items;
     t->array.base = base;
     t->array.num_items = num_items;
     da_push(cached_array_types, t);
@@ -102,6 +113,7 @@ Type *type_func(TypeField *params, int num_params, Type *ret) {
     }
 
     Type *t = type_alloc(TYPE_FUNC);
+    t->size = PTR_SIZE;
     t->func.params = arena_memdup(&type_arena, params, num_params * sizeof(*params));
     t->func.num_params = num_params;
     t->func.ret = ret;

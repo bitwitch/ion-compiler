@@ -77,6 +77,7 @@ char *keyword_switch;
 char *keyword_case;
 char *keyword_default;
 char *keyword_cast;
+char *keyword_sizeof;
 
 void init_keywords(void) {
     static bool first = true;
@@ -100,6 +101,7 @@ void init_keywords(void) {
         keyword_case = str_intern("case");
         keyword_default = str_intern("default");
         keyword_cast = str_intern("cast");
+        keyword_sizeof = str_intern("sizeof");
     }
     first = false;
 }
@@ -124,7 +126,8 @@ bool is_keyword_name(char *check) {
            s == keyword_switch   ||
            s == keyword_case     ||
            s == keyword_default  ||
-           s == keyword_cast;
+           s == keyword_cast     ||
+           s == keyword_sizeof;
 }
 
 uint8_t char_to_digit[256] = {

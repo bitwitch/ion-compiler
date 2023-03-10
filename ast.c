@@ -97,12 +97,24 @@ Expr *expr_field(Expr *expr, char *field) {
     return new_expr;
 }
 
-Expr *expr_compound(Typespec* type, Expr **args, int num_args) {
+Expr *expr_compound(Typespec *type, Expr **args, int num_args) {
     Expr *expr = expr_alloc(EXPR_COMPOUND);
     expr->compound.type = type;
     expr->compound.args = ast_memdup(args, num_args * sizeof(*args));
     expr->compound.num_args = num_args;
     return expr;
+}
+
+Expr *expr_sizeof_type(Typespec *type) {
+    Expr *expr = expr_alloc(EXPR_SIZEOF_TYPE);
+    expr->sizeof_type = type;
+    return expr;
+}
+
+Expr *expr_sizeof_expr(Expr *expr) {
+    Expr *new_expr = expr_alloc(EXPR_SIZEOF_EXPR);
+    new_expr->sizeof_expr = expr;
+    return new_expr;
 }
 
 

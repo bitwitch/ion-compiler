@@ -23,7 +23,6 @@
 
 void run_tests(void) {
     init_keywords();
-    init_builtins();
 
 	da_test();
     str_intern_test();
