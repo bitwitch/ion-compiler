@@ -22,11 +22,15 @@
 
 
 void run_tests(void) {
+    init_keywords();
+    init_builtins();
+
 	da_test();
     str_intern_test();
 	lex_test();
     /*parse_test();*/
-    order_test();
+    resolve_test();
+    type_intern_test();
     printf("Tests Succeeded.\n");
 }
 

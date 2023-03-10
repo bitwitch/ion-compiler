@@ -71,6 +71,7 @@ typedef struct {
 #define BUF(x) x // annotates that x is a stretchy buffer
 #define da_len(b)  ((b) ? (int32_t)da__header(b)->len : 0)
 #define da_lenu(b) ((b) ?          da__header(b)->len : 0)
+#define da_set_len(b, l) da__header(b)->len = (l)
 #define da_cap(b) ((b) ? da__header(b)->cap : 0)
 #define da_end(b) ((b) + da_lenu(b))
 #define da_push(b, ...) (da__fit(b, 1), (b)[da__header(b)->len++] = (__VA_ARGS__))

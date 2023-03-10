@@ -78,6 +78,7 @@ typedef enum {
     EXPR_BINARY,
     EXPR_TERNARY,
     EXPR_INT,
+    EXPR_CHAR,
     EXPR_FLOAT,
     EXPR_STR,
     EXPR_NAME,

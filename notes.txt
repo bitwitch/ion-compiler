@@ -1,5 +1,11 @@
 TODO:
-[ ] remove redundant expr kinds: "EXPR_OR, EXPR_AND, EXPR_CMP"
+
+[ ] type inference
+  [ ] handle var decls that dont have an explicit type, these can infer the type
+      from the expr. i think in the parser code i just need to set type to null or
+      something if there is not one
+
+[X] remove redundant expr kinds: "EXPR_OR, EXPR_AND, EXPR_CMP"
 
 [X] replace system allocations with arena allocator
 
@@ -8,10 +14,93 @@ TODO:
   [ ] replace other naive linear searches 
 
 [ ] order independent declarations
+[ ] type resolution, type checking
+[ ] constant expression evaluation
 [ ] c code generation
 
 
+2023-03-08
+--------------------------------------------------------------------------------
+Resolving shit
 
+
+What does it mean to "resolve" a symbol?
+
+there are two kinds of "resolution" happening
+1 discovering dependencies
+2 type completion
+
+a dependency on a particular symbol does not necissarily mean it must be ordered
+before you, only if it trys to use the symbol in a way that it needs to know the
+full definition of the thing is the type completed and the symbol put into the
+ordered symobol list
+
+
+concrete example, symbol of kind SYM_VAR
+- discover the type of the var sym and either create a new type or associate it
+  with the already created canonical version of that type
+- discover what symbols that the var sym depends on
+  (resolve the rhs expression)
+- make sure that the rhs expression (if it exists) matches the type of the lhs
+- if the rhs is a constant, evaluate it and store that somewhere
+- detect cycles
+  i.e. var x: int = x;
+
+
+struct x { v: Vec3; }
+
+SYM_TYPE
+struct, union
+- create a new type and associate it with the symbol
+- iterate over the fields and discover dependencies
+  (resolve the type of each field)
+- make sure fields have unique names
+- ensure there are some fields at all
+
+
+
+
+structs and unions, the moment a symbol is created for them, they are resolved
+in other words they begin life resolved (SYM_RESOLVED)
+however they are not put into the ordered symbols list, until they are COMPLETED
+
+
+
+
+2023-03-08
+--------------------------------------------------------------------------------
+Order Independent Declarations
+
+The simple, but shallow approach of just ordering declarations based on walking
+their dependencies failed. The reason was the dependecies that were only on a pointer
+to a thing and not its value. There are cases like the following where it falls
+apart:
+
+const x = sizeof(*p);
+var p: T*;
+struct T { ... }
+
+Here p only depends on T through a pointer so it does not have to be ordered
+before it. However x depends on p and deferences it so actually depends on T as
+a value. This sort of "transitivity" issue can not be solved with the simple
+shallow walking of dependencies.
+
+
+The new approach is the following:
+
+- Parse a bunch of declarations
+- create a new symbol for each decl, and add it to a symbol table
+  (a symbol is basically a package level binding)
+- iterate through all the symbols and recursively resolve everything
+  adding them to a list of ordered symbols
+- 
+
+
+resolving a typespec is turning the syntactic typespec into a semantic type
+
+structs and union types will always start out as TYPE_INCOMPLETE, then only when
+in a situation where the complete type is explicitly needed do we finish
+"completing" the type
 
 
 2023-03-06
@@ -20,12 +109,12 @@ Order Independent Declarations
 
 1. Create a symbol table which maps names to declarations
 
-2. iterate over the symbol table and resolve the declarations
+2. iterate over the symbol table and order the declarations
 
-3. Resolve:
-   if resolved, return the resolved decl
-   if unresolved, set to resolving and recursively resolve it
-   if resolving, there is a cycle, print error
+3. Order:
+   if ordered, return the ordered decl
+   if unordered, set to ordering and recursively order it
+   if ordering, there is a cycle, print error
 
 
 2023-02-07

@@ -2,6 +2,8 @@ typedef struct Type Type;
 
 typedef enum {
     TYPE_NONE,
+    TYPE_INCOMPLETE,
+    TYPE_COMPLETING,
     TYPE_INT,
     TYPE_FLOAT,
     TYPE_PTR,
@@ -105,6 +107,10 @@ Type *type_func(TypeField *params, int num_params, Type *ret) {
     t->func.ret = ret;
     da_push(cached_func_types, t);
     return t;
+}
+
+Type *type_incomplete(void) {
+    return type_alloc(TYPE_INCOMPLETE);
 }
 
 void type_intern_test(void) {
