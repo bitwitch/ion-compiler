@@ -2,3 +2,4 @@ ion
 *.dSYM/
 build/
 tags
+editor_workspace.10x

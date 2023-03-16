@@ -19,6 +19,22 @@ TODO:
 [ ] c code generation
 
 
+
+2023-03-15
+--------------------------------------------------------------------------------
+Resolution / Binding
+
+When resolving a declaration (e.g. a struct), there are two possible scenarios:
+1. we encountered the definition
+  - resolve the symbol AND complete the type
+2. we encountered some other usage
+  - resolve the symbol, but only complete types if we actually need the 
+    complete type at this moment
+
+
+
+
+
 2023-03-08
 --------------------------------------------------------------------------------
 Resolving shit
@@ -56,6 +72,7 @@ struct, union
   (resolve the type of each field)
 - make sure fields have unique names
 - ensure there are some fields at all
+- ensure no duplicate definitions
 
 
 

@@ -20,14 +20,15 @@ typedef enum SymState {
     SYM_RESOLVED,
 } SymState;
 
-typedef struct Sym {
+// struct Sym is typedefed to Sym in type.c
+struct Sym {
     const char *name;
     SymKind kind;
     SymState state;
     Decl *decl;
     Type *type;
     int64_t val;
-} Sym;
+};
 
 BUF(Sym **global_syms);
 BUF(Sym **ordered_syms);
@@ -70,7 +71,7 @@ Sym *sym_decl(Decl *decl) {
 
     if (decl->kind == DECL_STRUCT || decl->kind == DECL_UNION) {
         sym->state = SYM_RESOLVED;
-        sym->type = type_incomplete();
+        sym->type = type_incomplete(sym);
     }
 
     return sym;
@@ -98,6 +99,7 @@ void sym_put_decl(Decl *decl) {
     da_push(global_syms, sym);
 }
 
+// currently used for primative types
 void sym_put_type(char *name, Type *type) {
     assert(sym_get(name) == NULL);
     Sym *sym = sym_type(name, type);
@@ -106,6 +108,7 @@ void sym_put_type(char *name, Type *type) {
 
 
 Sym *resolve_name(char *name);
+ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type);
 ResolvedExpr resolve_expr(Expr *expr);
 Type *resolve_typespec(Typespec *type);
 
@@ -118,7 +121,25 @@ void complete_type(Type *type) {
         return;
     }
 
-    assert(0);
+	assert(type->sym);
+	Decl *decl = type->sym->decl;
+	assert(decl);
+
+	if (decl->kind != DECL_STRUCT && decl->kind != DECL_UNION) {
+		fatal("Cannot complete a type that is not a struct or union");
+		return;
+	}
+	
+	for (int i=0; i<decl->aggregate.num_fields; ++i) {
+		resolve_typespec(decl->aggregate.fields[i].type);
+	}
+	
+	if (decl->kind == DECL_STRUCT)
+		type->kind = TYPE_STRUCT;
+	else
+		type->kind = TYPE_UNION;
+
+	da_push(ordered_syms, type->sym);
 }
 
 Type *resolve_typespec(Typespec *typespec) {
@@ -126,7 +147,11 @@ Type *resolve_typespec(Typespec *typespec) {
     case TYPESPEC_NAME:
     {
         Sym *sym = resolve_name(typespec->name);
-        complete_type(sym->type);
+		if (sym->kind != SYM_TYPE) {
+			// TODO: fatal(typespec->pos, "%s must denote a type", name);
+			fatal("%s must denote a type", typespec->name);
+			return NULL;
+		}
         return sym->type;
     }
     /*
@@ -208,7 +233,7 @@ ResolvedExpr resolve_expr_name(Expr *expr) {
     }
 }
 
-ResolvedExpr resolve_expr(Expr *expr) {
+ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
     ResolvedExpr resolved = {0};
     switch (expr->kind) {
     case EXPR_INT:
@@ -220,13 +245,11 @@ ResolvedExpr resolve_expr(Expr *expr) {
         return resolve_expr_name(expr);
     case EXPR_UNARY:
         return resolve_expr_unary(expr);
-    case EXPR_SIZEOF_EXPR:
-    {
+    case EXPR_SIZEOF_EXPR: {
         ResolvedExpr sizeof_expr = resolve_expr(expr->sizeof_expr);
         return resolved_const(sizeof_expr.type->size);
     }
-    case EXPR_SIZEOF_TYPE:
-    {
+    case EXPR_SIZEOF_TYPE: {
         Type *type = resolve_typespec(expr->sizeof_type);
         return resolved_const(type->size);
     }
@@ -257,17 +280,37 @@ ResolvedExpr resolve_expr(Expr *expr) {
         resolve_expr(expr->field.expr);
         resolve_name(expr->field.name);
         break;
-    case EXPR_COMPOUND:
-        resolve_typespec(expr->compound.type);
-        for (int i=0; i<expr->compound.num_args; ++i)
-            resolve_expr(expr->compound.args[i]);
-        break;
-        */
+    */
+	case EXPR_COMPOUND: {
+		if (!expr->compound.type && !expected_type) {
+			fatal("Compound literal is missing a type specification in a context where it's type cannot be inferred.");
+			break;
+		}
+		
+		Type *type = expr->compound.type 
+			? resolve_typespec(expr->compound.type) 
+			: expected_type;
+
+		complete_type(type);
+
+		for (int i = 0; i < expr->compound.num_args; ++i) {
+			ResolvedExpr arg = resolve_expr(expr->compound.args[i]);
+			(void)arg;
+		}
+		// TODO(shaw): need to think more about this, it seems like a compound
+		// literal should be r-value, but not totally sure
+		return resolved_rvalue(type);
+	}
     default:
         assert(0);
         break;
     }
     return resolved;
+
+}
+
+ResolvedExpr resolve_expr(Expr *expr) {
+	return resolve_expr_expected(expr, NULL);
 }
 
 void resolve_decl(Decl *decl) {
@@ -314,15 +357,19 @@ Type *resolve_decl_const(Decl *decl, int64_t *val) {
 
 Type *resolve_decl_var(Decl *decl) {
     assert(decl->kind == DECL_VAR);
-    // TODO (optional type here, can potentially be inferred)
-    Type *type = resolve_typespec(decl->var.type);
+	Type *type = NULL;
+	if (decl->var.type)
+		type = resolve_typespec(decl->var.type);
     if (decl->var.expr) {
-        ResolvedExpr resolved = resolve_expr(decl->var.expr);
-        if (resolved.type != type) {
+        ResolvedExpr resolved = resolve_expr_expected(decl->var.expr, type);
+		if (!type) {
+			type = resolved.type;
+		} else if (resolved.type != type) {
             fatal("Type mismatch in var declaration");
             return NULL;
         }
     }
+
     return type;
 }
 
@@ -379,18 +426,28 @@ Sym *resolve_name(char *name) {
 
 
 void resolve_test(void) {
+	// insert primative types into the symbol table at startup 
     sym_put_type(str_intern("int"), type_int);
     sym_put_type(str_intern("float"), type_float);
     sym_put_type(str_intern("char"), type_char);
 
     char *decls[] = {
-        "const p = sizeof(*j)",
-        "const q = sizeof(:int)",
+		"var vec_ptr: Vec2*;",
+		"var accel = Vec2{ 1, 2 };",
+		"var vel: Vec2 = { 1, 2 };",
+		"var pos: Vec2 = Vec2{ 6, 9 };",		
+		"struct Vec2 { x: int; y: int; }",
+
+
+
+
+		/*
+        "const p = sizeof(*j);",
+        "const q = sizeof(:int);",
         "var y: int = x;",
         "var x: int = 69;",
-        "var j: int* = &x",
-
-        /*
+        "var j: int* = &x;",
+	
         "const x = y;",
         "const y = 666;",
         "var m: Mesh;",
@@ -401,8 +458,12 @@ void resolve_test(void) {
 
         "const y = sizeof(*x)",
         "var x: B*",
-        "struct B { x: int; }",
         */
+
+		/*
+		// Negative (failing) tests
+		"var accel = { 1, 2 };", // type cannot be inferred
+		*/
     };
 
     for (size_t i = 0; i<array_count(decls); ++i) {

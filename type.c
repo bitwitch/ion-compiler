@@ -4,6 +4,7 @@
 #define CHAR_SIZE  1
 
 typedef struct Type Type;
+typedef struct Sym Sym;
 
 typedef enum {
     TYPE_NONE,
@@ -26,9 +27,12 @@ typedef struct {
     Type *type;
 } TypeField;
 
+
+
 struct Type {
     TypeKind kind;
     size_t size;
+	Sym *sym;
     union {
         struct {
             Type *base;
@@ -121,8 +125,10 @@ Type *type_func(TypeField *params, int num_params, Type *ret) {
     return t;
 }
 
-Type *type_incomplete(void) {
-    return type_alloc(TYPE_INCOMPLETE);
+Type *type_incomplete(Sym *sym) {
+    Type *type = type_alloc(TYPE_INCOMPLETE);
+	type->sym = sym;
+	return type;
 }
 
 void type_intern_test(void) {
