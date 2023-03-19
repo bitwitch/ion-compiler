@@ -130,10 +130,29 @@ void complete_type(Type *type) {
 		return;
 	}
 	
-	for (int i=0; i<decl->aggregate.num_fields; ++i) {
-		resolve_typespec(decl->aggregate.fields[i].type);
+	// TODO(shaw): calculate alignment here, and update size based on the change
+
+	TypeField *type_fields = NULL;
+	AggregateField *decl_fields = decl->aggregate.fields;
+	int num_fields = decl->aggregate.num_fields;
+	size_t size = 0;
+	size_t align = 1;
+
+	for (int i=0; i<num_fields; ++i) {
+		Type *field_type = resolve_typespec(decl_fields[i].type);
+		size += field_type->size;
+		align = MAX(align, field_type->align);
+		da_push(type_fields, (TypeField){
+			.name = decl_fields[i].name,  
+			.type = field_type,
+		});
 	}
-	
+
+	type->aggregate.fields = arena_memdup(&resolve_arena, type_fields, num_fields * sizeof(*type_fields));
+	type->aggregate.num_fields = num_fields;
+	type->size = size;
+	type->size = align;
+
 	if (decl->kind == DECL_STRUCT)
 		type->kind = TYPE_STRUCT;
 	else
@@ -160,11 +179,16 @@ Type *resolve_typespec(Typespec *typespec) {
             resolve_typespec(typespec->func.args[i]);
         resolve_typespec(typespec->func.ret);
         break;
-    case TYPESPEC_ARRAY:
-        resolve_typespec(typespec->array.elem);
-        resolve_expr(typespec->array.size);
-        break;
-    */
+	*/
+	case TYPESPEC_ARRAY: {
+		Type *elem_type = resolve_typespec(typespec->array.elem);
+		ResolvedExpr size = resolve_expr(typespec->array.size);
+		if (!size.is_const) {
+			fatal("Array size must be a constant");
+			return NULL;
+		}
+		return type_array(elem_type, size.val);
+	}
     case TYPESPEC_POINTER:
         return type_ptr(resolve_typespec(typespec->ptr.base));
     default:
@@ -293,9 +317,16 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 
 		complete_type(type);
 
-		for (int i = 0; i < expr->compound.num_args; ++i) {
-			ResolvedExpr arg = resolve_expr(expr->compound.args[i]);
-			(void)arg;
+		if (type->kind == TYPE_ARRAY) {
+			for (int i = 0; i < expr->compound.num_args; ++i) {
+				ResolvedExpr arg = resolve_expr_expected(expr->compound.args[i], type->array.base);
+				(void)arg;
+			}
+		} else {
+			for (int i = 0; i < expr->compound.num_args; ++i) {
+				ResolvedExpr arg = resolve_expr(expr->compound.args[i]);
+				(void)arg;
+			}
 		}
 		// TODO(shaw): need to think more about this, it seems like a compound
 		// literal should be r-value, but not totally sure
@@ -438,7 +469,7 @@ void resolve_test(void) {
 		"var pos: Vec2 = Vec2{ 6, 9 };",		
 		"struct Vec2 { x: int; y: int; }",
 
-
+		"var vecs: Vec2[2][2] = {{{1,2},{3,4}}, {{5,6},{7,8}}};",
 
 
 		/*

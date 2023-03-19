@@ -31,8 +31,9 @@ typedef struct {
 
 struct Type {
     TypeKind kind;
-    size_t size;
 	Sym *sym;
+	size_t size;
+	size_t align;
     union {
         struct {
             Type *base;
@@ -57,13 +58,9 @@ Arena type_arena;
 BUF(Type **cached_ptr_types);
 BUF(Type **cached_array_types);
 BUF(Type **cached_func_types);
-Type type_int_val   = { .kind = TYPE_INT,   .size = INT_SIZE };
-Type type_char_val  = { .kind = TYPE_CHAR,  .size = CHAR_SIZE };
-Type type_float_val = { .kind = TYPE_FLOAT, .size = FLOAT_SIZE };
-Type *type_int = &type_int_val;
-Type *type_char = &type_char_val;
-Type *type_float = &type_float_val;
-
+Type *type_int   = &(Type){ .kind = TYPE_INT,   .size = INT_SIZE,   .align = INT_SIZE };
+Type *type_char  = &(Type){ .kind = TYPE_CHAR,  .size = CHAR_SIZE,  .align = CHAR_SIZE };
+Type *type_float = &(Type){ .kind = TYPE_FLOAT, .size = FLOAT_SIZE, .align = FLOAT_SIZE };
 
 Type *type_alloc(TypeKind kind) {
     Type *t = arena_alloc_zeroed(&type_arena, sizeof(Type));
