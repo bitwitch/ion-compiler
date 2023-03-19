@@ -77,6 +77,7 @@ Type *type_ptr(Type *base) {
 
     Type *t = type_alloc(TYPE_PTR);
     t->size = PTR_SIZE;
+	t->align = PTR_SIZE;
     t->ptr.base = base;
     da_push(cached_ptr_types, t);
     return t;
@@ -91,6 +92,7 @@ Type *type_array(Type *base, int num_items) {
 
     Type *t = type_alloc(TYPE_ARRAY);
     t->size = base->size * num_items;
+	t->align = base->align;
     t->array.base = base;
     t->array.num_items = num_items;
     da_push(cached_array_types, t);
@@ -115,6 +117,7 @@ Type *type_func(TypeField *params, int num_params, Type *ret) {
 
     Type *t = type_alloc(TYPE_FUNC);
     t->size = PTR_SIZE;
+	t->align = PTR_SIZE;
     t->func.params = arena_memdup(&type_arena, params, num_params * sizeof(*params));
     t->func.num_params = num_params;
     t->func.ret = ret;

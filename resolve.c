@@ -129,18 +129,14 @@ void complete_type(Type *type) {
 		fatal("Cannot complete a type that is not a struct or union");
 		return;
 	}
-	
-	// TODO(shaw): calculate alignment here, and update size based on the change
 
 	TypeField *type_fields = NULL;
 	AggregateField *decl_fields = decl->aggregate.fields;
 	int num_fields = decl->aggregate.num_fields;
-	size_t size = 0;
+	
 	size_t align = 1;
-
 	for (int i=0; i<num_fields; ++i) {
 		Type *field_type = resolve_typespec(decl_fields[i].type);
-		size += field_type->size;
 		align = MAX(align, field_type->align);
 		da_push(type_fields, (TypeField){
 			.name = decl_fields[i].name,  
@@ -148,10 +144,34 @@ void complete_type(Type *type) {
 		});
 	}
 
+	// accumulate fields until adding the next one would overflow the alignment
+	// add required padding 
+	// for the last one, add padding if required
+	size_t accum = 0;
+	size_t size = 0;
+	size_t pad = 0;
+	for (int i = 0; i < num_fields; ++i) {
+		size_t field_size = type_fields[i].type->size;
+		if (accum + field_size > align) {
+			// TODO(shaw): should this padding be stored in the type somewhere??
+			// or do we just recontruct the padding positions when actually laying
+			// variable of this type out in memory ?
+			pad = align - accum;
+
+			size += align;
+			accum = 0;
+		} 
+		accum += field_size;
+	}
+	// get padding required for last field, and update size
+	pad = align - accum;
+	(void)pad;
+	size += align;
+
 	type->aggregate.fields = arena_memdup(&resolve_arena, type_fields, num_fields * sizeof(*type_fields));
 	type->aggregate.num_fields = num_fields;
 	type->size = size;
-	type->size = align;
+	type->align = align;
 
 	if (decl->kind == DECL_STRUCT)
 		type->kind = TYPE_STRUCT;
@@ -463,14 +483,21 @@ void resolve_test(void) {
     sym_put_type(str_intern("char"), type_char);
 
     char *decls[] = {
+		/*
 		"var vec_ptr: Vec2*;",
 		"var accel = Vec2{ 1, 2 };",
 		"var vel: Vec2 = { 1, 2 };",
-		"var pos: Vec2 = Vec2{ 6, 9 };",		
+		"var pos: Vec2 = Vec2{ 6, 9 };",
 		"struct Vec2 { x: int; y: int; }",
-
 		"var vecs: Vec2[2][2] = {{{1,2},{3,4}}, {{5,6},{7,8}}};",
+		
+		*/
 
+		"var i: int = 69;",
+		"struct Vec2 { x: int; y: int*; }",
+		"var vecs: Vec2[2][2] = {{{1,&i},{3,&i}}, {{5,&i},{7,&i}}};",
+
+	
 
 		/*
         "const p = sizeof(*j);",
