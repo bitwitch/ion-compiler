@@ -369,9 +369,18 @@ ResolvedExpr resolve_expr(Expr *expr) {
 	return resolve_expr_expected(expr, NULL);
 }
 
+ResolvedExpr resolve_expr_cond(Expr *cond) {
+	ResolvedExpr resolved = resolve_expr(cond);
+	if (resolved.type != type_int)
+		fatal("condition must have type int");
+	return resolved;
+}
 
-void resolve_stmt_block(StmtBlock block); 
 
+void resolve_stmt_block(StmtBlock block);
+
+// TODO(shaw): eventually, resolve_stmt can return a struct that contains some 
+// ancillary data like control flow info
 void resolve_stmt(Stmt *stmt) {
 	assert(stmt);
 	switch (stmt->kind) {
@@ -380,17 +389,19 @@ void resolve_stmt(Stmt *stmt) {
 			// do nothing
 			break;
 		case STMT_RETURN:
+			// TODO(shaw): need to pass expected type down to here so we can 
+			// type check the return value
 			resolve_expr(stmt->return_stmt.expr);
 			break;
 		case STMT_BRACE_BLOCK:
 			resolve_stmt_block(stmt->block);
 			break;
 		case STMT_IF: {
-			resolve_expr(stmt->if_stmt.cond);
+			resolve_expr_cond(stmt->if_stmt.cond);
 			resolve_stmt_block(stmt->if_stmt.then_block);
 			ElseIf *else_ifs = stmt->if_stmt.else_ifs;
 			for (int i = 0; i < stmt->if_stmt.num_else_ifs; ++i) {
-				resolve_expr(else_ifs[i].cond);
+				resolve_expr_cond(else_ifs[i].cond);
 				resolve_stmt_block(else_ifs[i].block);
 			}
 			resolve_stmt_block(stmt->if_stmt.else_block);
@@ -403,10 +414,11 @@ void resolve_stmt(Stmt *stmt) {
 			resolve_stmt_block(stmt->for_stmt.block);
 			break;
 		case STMT_DO:
-		case STMT_WHILE:
-			resolve_expr(stmt->while_stmt.cond);
+		case STMT_WHILE: {
+			resolve_expr_cond(stmt->while_stmt.cond);
 			resolve_stmt_block(stmt->while_stmt.block);
 			break;
+		}
 		/*
 		case STMT_SWITCH:
 			resolve_expr(stmt->switch_stmt.expr);
@@ -424,8 +436,11 @@ void resolve_stmt(Stmt *stmt) {
 			Type *type = NULL;
 			if (stmt->init.type) 
 				type = resolve_typespec(stmt->init.type);
-			if (stmt->init.expr)
-				resolve_expr_expected(stmt->init.expr, type);
+			if (stmt->init.expr) {
+				ResolvedExpr resolved = resolve_expr_expected(stmt->init.expr, type);
+				type = resolved.type;
+			}
+			// TODO(shaw): add symbol to current scope
 			break;
 		}
 		case STMT_EXPR:
@@ -549,12 +564,10 @@ void resolve_test(void) {
     sym_put_type(str_intern("char"), type_char);
 
     char *decls[] = {
-		/*
 		"func f1(start: Vec3, end: Vec3): Vec3 { result: Vec3 = {6, 6, 6}; return result; }",
 		"struct Vec3 { x: int, y: int, z: int }",
-		*/
-
 		
+		/*
 		"var vec_ptr: Vec2*;",
 		"var accel = Vec2{ 1, 2 };",
 		"var vel: Vec2 = { 1, 2 };",
@@ -562,7 +575,6 @@ void resolve_test(void) {
 		"struct Vec2 { x: int; y: int; }",
 		"var vecs: Vec2[2][2] = {{{1,2},{3,4}}, {{5,6},{7,8}}};",
 
-		/*
 		
 		"var i: int = 69;",
 		"struct Vec2 { x: int; y: int*; }",
