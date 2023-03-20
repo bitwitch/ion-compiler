@@ -151,33 +151,12 @@ typedef struct {
 } AggregateField;
 
 typedef enum {
-    STMT_NONE,
-    STMT_RETURN,
-    STMT_CONTINUE,
-    STMT_BREAK,
-    STMT_BRACE_BLOCK,
-    STMT_IF,
-    STMT_FOR,
-    STMT_DO,
-    STMT_WHILE,
-    STMT_SWITCH,
-    STMT_ASSIGN,
-    STMT_INIT,
-    STMT_EXPR,
-} StmtKind;
-
-typedef enum {
     TYPESPEC_NONE,
     TYPESPEC_NAME,
     TYPESPEC_FUNC,
     TYPESPEC_ARRAY,
     TYPESPEC_POINTER,
 } TypespecKind;
-
-typedef struct {
-    BUF(Typespec **arg_types);
-    Typespec *ret_type;
-} FuncTypespec;
 
 struct Typespec {
     TypespecKind kind;
@@ -198,6 +177,7 @@ struct Typespec {
     };
 };
 
+
 typedef struct {
     Stmt **stmts;
     int num_stmts;
@@ -215,6 +195,21 @@ typedef struct {
     StmtBlock block;
 } SwitchCase;
 
+typedef enum {
+	STMT_NONE,
+	STMT_RETURN,
+	STMT_CONTINUE,
+	STMT_BREAK,
+	STMT_BRACE_BLOCK,
+	STMT_IF,
+	STMT_FOR,
+	STMT_DO,
+	STMT_WHILE,
+	STMT_SWITCH,
+	STMT_ASSIGN,
+	STMT_INIT,
+	STMT_EXPR,
+} StmtKind;
 
 struct Stmt {
     StmtKind kind;
@@ -228,6 +223,7 @@ struct Stmt {
         } assign;
         struct {
             char *name;
+			Typespec *type;
             Expr *expr;
         } init;
         struct {

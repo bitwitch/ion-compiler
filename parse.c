@@ -41,7 +41,7 @@ Typespec *parse_type(void) {
 
 Expr *parse_expr_compound(Typespec *type) {
     expect_token('{');
-    Expr **exprs = NULL;
+    BUF(Expr **exprs) = NULL; // @LEAK
     do {
         da_push(exprs, parse_expr());
     } while (match_token(','));
@@ -108,7 +108,7 @@ Expr *parse_expr_call(void) {
 
     while (is_token('(') || is_token('[') || is_token('.')) {
         if (match_token('(')) {
-            Expr **args = NULL;
+            BUF(Expr **args) = NULL; // @LEAK
             if (!is_token(')')) {
                 do {
                     da_push(args, parse_expr());
@@ -216,7 +216,7 @@ Expr *parse_expression(char *source) {
 
 
 StmtBlock parse_stmt_block(void) {
-    Stmt **stmts = NULL;
+    BUF(Stmt **stmts) = NULL; // @LEAK
     expect_token('{');
     while (!is_token('}'))
         da_push(stmts, parse_stmt());
@@ -240,7 +240,7 @@ Stmt *parse_stmt_if(void) {
 
     StmtBlock then_block = parse_stmt_block();
 
-    ElseIf *else_ifs = NULL;
+    BUF(ElseIf *else_ifs) = NULL; // @LEAK
     bool else_block_exists = false;
     while (true) {
         if (!match_keyword(keyword_else)) break;
@@ -282,12 +282,23 @@ bool is_assign_op(void) {
 Stmt *parse_simple_stmt(void) {
     Expr *expr = parse_expr();
     Stmt *stmt = NULL;
-    if (match_token(TOKEN_AUTO_ASSIGN)) {
-        if (expr->kind != EXPR_NAME) {
-            syntax_error(":= must be preceded by a name");
-            return NULL;
-        }
-        stmt = stmt_init(expr->name, parse_expr());
+
+	if (match_token(TOKEN_AUTO_ASSIGN)) {
+		if (expr->kind != EXPR_NAME) {
+			syntax_error(":= must be preceded by a name");
+			return NULL;
+		}
+		stmt = stmt_init(expr->name, NULL, parse_expr());
+	} else if (match_token(':')) {
+		if (expr->kind != EXPR_NAME) {
+			syntax_error(": must be preceded by a name in a variable init statement");
+			return NULL;
+		}
+		Typespec *type = parse_type();
+		Expr *rhs = NULL;
+		if (match_token('='))
+			rhs = parse_expr();
+		stmt = stmt_init(expr->name, type, rhs);
     } else if (is_assign_op()) {
         TokenKind op = token.kind;
         next_token();
@@ -338,7 +349,7 @@ Stmt *parse_stmt_while(void) {
 }
 
 SwitchCase parse_stmt_switch_case(void) {
-    Expr **exprs = NULL;
+    BUF(Expr **exprs) = NULL; // @LEAK
     bool is_default = false;
     while (is_keyword(keyword_case) || is_keyword(keyword_default)) {
         if (match_keyword(keyword_case)) {
@@ -351,16 +362,11 @@ SwitchCase parse_stmt_switch_case(void) {
         expect_token(':');
     }
 
-    Stmt **stmts = NULL;
+    BUF(Stmt **stmts) = NULL; // @LEAK
     while (!is_token(TOKEN_EOF) && !is_token('}') && !is_keyword(keyword_case) && !is_keyword(keyword_default))
         da_push(stmts, parse_stmt());
  
-    return (SwitchCase){
-        .exprs = exprs,
-        .num_exprs = da_len(exprs),
-        .is_default = is_default,
-        .block = (StmtBlock){ stmts, da_len(stmts) },
-    };
+	return switch_case(exprs, da_len(exprs), is_default, stmt_block(stmts, da_len(stmts)));
 }
 
 Stmt *parse_stmt_switch(void) {
@@ -369,7 +375,7 @@ Stmt *parse_stmt_switch(void) {
     expect_token(')');
 
     expect_token('{');
-    SwitchCase *cases = NULL;
+    BUF(SwitchCase *cases) = NULL; // @LEAK
     while (!is_token('}'))
         da_push(cases, parse_stmt_switch_case());
     expect_token('}');
@@ -414,7 +420,7 @@ Decl *parse_decl_enum(void) {
     char *name = parse_name();
     expect_token('{');
 
-    EnumItem *enum_items = NULL;
+    BUF(EnumItem *enum_items) = NULL; // @LEAK
 
     while(!is_token('}')) {
         char *name = parse_name();
@@ -472,7 +478,7 @@ AggregateField parse_decl_aggregate_field(void) {
 Decl *parse_decl_aggregate(DeclKind kind) {
     char *name = parse_name();
     expect_token('{');
-    AggregateField *fields = NULL;
+    BUF(AggregateField *fields) = NULL; // @LEAK
     do {
         if (match_token('}')) break;
         da_push(fields, parse_decl_aggregate_field());
@@ -495,7 +501,7 @@ FuncParam parse_decl_func_param(void) {
 Decl *parse_decl_func(void) {
     char *name = parse_name();
     expect_token('(');
-    FuncParam *params = NULL;
+    BUF(FuncParam *params) = NULL; // @LEAK
     if (!is_token(')')) {
         do {
             da_push(params, parse_decl_func_param());

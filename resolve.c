@@ -1,3 +1,5 @@
+#define MAX_LOCAL_SYMS 2048
+
 typedef struct {
     Type *type;
     bool is_const;
@@ -30,8 +32,11 @@ struct Sym {
     int64_t val;
 };
 
+
 BUF(Sym **global_syms);
 BUF(Sym **ordered_syms);
+Sym *local_syms[MAX_LOCAL_SYMS];
+Sym **local_syms_end = local_syms;
 
 Arena resolve_arena;
 ResolvedExpr resolved_null = {0};
@@ -130,7 +135,7 @@ void complete_type(Type *type) {
 		return;
 	}
 
-	TypeField *type_fields = NULL;
+	BUF(TypeField *type_fields) = NULL; // @LEAK
 	AggregateField *decl_fields = decl->aggregate.fields;
 	int num_fields = decl->aggregate.num_fields;
 	
@@ -146,7 +151,7 @@ void complete_type(Type *type) {
 
 	// accumulate fields until adding the next one would overflow the alignment
 	// add required padding 
-	// for the last one, add padding if required
+	// for the last one, add padding if required (after loop)
 	size_t accum = 0;
 	size_t size = 0;
 	size_t pad = 0;
@@ -364,35 +369,78 @@ ResolvedExpr resolve_expr(Expr *expr) {
 	return resolve_expr_expected(expr, NULL);
 }
 
-void resolve_decl(Decl *decl) {
-    switch (decl->kind) {
-    case DECL_UNION:
-    case DECL_STRUCT:
-        for (int i=0; i<decl->aggregate.num_fields; ++i) {
-            resolve_typespec(decl->aggregate.fields[i].type);
-        }
-        break;
-    case DECL_FUNC:
-        for (int i=0; i<decl->func.num_params; ++i) {
-            resolve_typespec(decl->func.params[i].type);
-        }
-        resolve_typespec(decl->func.ret_type);
-        break;
-    case DECL_VAR:
-        resolve_typespec(decl->var.type);
-        if (decl->var.expr)
-            resolve_expr(decl->var.expr);
-        break;
-    case DECL_CONST:
-        resolve_expr(decl->const_decl.expr);
-        break;
-    case DECL_TYPEDEF:
-        resolve_typespec(decl->typedef_decl.type);
-        break;
-    default:
-        assert(0);
-        break;
-    }
+
+void resolve_stmt_block(StmtBlock block); 
+
+void resolve_stmt(Stmt *stmt) {
+	assert(stmt);
+	switch (stmt->kind) {
+		case STMT_CONTINUE:
+		case STMT_BREAK:
+			// do nothing
+			break;
+		case STMT_RETURN:
+			resolve_expr(stmt->return_stmt.expr);
+			break;
+		case STMT_BRACE_BLOCK:
+			resolve_stmt_block(stmt->block);
+			break;
+		case STMT_IF: {
+			resolve_expr(stmt->if_stmt.cond);
+			resolve_stmt_block(stmt->if_stmt.then_block);
+			ElseIf *else_ifs = stmt->if_stmt.else_ifs;
+			for (int i = 0; i < stmt->if_stmt.num_else_ifs; ++i) {
+				resolve_expr(else_ifs[i].cond);
+				resolve_stmt_block(else_ifs[i].block);
+			}
+			resolve_stmt_block(stmt->if_stmt.else_block);
+			break;
+		}
+		case STMT_FOR:
+			if (stmt->for_stmt.init) resolve_stmt(stmt->for_stmt.init);
+			if (stmt->for_stmt.cond) resolve_expr(stmt->for_stmt.cond);
+			if (stmt->for_stmt.next) resolve_stmt(stmt->for_stmt.next);
+			resolve_stmt_block(stmt->for_stmt.block);
+			break;
+		case STMT_DO:
+		case STMT_WHILE:
+			resolve_expr(stmt->while_stmt.cond);
+			resolve_stmt_block(stmt->while_stmt.block);
+			break;
+		/*
+		case STMT_SWITCH:
+			resolve_expr(stmt->switch_stmt.expr);
+			int num_cases = stmt->switch_stmt.num_cases;
+			SwitchCase *cases = stmt->switch_stmt.cases;
+			for (int i = 0; i < num_cases; ++i) {
+				
+			}
+		*/
+		case STMT_ASSIGN:
+			resolve_expr(stmt->assign.left);
+			resolve_expr(stmt->assign.right);
+			break;
+		case STMT_INIT: {
+			Type *type = NULL;
+			if (stmt->init.type) 
+				type = resolve_typespec(stmt->init.type);
+			if (stmt->init.expr)
+				resolve_expr_expected(stmt->init.expr, type);
+			break;
+		}
+		case STMT_EXPR:
+			resolve_expr(stmt->expr);
+			break;
+		default:
+			assert(0);
+			break;
+	}
+}
+
+void resolve_stmt_block(StmtBlock block) {
+	for (int i = 0; i < block.num_stmts; ++i) {
+		resolve_stmt(block.stmts[i]);
+	}
 }
 
 Type *resolve_decl_const(Decl *decl, int64_t *val) {
@@ -424,6 +472,24 @@ Type *resolve_decl_var(Decl *decl) {
     return type;
 }
 
+Type *resolve_decl_func(Decl *decl) {
+	assert(decl->kind == DECL_FUNC);
+
+	BUF(TypeField *params) = NULL; // @LEAK
+	int num_params = decl->func.num_params;
+	for (int i = 0; i < num_params; ++i) {
+		FuncParam param = decl->func.params[i];
+		da_push(params, (TypeField){ .name=param.name, .type=resolve_typespec(param.type) });
+	}
+
+	Type *ret = resolve_typespec(decl->func.ret_type);
+	
+	resolve_stmt_block(decl->func.block);
+
+	return type_func(params, num_params, ret);
+}
+
+
 void resolve_sym(Sym *sym) {
     if (sym->state == SYM_RESOLVED) {
         return;
@@ -441,10 +507,10 @@ void resolve_sym(Sym *sym) {
     case SYM_CONST: 
         sym->type = resolve_decl_const(sym->decl, &sym->val); 
         break;
-        /*
     case SYM_FUNC:  
         sym->type = resolve_decl_func(sym->decl);  
         break;
+		/*
     case SYM_TYPE: 
         sym->type =resolve_decl_type(sym->decl);  
         break;
@@ -484,22 +550,28 @@ void resolve_test(void) {
 
     char *decls[] = {
 		/*
+		"func f1(start: Vec3, end: Vec3): Vec3 { result: Vec3 = {6, 6, 6}; return result; }",
+		"struct Vec3 { x: int, y: int, z: int }",
+		*/
+
+		
 		"var vec_ptr: Vec2*;",
 		"var accel = Vec2{ 1, 2 };",
 		"var vel: Vec2 = { 1, 2 };",
 		"var pos: Vec2 = Vec2{ 6, 9 };",
 		"struct Vec2 { x: int; y: int; }",
 		"var vecs: Vec2[2][2] = {{{1,2},{3,4}}, {{5,6},{7,8}}};",
-		
-		*/
 
+		/*
+		
 		"var i: int = 69;",
 		"struct Vec2 { x: int; y: int*; }",
 		"var vecs: Vec2[2][2] = {{{1,&i},{3,&i}}, {{5,&i},{7,&i}}};",
+		
+		"func f1(start: Vec3, end: Vec3): Vec3 { }",
+		"struct Vec3 { x: int, y: int, z: int }",
 
-	
-
-		/*
+		
         "const p = sizeof(*j);",
         "const q = sizeof(:int);",
         "var y: int = x;",
@@ -511,8 +583,7 @@ void resolve_test(void) {
         "var m: Mesh;",
         "struct Mesh { data: u8*; }",
         "typedef u8 = char;",
-        "func f1(start: Vec3, end: Vec3): Vec3 { }",
-        "struct Vec3 { x: int, y: int, z: int }",
+       
 
         "const y = sizeof(*x)",
         "var x: B*",

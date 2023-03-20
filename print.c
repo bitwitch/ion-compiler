@@ -178,7 +178,9 @@ void print_stmt(Stmt *stmt) {
         printf(")");
         break;
     case STMT_INIT:
-        printf("(auto-assign %s ", stmt->init.name);
+        printf("(init %s ", stmt->init.name);
+		print_type(stmt->init.type);
+		printf(" ");
         print_expr(stmt->init.expr);
         printf(")");
         break;

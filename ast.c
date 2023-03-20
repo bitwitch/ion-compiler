@@ -13,6 +13,15 @@ bool is_cmp_op(TokenKind op) {
            op == '>';
 }
 
+SwitchCase switch_case(Expr **exprs, int num_exprs, bool is_default, StmtBlock block) {
+	return (SwitchCase) {
+		.exprs = ast_memdup(exprs, num_exprs * sizeof(*exprs)),
+		.num_exprs = num_exprs,
+		.is_default = is_default,
+		.block = block,
+	};
+}
+
 
 // Expressions
 Expr *expr_alloc(ExprKind kind) {
@@ -118,8 +127,6 @@ Expr *expr_sizeof_expr(Expr *expr) {
 }
 
 
-
-
 void expr_test(void) {
     Expr *expr = expr_int(69);
     assert(expr->kind == EXPR_INT);
@@ -194,9 +201,10 @@ Stmt *stmt_assign(TokenKind op, Expr *left, Expr *right) {
     return stmt;
 }
 
-Stmt *stmt_init(char *name, Expr *expr) {
+Stmt *stmt_init(char *name, Typespec *type, Expr *expr) {
     Stmt *stmt = stmt_alloc(STMT_INIT);
     stmt->init.name = name;
+	stmt->init.type = type;
     stmt->init.expr = expr;
     return stmt;
 }

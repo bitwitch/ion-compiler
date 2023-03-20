@@ -1,9 +1,19 @@
 TODO:
 
 [ ] type inference
-  [ ] handle var decls that dont have an explicit type, these can infer the type
+  [X] handle var decls that dont have an explicit type, these can infer the type
       from the expr. i think in the parser code i just need to set type to null or
       something if there is not one
+
+[ ] type size and alignment
+
+[ ] fill out expression resolution 
+
+[ ] tracking source code position (line and column)
+
+[ ] resolving function bodies
+
+[ ] scoped symbols (ex: variables in function bodies)
 
 [X] remove redundant expr kinds: "EXPR_OR, EXPR_AND, EXPR_CMP"
 
@@ -17,6 +27,12 @@ TODO:
 [ ] type resolution, type checking
 [ ] constant expression evaluation
 [ ] c code generation
+
+
+
+2023-03-19
+--------------------------------------------------------------------------------
+
 
 
 
