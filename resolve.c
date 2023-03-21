@@ -89,14 +89,29 @@ Sym *sym_type(char *name, Type *type) {
     return sym;
 }
 
+// this is meant for init statements, therefore the symbol is not added to
+// global_syms. it will likely be pushed to the local symbol table by the caller
+Sym *sym_init(Decl *decl, Type *type) {
+	assert(decl->kind == DECL_VAR);
+	Sym *sym = sym_decl(decl);
+	sym->type = type;
+	sym->state = SYM_RESOLVED;
+	return sym;
+}
+
 Sym *sym_get(char *name) {
+	// first check symbols in local scopes
+	for (Sym **it = local_syms_end; it > local_syms; --it) {
+		Sym *sym = it[-1];
+		if (sym->name == name) return sym;
+	}
+	// then check global symbols
     for (int i=0; i<da_len(global_syms); ++i) {
         Sym *sym = global_syms[i];
         if (sym->name == name) return sym;
     }
     return NULL;
 }
-
 
 void sym_put_decl(Decl *decl) {
     assert(sym_get(decl->name) == NULL);
@@ -111,6 +126,20 @@ void sym_put_type(char *name, Type *type) {
     da_push(global_syms, sym);
 }
 
+Sym **sym_enter_scope(void) {
+	return local_syms_end;
+}
+
+void sym_leave_scope(Sym **scope_start) {
+	local_syms_end = scope_start;
+}
+
+void sym_push_scoped(Sym *sym) {
+	if (local_syms_end > local_syms + MAX_LOCAL_SYMS) {
+		fatal("Too many local symbols, max is %d", MAX_LOCAL_SYMS);
+	}
+	*local_syms_end++ = sym;
+}
 
 Sym *resolve_name(char *name);
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type);
@@ -285,7 +314,7 @@ ResolvedExpr resolve_expr_name(Expr *expr) {
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
     ResolvedExpr resolved = {0};
     switch (expr->kind) {
-    case EXPR_INT:
+    case EXPR_INT: 
         return resolved_const(expr->int_val);
     case EXPR_FLOAT:
         assert(0);
@@ -331,10 +360,14 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
         break;
     */
 	case EXPR_COMPOUND: {
+
 		if (!expr->compound.type && !expected_type) {
-			fatal("Compound literal is missing a type specification in a context where it's type cannot be inferred.");
+			fatal("Compound literal is missing a type specification in a context where its type cannot be inferred.");
 			break;
 		}
+
+		Expr **args = expr->compound.args;
+		int num_args = expr->compound.num_args;
 		
 		Type *type = expr->compound.type 
 			? resolve_typespec(expr->compound.type) 
@@ -343,13 +376,14 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		complete_type(type);
 
 		if (type->kind == TYPE_ARRAY) {
-			for (int i = 0; i < expr->compound.num_args; ++i) {
-				ResolvedExpr arg = resolve_expr_expected(expr->compound.args[i], type->array.base);
+			for (int i = 0; i < num_args; ++i) {
+				ResolvedExpr arg = resolve_expr_expected(args[i], type->array.base);
 				(void)arg;
 			}
 		} else {
-			for (int i = 0; i < expr->compound.num_args; ++i) {
-				ResolvedExpr arg = resolve_expr(expr->compound.args[i]);
+			assert(type->kind == TYPE_STRUCT || type->kind == TYPE_UNION);
+			for (int i = 0; i < num_args; ++i) {
+				ResolvedExpr arg = resolve_expr_expected(args[i], type->aggregate.fields[i].type);
 				(void)arg;
 			}
 		}
@@ -376,47 +410,51 @@ ResolvedExpr resolve_expr_cond(Expr *cond) {
 	return resolved;
 }
 
-
-void resolve_stmt_block(StmtBlock block);
+void resolve_stmt_block(StmtBlock block, Type *expected_ret_type);
 
 // TODO(shaw): eventually, resolve_stmt can return a struct that contains some 
 // ancillary data like control flow info
-void resolve_stmt(Stmt *stmt) {
+void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 	assert(stmt);
 	switch (stmt->kind) {
 		case STMT_CONTINUE:
 		case STMT_BREAK:
 			// do nothing
 			break;
-		case STMT_RETURN:
-			// TODO(shaw): need to pass expected type down to here so we can 
-			// type check the return value
-			resolve_expr(stmt->return_stmt.expr);
+		case STMT_RETURN: {
+			if (!stmt->return_stmt.expr) break;
+			ResolvedExpr resolved = resolve_expr(stmt->return_stmt.expr);
+			if (resolved.type != expected_ret_type) {
+				// TODO(shaw): implement a function for getting a string version of a type for printing
+				// fatal("Expected return type %s, got %s", );
+				fatal("return type does not match expected type");
+			}
 			break;
+		}
 		case STMT_BRACE_BLOCK:
-			resolve_stmt_block(stmt->block);
+			resolve_stmt_block(stmt->block, expected_ret_type);
 			break;
 		case STMT_IF: {
 			resolve_expr_cond(stmt->if_stmt.cond);
-			resolve_stmt_block(stmt->if_stmt.then_block);
+			resolve_stmt_block(stmt->if_stmt.then_block, expected_ret_type);
 			ElseIf *else_ifs = stmt->if_stmt.else_ifs;
 			for (int i = 0; i < stmt->if_stmt.num_else_ifs; ++i) {
 				resolve_expr_cond(else_ifs[i].cond);
-				resolve_stmt_block(else_ifs[i].block);
+				resolve_stmt_block(else_ifs[i].block, expected_ret_type);
 			}
-			resolve_stmt_block(stmt->if_stmt.else_block);
+			resolve_stmt_block(stmt->if_stmt.else_block, expected_ret_type);
 			break;
 		}
 		case STMT_FOR:
-			if (stmt->for_stmt.init) resolve_stmt(stmt->for_stmt.init);
+			if (stmt->for_stmt.init) resolve_stmt(stmt->for_stmt.init, expected_ret_type);
 			if (stmt->for_stmt.cond) resolve_expr(stmt->for_stmt.cond);
-			if (stmt->for_stmt.next) resolve_stmt(stmt->for_stmt.next);
-			resolve_stmt_block(stmt->for_stmt.block);
+			if (stmt->for_stmt.next) resolve_stmt(stmt->for_stmt.next, expected_ret_type);
+			resolve_stmt_block(stmt->for_stmt.block, expected_ret_type);
 			break;
 		case STMT_DO:
 		case STMT_WHILE: {
 			resolve_expr_cond(stmt->while_stmt.cond);
-			resolve_stmt_block(stmt->while_stmt.block);
+			resolve_stmt_block(stmt->while_stmt.block, expected_ret_type);
 			break;
 		}
 		/*
@@ -440,7 +478,9 @@ void resolve_stmt(Stmt *stmt) {
 				ResolvedExpr resolved = resolve_expr_expected(stmt->init.expr, type);
 				type = resolved.type;
 			}
-			// TODO(shaw): add symbol to current scope
+			Decl *decl = decl_var(stmt->init.name, stmt->init.type, stmt->init.expr);
+			Sym *sym = sym_init(decl, type);
+			sym_push_scoped(sym);
 			break;
 		}
 		case STMT_EXPR:
@@ -452,10 +492,12 @@ void resolve_stmt(Stmt *stmt) {
 	}
 }
 
-void resolve_stmt_block(StmtBlock block) {
+void resolve_stmt_block(StmtBlock block, Type *expected_ret_type) {
+	Sym **scope_start = sym_enter_scope();
 	for (int i = 0; i < block.num_stmts; ++i) {
-		resolve_stmt(block.stmts[i]);
+		resolve_stmt(block.stmts[i], expected_ret_type);
 	}
+	sym_leave_scope(scope_start);
 }
 
 Type *resolve_decl_const(Decl *decl, int64_t *val) {
@@ -497,11 +539,14 @@ Type *resolve_decl_func(Decl *decl) {
 		da_push(params, (TypeField){ .name=param.name, .type=resolve_typespec(param.type) });
 	}
 
-	Type *ret = resolve_typespec(decl->func.ret_type);
-	
-	resolve_stmt_block(decl->func.block);
+	Type *ret_type = resolve_typespec(decl->func.ret_type);
 
-	return type_func(params, num_params, ret);
+	// TODO(shaw): should resolving the function body happen here?
+	// or lazily only when we really need to know the function body
+	// similar to complete_type()
+	resolve_stmt_block(decl->func.block, ret_type);
+
+	return type_func(params, num_params, ret_type);
 }
 
 
@@ -564,9 +609,10 @@ void resolve_test(void) {
     sym_put_type(str_intern("char"), type_char);
 
     char *decls[] = {
+		"var result: int = 69;",
 		"func f1(start: Vec3, end: Vec3): Vec3 { result: Vec3 = {6, 6, 6}; return result; }",
 		"struct Vec3 { x: int, y: int, z: int }",
-		
+
 		/*
 		"var vec_ptr: Vec2*;",
 		"var accel = Vec2{ 1, 2 };",
@@ -574,7 +620,7 @@ void resolve_test(void) {
 		"var pos: Vec2 = Vec2{ 6, 9 };",
 		"struct Vec2 { x: int; y: int; }",
 		"var vecs: Vec2[2][2] = {{{1,2},{3,4}}, {{5,6},{7,8}}};",
-
+		
 		
 		"var i: int = 69;",
 		"struct Vec2 { x: int; y: int*; }",
@@ -604,6 +650,7 @@ void resolve_test(void) {
 		/*
 		// Negative (failing) tests
 		"var accel = { 1, 2 };", // type cannot be inferred
+		"func f2(start: int, end: int): int* { result: int = 69; return result; }",
 		*/
     };
 
