@@ -14,11 +14,11 @@ TODO:
 
 [ ] fill out expression resolution 
 	[X] binary
-	[ ] ternary
+	[X] ternary
 	[ ] cast
 	[ ] call
-	[ ] index
-	[ ] field
+	[X] index
+	[X] field
 
 [X] scoped symbols (ex: variables in function bodies)
 

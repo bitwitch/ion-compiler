@@ -290,6 +290,8 @@ ResolvedExpr resolve_expr_unary(Expr *expr) {
 	case '!':
 		assert(operand.type->kind == TYPE_INT);
 		return resolved_rvalue(operand.type);
+	case '-':
+		return resolved_rvalue(operand.type);
     default:
         assert(0);
         return resolved_null;
@@ -311,15 +313,21 @@ ResolvedExpr resolve_expr_name(Expr *expr) {
         return resolved_null;
     }
 }
+ResolvedExpr resolve_expr(Expr *expr);
+
+ResolvedExpr resolve_expr_cond(Expr *cond) {
+	ResolvedExpr resolved = resolve_expr(cond);
+	if (resolved.type != type_int)
+		fatal("condition must have type int");
+	return resolved;
+}
 
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
-    ResolvedExpr resolved = {0};
     switch (expr->kind) {
     case EXPR_INT: 
         return resolved_const(expr->int_val);
     case EXPR_FLOAT:
-        assert(0);
-        break;
+		return resolved_rvalue(type_float);
     case EXPR_NAME:
         return resolve_expr_name(expr);
     case EXPR_UNARY:
@@ -340,12 +348,16 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		}
 		return resolved_rvalue(left.type);
 	}
-	/*
-    case EXPR_TERNARY:
-        resolve_expr(expr->ternary.cond);
-        resolve_expr(expr->ternary.then_expr);
-        resolve_expr(expr->ternary.else_expr);
-        break;
+	case EXPR_TERNARY: {
+		ResolvedExpr cond_expr = resolve_expr_cond(expr->ternary.cond);
+		ResolvedExpr then_expr = resolve_expr(expr->ternary.then_expr);
+		ResolvedExpr else_expr = resolve_expr(expr->ternary.else_expr);
+		if (then_expr.type != else_expr.type) {
+			fatal("Type mismatch in ternary expression, else expr does not match then expr");
+		}
+		return resolved_rvalue(then_expr.type);
+	}
+		/*
     case EXPR_CAST:
         resolve_typespec(expr->cast.type);
         resolve_expr(expr->cast.expr);
@@ -355,17 +367,37 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
         for (int i=0; i<expr->call.num_args; ++i)
             resolve_expr(expr->call.args[i]);
         break;
-    case EXPR_INDEX:
-        resolve_expr(expr->index.expr);
-        resolve_expr(expr->index.index);
-        break;
-    case EXPR_FIELD:
-        resolve_expr(expr->field.expr);
-        resolve_name(expr->field.name);
-        break;
-    */
+		*/
+	case EXPR_INDEX: {
+		ResolvedExpr resolved_expr  = resolve_expr(expr->index.expr);
+		ResolvedExpr index = resolve_expr(expr->index.index);
+		Type *type = resolved_expr.type;
+		if (type->kind == TYPE_ARRAY) {
+			return resolved_lvalue(type->array.base);
+		} else if (type->kind == TYPE_PTR) {
+			return resolved_lvalue(type->ptr.base);
+		} else {
+			fatal("Attempting to index a non array or pointer type");
+			return resolved_null;
+		}
+	}
+	case EXPR_FIELD: {
+		ResolvedExpr base = resolve_expr(expr->field.expr);
+		complete_type(base.type);
+		if (base.type->kind != TYPE_STRUCT && base.type->kind != TYPE_UNION) {
+			fatal("Attempting to access a field of a non struct or union");
+		}
+		TypeField *fields = base.type->aggregate.fields;
+		int num_fields =  base.type->aggregate.num_fields;
+		for (int i = 0; i < num_fields; ++i) {
+			if (expr->field.name == fields[i].name) {
+				return resolved_lvalue(fields[i].type);
+			}
+		}
+		fatal("%s is not a field of %s", expr->field.name, base.type->sym->name);
+		break;
+	}
 	case EXPR_COMPOUND: {
-
 		if (!expr->compound.type && !expected_type) {
 			fatal("Compound literal is missing a type specification in a context where its type cannot be inferred.");
 			break;
@@ -400,7 +432,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
         assert(0);
         break;
     }
-    return resolved;
+    return resolved_null;
 
 }
 
@@ -408,12 +440,7 @@ ResolvedExpr resolve_expr(Expr *expr) {
 	return resolve_expr_expected(expr, NULL);
 }
 
-ResolvedExpr resolve_expr_cond(Expr *cond) {
-	ResolvedExpr resolved = resolve_expr(cond);
-	if (resolved.type != type_int)
-		fatal("condition must have type int");
-	return resolved;
-}
+
 
 void resolve_stmt_block(StmtBlock block, Type *expected_ret_type);
 
@@ -630,9 +657,10 @@ void resolve_test(void) {
     sym_put_type(str_intern("int"), type_int);
     sym_put_type(str_intern("float"), type_float);
     sym_put_type(str_intern("char"), type_char);
-
+	
     char *decls[] = {
-
+		"struct Vec2 { x: int; y: int; }",
+		
 		"func test1(): void {"
 		"	count := 0;"
 		"	quit := 0;"
@@ -645,8 +673,17 @@ void resolve_test(void) {
 		"			count += 2;"
 		"		}"
 		"	}"
+		"	is_true := 1;"
+		"	tern_result := is_true ? 69 : 420;"
+		"	v := Vec2{3, 6};"
+		"   x := v.x;"
+		"	arr: int[5] = {1,2,3,4,5};"
+		"	num := arr[3];"
+		"	ptr := &arr[2];"
+		"	num2 := ptr[-1];"
 		"}",
 
+		"var global_v2: Vec2 = { 2, 4 };",
 
 		"func fib(n: int): int {"
 		"	result := 1;"
