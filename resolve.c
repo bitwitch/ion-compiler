@@ -372,12 +372,12 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		}
 		Type *type = resolved.type;
 		if (expr->call.num_args != type->func.num_params) {
-			fatal("Not enough arguments passed to function %s", type->sym->name);
+			fatal("not enough arguments passed to function %s", type->sym->name);
 			return resolved_null;
 		}
 		TypeField *params = type->func.params;
 		for (int i = 0; i < expr->call.num_args; ++i) {
-			ResolvedExpr arg = resolve_expr(expr->call.args[i]);
+			ResolvedExpr arg = resolve_expr_expected(expr->call.args[i], params[i].type);
 			if (arg.type != params[i].type) {
 				fatal("Type mismatch in function call. Expected %s for parameter %s, got %s", 
 				      params[i].type->sym->name, params[i].name, arg.type->sym->name);
@@ -474,6 +474,18 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 		case STMT_BREAK:
 			// do nothing
 			break;
+		case STMT_EXPR:
+			resolve_expr(stmt->expr);
+			break;
+		case STMT_BRACE_BLOCK:
+			resolve_stmt_block(stmt->block, expected_ret_type);
+			break;
+		case STMT_DO:
+		case STMT_WHILE:
+			resolve_expr_cond(stmt->while_stmt.cond);
+			resolve_stmt_block(stmt->while_stmt.block, expected_ret_type);
+			break;
+
 		case STMT_RETURN: {
 			if (!stmt->return_stmt.expr) break;
 			ResolvedExpr resolved = resolve_expr(stmt->return_stmt.expr);
@@ -484,9 +496,7 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 			}
 			break;
 		}
-		case STMT_BRACE_BLOCK:
-			resolve_stmt_block(stmt->block, expected_ret_type);
-			break;
+
 		case STMT_IF: {
 			resolve_expr_cond(stmt->if_stmt.cond);
 			resolve_stmt_block(stmt->if_stmt.then_block, expected_ret_type);
@@ -498,6 +508,7 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 			resolve_stmt_block(stmt->if_stmt.else_block, expected_ret_type);
 			break;
 		}
+
 		case STMT_FOR: {
 			Sym **scope_start = sym_enter_scope();
 			if (stmt->for_stmt.init) resolve_stmt(stmt->for_stmt.init, expected_ret_type);
@@ -507,21 +518,29 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 			sym_leave_scope(scope_start);
 			break;
 		}
-		case STMT_DO:
-		case STMT_WHILE: {
-			resolve_expr_cond(stmt->while_stmt.cond);
-			resolve_stmt_block(stmt->while_stmt.block, expected_ret_type);
-			break;
-		}
-		/*
-		case STMT_SWITCH:
-			resolve_expr(stmt->switch_stmt.expr);
+
+		case STMT_SWITCH: {
+			ResolvedExpr expr = resolve_expr(stmt->switch_stmt.expr);
+			if (expr.type->kind != TYPE_INT) {
+				fatal("switch expression must have type int");
+			}
 			int num_cases = stmt->switch_stmt.num_cases;
 			SwitchCase *cases = stmt->switch_stmt.cases;
 			for (int i = 0; i < num_cases; ++i) {
-				
+				SwitchCase c = cases[i];
+				if (!c.is_default) {
+					for (int j = 0; j < c.num_exprs; ++j) {
+						ResolvedExpr resolved = resolve_expr(c.exprs[j]);
+						if (resolved.type->kind != TYPE_INT) {
+							fatal("case expression must have type int");
+						}
+					}
+				}
+				resolve_stmt_block(c.block, expected_ret_type);
 			}
-		*/
+			break;
+		}
+		
 		case STMT_ASSIGN: {
 			ResolvedExpr left = resolve_expr(stmt->assign.left);
 			if (stmt->assign.right) {
@@ -532,6 +551,7 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 			}
 			break;
 		}
+
 		case STMT_INIT: {
 			Type *type = NULL;
 			if (stmt->init.type) 
@@ -545,9 +565,7 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 			sym_push_scoped(sym);
 			break;
 		}
-		case STMT_EXPR:
-			resolve_expr(stmt->expr);
-			break;
+
 		default:
 			assert(0);
 			break;
@@ -704,9 +722,20 @@ void resolve_test(void) {
 		"	num2 := ptr[-1];"
 		"	fib_result := fib(num2);"
 		"	as_float := cast(float, fib_result);"
+		"	dot_product := vec3_dot({1,2,3}, {4,5,6});"
+		"	i := 2;"
+		"	switch (v.y) {"
+		"		case 1: i += 1; break;"
+		"		case 2: i += 2; break;"
+		"		default: i = 0; break;"
+		"	}"
 		"}",
 
-		"var global_v2: Vec2 = { 2, 4 };",
+		"func vec3_dot(a: Vec3, b: Vec3): float {"
+		"	return a.x*b.x + a.y*b.y + a.z*b.z;"
+		"}",
+
+		"struct Vec3 { x: float; y: float; z: float }",
 
 		"func fib(n: int): int {"
 		"	result := 1;"

@@ -3,10 +3,10 @@ TODO:
 [ ] type inference
 	[X] handle var decls that dont have an explicit type, these can infer the type
       from the expr.
-	[ ] function args in call  
+	[X] function args in call  
 
 [ ] type checking
-	[ ] function arguments in a call
+	[X] function arguments in a call
 	[X] compound literal args
 	[X] return type
 
