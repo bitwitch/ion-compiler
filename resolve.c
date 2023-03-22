@@ -89,8 +89,6 @@ Sym *sym_type(char *name, Type *type) {
     return sym;
 }
 
-// this is meant for init statements, therefore the symbol is not added to
-// global_syms. it will likely be pushed to the local symbol table by the caller
 Sym *sym_init(Decl *decl, Type *type) {
 	assert(decl->kind == DECL_VAR);
 	Sym *sym = sym_decl(decl);
@@ -289,6 +287,9 @@ ResolvedExpr resolve_expr_unary(Expr *expr) {
             fatal("Cannot take the address of a non-lvalue");
         }
         return resolved_rvalue(type_ptr(operand.type));
+	case '!':
+		assert(operand.type->kind == TYPE_INT);
+		return resolved_rvalue(operand.type);
     default:
         assert(0);
         return resolved_null;
@@ -330,12 +331,16 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
     case EXPR_SIZEOF_TYPE: {
         Type *type = resolve_typespec(expr->sizeof_type);
         return resolved_const(type->size);
-    }
-        /*
-    case EXPR_BINARY: 
-        resolve_expr(expr->binary.left);
-        resolve_expr(expr->binary.right);
-        break;
+	}
+	case EXPR_BINARY: {
+		ResolvedExpr left  = resolve_expr(expr->binary.left);
+		ResolvedExpr right = resolve_expr(expr->binary.right);
+		if (left.type != right.type) {
+			fatal("Type mismatch for left and right side of binary expression");
+		}
+		return resolved_rvalue(left.type);
+	}
+	/*
     case EXPR_TERNARY:
         resolve_expr(expr->ternary.cond);
         resolve_expr(expr->ternary.then_expr);
@@ -445,12 +450,15 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 			resolve_stmt_block(stmt->if_stmt.else_block, expected_ret_type);
 			break;
 		}
-		case STMT_FOR:
+		case STMT_FOR: {
+			Sym **scope_start = sym_enter_scope();
 			if (stmt->for_stmt.init) resolve_stmt(stmt->for_stmt.init, expected_ret_type);
 			if (stmt->for_stmt.cond) resolve_expr(stmt->for_stmt.cond);
 			if (stmt->for_stmt.next) resolve_stmt(stmt->for_stmt.next, expected_ret_type);
 			resolve_stmt_block(stmt->for_stmt.block, expected_ret_type);
+			sym_leave_scope(scope_start);
 			break;
+		}
 		case STMT_DO:
 		case STMT_WHILE: {
 			resolve_expr_cond(stmt->while_stmt.cond);
@@ -466,10 +474,16 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 				
 			}
 		*/
-		case STMT_ASSIGN:
-			resolve_expr(stmt->assign.left);
-			resolve_expr(stmt->assign.right);
+		case STMT_ASSIGN: {
+			ResolvedExpr left = resolve_expr(stmt->assign.left);
+			if (stmt->assign.right) {
+				ResolvedExpr right = resolve_expr(stmt->assign.right);
+				if (left.type != right.type) {
+					fatal("Type mismatch for left and right side of assignment statement");
+				}
+			}
 			break;
+		}
 		case STMT_INIT: {
 			Type *type = NULL;
 			if (stmt->init.type) 
@@ -544,7 +558,15 @@ Type *resolve_decl_func(Decl *decl) {
 	// TODO(shaw): should resolving the function body happen here?
 	// or lazily only when we really need to know the function body
 	// similar to complete_type()
+	Sym **scope_start = sym_enter_scope();
+	for (int i = 0; i < num_params; ++i) {
+		FuncParam param = decl->func.params[i];
+		Decl *decl = decl_var(param.name, param.type, NULL);
+		Sym *sym = sym_init(decl, params[i].type);
+		sym_push_scoped(sym);
+	}
 	resolve_stmt_block(decl->func.block, ret_type);
+	sym_leave_scope(scope_start);
 
 	return type_func(params, num_params, ret_type);
 }
@@ -604,16 +626,43 @@ Sym *resolve_name(char *name) {
 
 void resolve_test(void) {
 	// insert primative types into the symbol table at startup 
+	sym_put_type(str_intern("void"), type_void);
     sym_put_type(str_intern("int"), type_int);
     sym_put_type(str_intern("float"), type_float);
     sym_put_type(str_intern("char"), type_char);
 
     char *decls[] = {
+
+		"func test1(): void {"
+		"	count := 0;"
+		"	quit := 0;"
+		"	while (!quit) {"
+		"		if (count > 99) {"
+		"			quit = 1;"
+		"		} else if (count % 2 == 0) {"
+		"			count++;"
+		"		} else {"
+		"			count += 2;"
+		"		}"
+		"	}"
+		"}",
+
+
+		"func fib(n: int): int {"
+		"	result := 1;"
+		"	for (i := 1; i<n; i++) {"
+		"		result += i;"
+		"	}"
+		"	return result;"
+		"}",
+		
+	
+		/*
 		"var result: int = 69;",
 		"func f1(start: Vec3, end: Vec3): Vec3 { result: Vec3 = {6, 6, 6}; return result; }",
 		"struct Vec3 { x: int, y: int, z: int }",
 
-		/*
+		
 		"var vec_ptr: Vec2*;",
 		"var accel = Vec2{ 1, 2 };",
 		"var vel: Vec2 = { 1, 2 };",

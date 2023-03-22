@@ -1,23 +1,34 @@
 TODO:
 
 [ ] type inference
-  [X] handle var decls that dont have an explicit type, these can infer the type
+	[X] handle var decls that dont have an explicit type, these can infer the type
       from the expr.
+	[ ] function args in call  
 
 [ ] type checking
 	[ ] function arguments in a call
 	[X] compound literal args
 	[X] return type
 
-[ ] resolving function bodies
+[ ] resolving function bodies (statements)
 
-[ ] scoped symbols (ex: variables in function bodies)
+[ ] fill out expression resolution 
+	[X] binary
+	[ ] ternary
+	[ ] cast
+	[ ] call
+	[ ] index
+	[ ] field
+
+[X] scoped symbols (ex: variables in function bodies)
 
 [ ] type size and alignment
 
-[ ] fill out expression resolution 
+[ ] pre increment/decrement operators
 
 [ ] tracking source code position (line and column)
+
+[ ] handle bools and the identifiers true and false
 
 [X] remove redundant expr kinds: "EXPR_OR, EXPR_AND, EXPR_CMP"
 

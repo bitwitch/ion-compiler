@@ -10,6 +10,7 @@ typedef enum {
     TYPE_NONE,
     TYPE_INCOMPLETE,
     TYPE_COMPLETING,
+	TYPE_VOID,
     TYPE_INT,
     TYPE_CHAR,
     TYPE_FLOAT,
@@ -23,11 +24,9 @@ typedef enum {
 } TypeKind;
 
 typedef struct {
-    char *name;
-    Type *type;
+    char *name; // field name
+    Type *type; // field type
 } TypeField;
-
-
 
 struct Type {
     TypeKind kind;
@@ -58,6 +57,7 @@ Arena type_arena;
 BUF(Type **cached_ptr_types);
 BUF(Type **cached_array_types);
 BUF(Type **cached_func_types);
+Type *type_void  = &(Type){ .kind = TYPE_VOID };
 Type *type_int   = &(Type){ .kind = TYPE_INT,   .size = INT_SIZE,   .align = INT_SIZE };
 Type *type_char  = &(Type){ .kind = TYPE_CHAR,  .size = CHAR_SIZE,  .align = CHAR_SIZE };
 Type *type_float = &(Type){ .kind = TYPE_FLOAT, .size = FLOAT_SIZE, .align = FLOAT_SIZE };
