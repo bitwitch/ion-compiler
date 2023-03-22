@@ -340,6 +340,11 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
         Type *type = resolve_typespec(expr->sizeof_type);
         return resolved_const(type->size);
 	}
+	case EXPR_CAST: {
+		Type *type = resolve_typespec(expr->cast.type);
+		ResolvedExpr resolved_expr = resolve_expr(expr->cast.expr);
+		return resolved_rvalue(type);
+	}
 	case EXPR_BINARY: {
 		ResolvedExpr left  = resolve_expr(expr->binary.left);
 		ResolvedExpr right = resolve_expr(expr->binary.right);
@@ -348,6 +353,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		}
 		return resolved_rvalue(left.type);
 	}
+
 	case EXPR_TERNARY: {
 		ResolvedExpr cond_expr = resolve_expr_cond(expr->ternary.cond);
 		ResolvedExpr then_expr = resolve_expr(expr->ternary.then_expr);
@@ -357,17 +363,29 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		}
 		return resolved_rvalue(then_expr.type);
 	}
-		/*
-    case EXPR_CAST:
-        resolve_typespec(expr->cast.type);
-        resolve_expr(expr->cast.expr);
-        break;
-    case EXPR_CALL:
-        resolve_expr(expr->call.expr);
-        for (int i=0; i<expr->call.num_args; ++i)
-            resolve_expr(expr->call.args[i]);
-        break;
-		*/
+
+	case EXPR_CALL: {
+		ResolvedExpr resolved = resolve_expr(expr->call.expr);
+		if (resolved.type->kind != TYPE_FUNC) {
+			fatal("Attempting to call %s which is not a function", expr->call.expr->name);
+			return resolved_null;
+		}
+		Type *type = resolved.type;
+		if (expr->call.num_args != type->func.num_params) {
+			fatal("Not enough arguments passed to function %s", type->sym->name);
+			return resolved_null;
+		}
+		TypeField *params = type->func.params;
+		for (int i = 0; i < expr->call.num_args; ++i) {
+			ResolvedExpr arg = resolve_expr(expr->call.args[i]);
+			if (arg.type != params[i].type) {
+				fatal("Type mismatch in function call. Expected %s for parameter %s, got %s", 
+				      params[i].type->sym->name, params[i].name, arg.type->sym->name);
+			}
+		}
+		return resolved_rvalue(type->func.ret);
+	}
+	
 	case EXPR_INDEX: {
 		ResolvedExpr resolved_expr  = resolve_expr(expr->index.expr);
 		ResolvedExpr index = resolve_expr(expr->index.index);
@@ -381,6 +399,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 			return resolved_null;
 		}
 	}
+
 	case EXPR_FIELD: {
 		ResolvedExpr base = resolve_expr(expr->field.expr);
 		complete_type(base.type);
@@ -397,6 +416,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		fatal("%s is not a field of %s", expr->field.name, base.type->sym->name);
 		break;
 	}
+
 	case EXPR_COMPOUND: {
 		if (!expr->compound.type && !expected_type) {
 			fatal("Compound literal is missing a type specification in a context where its type cannot be inferred.");
@@ -428,6 +448,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		// literal should be r-value, but not totally sure
 		return resolved_rvalue(type);
 	}
+
     default:
         assert(0);
         break;
@@ -681,6 +702,8 @@ void resolve_test(void) {
 		"	num := arr[3];"
 		"	ptr := &arr[2];"
 		"	num2 := ptr[-1];"
+		"	fib_result := fib(num2);"
+		"	as_float := cast(float, fib_result);"
 		"}",
 
 		"var global_v2: Vec2 = { 2, 4 };",

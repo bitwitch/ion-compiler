@@ -12,16 +12,6 @@ TODO:
 
 [ ] resolving function bodies (statements)
 
-[ ] fill out expression resolution 
-	[X] binary
-	[X] ternary
-	[ ] cast
-	[ ] call
-	[X] index
-	[X] field
-
-[X] scoped symbols (ex: variables in function bodies)
-
 [ ] type size and alignment
 
 [ ] pre increment/decrement operators
@@ -30,8 +20,15 @@ TODO:
 
 [ ] handle bools and the identifiers true and false
 
+[X] scoped symbols (ex: variables in function bodies)
+[X] fill out expression resolution 
+	[X] binary
+	[X] ternary
+	[X] cast
+	[X] call
+	[X] index
+	[X] field
 [X] remove redundant expr kinds: "EXPR_OR, EXPR_AND, EXPR_CMP"
-
 [X] replace system allocations with arena allocator
 
 [ ] hash table
