@@ -1,5 +1,7 @@
 Expr *parse_expr(void);
 Stmt *parse_stmt(void);
+Typespec *parse_type(void);
+FuncParam parse_decl_func_param(void);
 
 char *parse_name(void) {
     if (is_token(TOKEN_NAME)) {
@@ -8,15 +10,37 @@ char *parse_name(void) {
         return name;
     } else {
         syntax_error("Expected name, got %s", str_token_kind(token.kind));
+		assert(0);
         return NULL;
     }
 }
 
+
+Typespec *parse_type_func(void) {
+	expect_token('(');
+	BUF(Typespec **param_types) = NULL; // @LEAK
+	if (!is_token(')')) {
+		do {
+			da_push(param_types, parse_type());
+		} while (match_token(','));
+	}
+	expect_token(')');
+
+	Typespec *ret_type = NULL;
+	if (match_token(':')) {
+		ret_type = parse_type();
+	}
+
+	return typespec_func(param_types, da_len(param_types), ret_type);
+}
+
 Typespec *parse_type_base(void) {
-    if (is_token(TOKEN_NAME)) {
-        char *name = parse_name();
-        return typespec_name(name);
-    } else {
+	if (is_token(TOKEN_NAME)) {
+		char *name = parse_name();
+		return typespec_name(name);
+	} else if (match_keyword(keyword_func)) {
+		return parse_type_func();
+	} else {
         syntax_error("Unexpected token in type: %s", token_info());
         return NULL;
     }
@@ -489,13 +513,13 @@ Decl *parse_decl_aggregate(DeclKind kind) {
 }
 
 FuncParam parse_decl_func_param(void) {
-    char *name = parse_name();
-    expect_token(':');
-    Typespec *type = parse_type();
-    return (FuncParam){
-        .name = name,
-        .type = type,
-    };
+	char *name = parse_name();
+	expect_token(':');
+	Typespec *type = parse_type();
+	return (FuncParam){
+		.name = name,
+		.type = type,
+	};
 }
 
 Decl *parse_decl_func(void) {

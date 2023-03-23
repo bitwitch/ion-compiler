@@ -270,6 +270,18 @@ void print_type(Typespec *type) {
         print_type(type->array.elem);
         printf(")");
         break;
+	case TYPESPEC_FUNC:
+		printf("(func (");
+		for (int i=0; i<type->func.num_args; ++i) {
+			if (i > 0) printf(" ");
+			print_type(type->func.args[i]);
+		}
+		printf(")");
+		if (type->func.ret) {
+			printf(" ");
+			print_type(type->func.ret);
+		}
+		break;
     default:
         assert(0);
         break;

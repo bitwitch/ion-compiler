@@ -1,17 +1,5 @@
 TODO:
 
-[ ] type inference
-	[X] handle var decls that dont have an explicit type, these can infer the type
-      from the expr.
-	[X] function args in call  
-
-[ ] type checking
-	[X] function arguments in a call
-	[X] compound literal args
-	[X] return type
-
-[ ] resolving function bodies (statements)
-
 [ ] type size and alignment
 
 [ ] pre increment/decrement operators
@@ -20,6 +8,17 @@ TODO:
 
 [ ] handle bools and the identifiers true and false
 
+[X] resolve function typespecs
+
+[X] type inference
+	[X] handle var decls that dont have an explicit type, these can infer the type
+      from the expr.
+	[X] function args in call  
+[X] type checking
+	[X] function arguments in a call
+	[X] compound literal args
+	[X] return type
+[X] resolving function bodies (statements)
 [X] scoped symbols (ex: variables in function bodies)
 [X] fill out expression resolution 
 	[X] binary

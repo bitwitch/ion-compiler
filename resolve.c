@@ -225,13 +225,14 @@ Type *resolve_typespec(Typespec *typespec) {
 		}
         return sym->type;
     }
-    /*
-    case TYPESPEC_FUNC:
-        for (int i=0; i<typespec->func.num_args; ++i)
-            resolve_typespec(typespec->func.args[i]);
-        resolve_typespec(typespec->func.ret);
-        break;
-	*/
+	case TYPESPEC_FUNC: {
+		BUF(TypeField *params) = NULL;
+		for (int i = 0; i < typespec->func.num_args; ++i) {
+			da_push(params, (TypeField){ .type = resolve_typespec(typespec->func.args[i]) });
+		}
+		Type *ret_type = resolve_typespec(typespec->func.ret);
+		return type_func(params, da_len(params), ret_type);
+	}
 	case TYPESPEC_ARRAY: {
 		Type *elem_type = resolve_typespec(typespec->array.elem);
 		ResolvedExpr size = resolve_expr(typespec->array.size);
@@ -729,6 +730,9 @@ void resolve_test(void) {
 		"		case 2: i += 2; break;"
 		"		default: i = 0; break;"
 		"	}"
+		"	func_ptr: func(int): int;"
+		"	func_ptr = fib;"
+		"	func_ptr(7);"
 		"}",
 
 		"func vec3_dot(a: Vec3, b: Vec3): float {"
