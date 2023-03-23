@@ -1,15 +1,14 @@
 TODO:
 
-[ ] type size and alignment
-
-[ ] pre increment/decrement operators
-
 [ ] tracking source code position (line and column)
 
 [ ] handle bools and the identifiers true and false
 
-[X] resolve function typespecs
+[ ] array pointer decay
 
+[X] compile from a source code file
+[X] type size and alignment
+[X] resolve function typespecs
 [X] type inference
 	[X] handle var decls that dont have an explicit type, these can infer the type
       from the expr.
@@ -32,9 +31,9 @@ TODO:
 
 [ ] hash table
   [ ] replace the linear search in str_intern
-  [ ] replace other naive linear searches 
+  [ ] replace other naive linear searches
 
-[ ] order independent declarations
+[X] order independent declarations
 [ ] type resolution, type checking
 [ ] constant expression evaluation
 [ ] c code generation

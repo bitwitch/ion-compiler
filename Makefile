@@ -4,5 +4,5 @@ LFLAGS := -lm
 # NOTE(shaw): c11 is only used for anonymous unions, otherwise everything is c99
 
 .PHONY: ion
-ion: ion.c
-	$(CC) $(CFLAGS) -o ion ion.c $(LFLAGS)
+ion: main.c
+	$(CC) $(CFLAGS) -o ion main.c $(LFLAGS)

@@ -49,6 +49,92 @@ void syntax_error(char *fmt, ...) {
 }
 
 
+// File IO
+
+// this is the size of a chunk of data in each read. one is added to this in
+// the actual call to fread to leave space for a null character
+#ifndef  READFILE_CHUNK
+#define READFILE_CHUNK 2097152 // 2MiB
+#endif
+
+#define  READ_ENTIRE_FILE_OK          0  /* Success */
+#define  READ_ENTIRE_FILE_INVALID    -1  /* Invalid parameters */
+#define  READ_ENTIRE_FILE_ERROR      -2  /* Stream error */
+#define  READ_ENTIRE_FILE_TOOMUCH    -3  /* Too much input */
+#define  READ_ENTIRE_FILE_NOMEM      -4  /* Out of memory */
+
+typedef enum {
+	MODE_READ_TEXT,
+	MODE_READ_BINARY
+} File_Read_Mode;
+
+int read_entire_file(FILE *fp, char **dataptr, size_t *sizeptr) {
+	/*
+	* See answer by Nominal Animal (note this is not the accepted answer)
+	* https://stackoverflow.com/questions/14002954/c-programming-how-to-read-the-whole-file-contents-into-a-buffer#answer-44894946
+	*/
+	char *data = NULL, *temp;
+	uint64_t bytes_allocated = 0;
+	uint64_t read_so_far = 0;
+	uint64_t n; // bytes read in a single fread call
+
+	/* None of the parameters can be NULL. */
+	if (fp == NULL || dataptr == NULL || sizeptr == NULL)
+		return READ_ENTIRE_FILE_INVALID;
+
+	/* A read error already occurred? */
+	if (ferror(fp))
+		return READ_ENTIRE_FILE_ERROR;
+
+	while (1) {
+		/* first check if buffer is large enough to read another chunk */
+		uint64_t new_size = read_so_far + READFILE_CHUNK + 1;
+
+		if (bytes_allocated < new_size) {
+			/* need to grow the buffer */
+			bytes_allocated = new_size;
+
+			/* overflow check */
+			if (new_size <= read_so_far) {
+				free(data);
+				return READ_ENTIRE_FILE_TOOMUCH;
+			}
+
+			temp = realloc(data, new_size);
+			if (!temp) {
+				free(data);
+				return READ_ENTIRE_FILE_NOMEM;
+			}
+			data = temp;
+		}
+
+		/* read in a chunk */
+		n = fread(data+read_so_far, sizeof(char), READFILE_CHUNK, fp);
+		if (n == 0)
+			break;
+
+		read_so_far += n;
+	}
+
+	if (ferror(fp)) {
+		free(data);
+		return READ_ENTIRE_FILE_ERROR;
+	}
+
+	/* resize the buffer to the exact length of the file (plus 1 for null termination) */
+	temp = realloc(data, read_so_far + 1);
+	if (!temp) {
+		free(data);
+		return READ_ENTIRE_FILE_NOMEM;
+	}
+	data = temp;
+	data[read_so_far] = '\0';
+
+	*dataptr = data;
+	*sizeptr = read_so_far;
+	return READ_ENTIRE_FILE_OK;
+}
+
 
 // dynamic array or "stretchy buffers", a la sean barrett
 // ---------------------------------------------------------------------------

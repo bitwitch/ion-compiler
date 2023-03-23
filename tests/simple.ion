@@ -1,0 +1,5 @@
+struct Vec2 { x: int; y: int; }
+
+func f1(a: int): int {
+	return a;
+}
