@@ -163,8 +163,8 @@ struct Typespec {
     union {
         char *name;
         struct {
-            Typespec **args;
-            int num_args;
+            Typespec **params;
+            int num_params;
             Typespec *ret;
         } func;
         struct {

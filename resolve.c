@@ -227,8 +227,8 @@ Type *resolve_typespec(Typespec *typespec) {
     }
 	case TYPESPEC_FUNC: {
 		BUF(TypeField *params) = NULL;
-		for (int i = 0; i < typespec->func.num_args; ++i) {
-			da_push(params, (TypeField){ .type = resolve_typespec(typespec->func.args[i]) });
+		for (int i = 0; i < typespec->func.num_params; ++i) {
+			da_push(params, (TypeField){ .type = resolve_typespec(typespec->func.params[i]) });
 		}
 		Type *ret_type = resolve_typespec(typespec->func.ret);
 		return type_func(params, da_len(params), ret_type);

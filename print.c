@@ -272,9 +272,9 @@ void print_type(Typespec *type) {
         break;
 	case TYPESPEC_FUNC:
 		printf("(func (");
-		for (int i=0; i<type->func.num_args; ++i) {
+		for (int i=0; i<type->func.num_params; ++i) {
 			if (i > 0) printf(" ");
-			print_type(type->func.args[i]);
+			print_type(type->func.params[i]);
 		}
 		printf(")");
 		if (type->func.ret) {

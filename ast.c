@@ -161,8 +161,8 @@ Typespec *typespec_array(Typespec *elem, Expr *size) {
 
 Typespec *typespec_func(Typespec **args, int num_args, Typespec *ret) {
     Typespec *typespec = typespec_alloc(TYPESPEC_FUNC);
-    typespec->func.args = ast_memdup(args, num_args * sizeof(*args));
-    typespec->func.num_args = num_args;
+    typespec->func.params = ast_memdup(args, num_args * sizeof(*args));
+    typespec->func.num_params = num_args;
     typespec->func.ret = ret;
     return typespec;
 }
