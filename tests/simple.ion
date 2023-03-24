@@ -1,4 +1,14 @@
 func f1(a: int): int {
+
+
+	str := "fried chicken";
+	str2: char*;
+	// TODO: this requires pointer decay
+	str2 = str;
+	str3 := "hey dude";
+	str2 = str3;
+	print(str3);
+
 	fart: bool = true;
 	// wat heppen?
 	if (fart) {
@@ -6,5 +16,10 @@ func f1(a: int): int {
 	} else {
 		return a+1;
 	}
+
+}
+
+func print(s: char*) {
+	
 }
 // dis last ting

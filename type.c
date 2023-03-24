@@ -58,11 +58,14 @@ Arena type_arena;
 BUF(Type **cached_ptr_types);
 BUF(Type **cached_array_types);
 BUF(Type **cached_func_types);
-Type *type_void  = &(Type){ .kind = TYPE_VOID };
-Type *type_int   = &(Type){ .kind = TYPE_INT,   .size = INT_SIZE,   .align = INT_SIZE };
-Type *type_char  = &(Type){ .kind = TYPE_CHAR,  .size = CHAR_SIZE,  .align = CHAR_SIZE };
-Type *type_float = &(Type){ .kind = TYPE_FLOAT, .size = FLOAT_SIZE, .align = FLOAT_SIZE };
-Type *type_bool  = &(Type){ .kind = TYPE_BOOL,  .size = INT_SIZE,   .align = INT_SIZE };
+Type *type_void   = &(Type){ .kind = TYPE_VOID };
+Type *type_int    = &(Type){ .kind = TYPE_INT,   .size = INT_SIZE,   .align = INT_SIZE };
+Type *type_char   = &(Type){ .kind = TYPE_CHAR,  .size = CHAR_SIZE,  .align = CHAR_SIZE };
+Type *type_float  = &(Type){ .kind = TYPE_FLOAT, .size = FLOAT_SIZE, .align = FLOAT_SIZE };
+Type *type_bool   = &(Type){ .kind = TYPE_BOOL,  .size = INT_SIZE,   .align = INT_SIZE };
+
+
+void complete_type(Type *type);
 
 Type *type_alloc(TypeKind kind) {
     Type *t = arena_alloc_zeroed(&type_arena, sizeof(Type));
@@ -91,6 +94,8 @@ Type *type_array(Type *base, int num_items) {
         if (cached->array.base == base && cached->array.num_items == num_items)
             return cached;
     }
+
+	complete_type(base);
 
     Type *t = type_alloc(TYPE_ARRAY);
     t->size = base->size * num_items;

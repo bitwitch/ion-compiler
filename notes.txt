@@ -1,14 +1,13 @@
 TODO:
 
-
-[ ] parse and resolve strings
-
 [ ] comments
 	[X] single line
 	[ ] multi line 
 	
 [ ] array pointer decay
 
+
+[X] parse and resolve strings
 [X] handle bools and the identifiers true and false
 [X] tracking source code position (line and column)
 [X] compile from a source code file

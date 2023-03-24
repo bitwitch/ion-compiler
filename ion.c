@@ -27,7 +27,6 @@ void compile_file(char *path) {
 	sym_put_type(str_intern("char"), type_char);
 	sym_put_type(str_intern("bool"), type_bool);
 
-
 	init_stream(path, file_data);
 
 	// parse decls until you reach end of file

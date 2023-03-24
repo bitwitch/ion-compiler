@@ -331,6 +331,9 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		return resolved_rvalue(type_float);
 	case EXPR_BOOL:
 		return resolved_rvalue(type_bool);
+	case EXPR_STR:
+		//return resolved_rvalue(type_array(type_char, strlen(expr->str_val) + 1));
+		return resolved_rvalue(type_ptr(type_char));
     case EXPR_NAME:
         return resolve_expr_name(expr);
     case EXPR_UNARY:
