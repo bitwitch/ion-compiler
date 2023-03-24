@@ -33,6 +33,7 @@ typedef enum {
     TOKEN_NOT_EQ,
     TOKEN_LT_EQ,
     TOKEN_GT_EQ,
+	TOKEN_COMMENT,
 } TokenKind;
 
 typedef enum {
@@ -314,6 +315,27 @@ repeat:
 			break;
 		}
 
+		case '/': {
+			token.kind = '/';
+			++stream;
+			if (*stream == '=') {
+				token.kind = TOKEN_DIV_EQ;
+				++stream;
+			} else if (*stream == '/') {
+				while (*stream != '\n' && *stream != '\0')
+					++stream;
+				token.str_val = str_intern_range(token.start, stream);
+				token.kind = TOKEN_COMMENT;
+				while (isspace(*stream)) ++stream;
+
+				// @HACK TEMPORARY
+				// just discarding comments for now, can think about if we want to 
+				// store them so that they can be recovered for c codegen for example
+				goto repeat;
+			}
+			break;
+		}	
+
         /*case '\'':*/
             /*scan_chr();*/
             /*break;*/
@@ -334,7 +356,7 @@ repeat:
         CASE2('=', '=', TOKEN_EQ_EQ)
         CASE2('!', '=', TOKEN_NOT_EQ)
         CASE2('*', '=', TOKEN_MUL_EQ)
-        CASE2('/', '=', TOKEN_DIV_EQ)
+        // CASE2('/', '=', TOKEN_DIV_EQ) // handled separately for comments
         CASE2('%', '=', TOKEN_MOD_EQ)
         CASE2('^', '=', TOKEN_XOR_EQ)
         CASE2(':', '=', TOKEN_AUTO_ASSIGN)

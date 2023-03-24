@@ -1,8 +1,10 @@
 func f1(a: int): int {
 	fart: bool = true;
+	// wat heppen?
 	if (fart) {
 		return a;
 	} else {
 		return a+1;
 	}
 }
+// dis last ting

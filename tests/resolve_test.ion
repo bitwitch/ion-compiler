@@ -12,10 +12,11 @@ func test1(): void {
 			count += 2;
 		}
 	}
+	// single line comment
 	is_true := 1;
 	tern_result := is_true ? 69 : 420;
 	v := Vec2{3, 6};
-  	x := v.x;
+  	x := v.x; // ooooooog
 	arr: int[5] = {1,2,3,4,5};
 	num := arr[3];
 	ptr := &arr[2];
@@ -32,6 +33,8 @@ func test1(): void {
 	func_ptr: func(int): int;
 	func_ptr = fib;
 	func_ptr(7);
+	j := x / 64;
+	j /= 2;
 }
 
 func vec3_dot(a: Vec3, b: Vec3): float {
@@ -47,3 +50,4 @@ func fib(n: int): int {
 	}
 	return result;
 }
+// at the end
