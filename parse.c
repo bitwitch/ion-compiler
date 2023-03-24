@@ -59,7 +59,6 @@ Typespec *parse_type(void) {
             type = typespec_ptr(type);
         }
     }
-
     return type;
 }
 
@@ -84,15 +83,19 @@ Expr *parse_expr_base(void) {
     } else if (is_token(TOKEN_STR)) {
         expr = expr_str(token.str_val);
         next_token();
-    } else if (is_token(TOKEN_NAME)) {
-        char *name = token.name;
-        next_token();
-        if (is_token('{')) {
-            Typespec *type = typespec_name(name);
-            expr = parse_expr_compound(type);
-        } else {
-            expr = expr_name(name);
-        }
+	} else if (is_token(TOKEN_NAME)) {
+		char *name = token.name;
+		next_token();
+		if (is_token('{')) {
+			Typespec *type = typespec_name(name);
+			expr = parse_expr_compound(type);
+		} else {
+			expr = expr_name(name);
+		}
+	} else if (match_keyword(keyword_true)) {
+		expr = expr_bool(1);
+	} else if (match_keyword(keyword_false)) {
+		expr = expr_bool(0);
     } else if (match_keyword(keyword_cast)) {
         expect_token('(');
         Typespec *type = parse_type();
@@ -617,7 +620,7 @@ void parse_expr_test(void) {
     };
 
     for (size_t i = 0; i<array_count(exprs); ++i) {
-        init_stream(exprs[i]);
+        init_stream("", exprs[i]);
         Expr *expr = parse_expr();
         print_expr(expr);
         printf("\n");
@@ -671,7 +674,7 @@ void parse_stmt_test(void) {
     };
 
     for (size_t i = 0; i<array_count(stmts); ++i) {
-        init_stream(stmts[i]);
+        init_stream("", stmts[i]);
         Stmt *stmt = parse_stmt();
         print_stmt(stmt);
         printf("\n");
@@ -707,7 +710,7 @@ void parse_decl_test(void) {
     };
 
     for (size_t i = 0; i<array_count(declarations); ++i) {
-        init_stream(declarations[i]);
+        init_stream("", declarations[i]);
         Decl *decl = parse_decl();
         print_decl(decl);
         printf("\n");

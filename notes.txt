@@ -1,11 +1,13 @@
 TODO:
 
-[ ] tracking source code position (line and column)
+[ ] parse and resolve strings
 
-[ ] handle bools and the identifiers true and false
 
 [ ] array pointer decay
 
+
+[X] handle bools and the identifiers true and false
+[X] tracking source code position (line and column)
 [X] compile from a source code file
 [X] type size and alignment
 [X] resolve function typespecs

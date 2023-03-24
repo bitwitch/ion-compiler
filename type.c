@@ -14,6 +14,7 @@ typedef enum {
     TYPE_INT,
     TYPE_CHAR,
     TYPE_FLOAT,
+	TYPE_BOOL,
     TYPE_PTR,
     TYPE_ARRAY,
     TYPE_STRUCT,
@@ -61,6 +62,7 @@ Type *type_void  = &(Type){ .kind = TYPE_VOID };
 Type *type_int   = &(Type){ .kind = TYPE_INT,   .size = INT_SIZE,   .align = INT_SIZE };
 Type *type_char  = &(Type){ .kind = TYPE_CHAR,  .size = CHAR_SIZE,  .align = CHAR_SIZE };
 Type *type_float = &(Type){ .kind = TYPE_FLOAT, .size = FLOAT_SIZE, .align = FLOAT_SIZE };
+Type *type_bool  = &(Type){ .kind = TYPE_BOOL,  .size = INT_SIZE,   .align = INT_SIZE };
 
 Type *type_alloc(TypeKind kind) {
     Type *t = arena_alloc_zeroed(&type_arena, sizeof(Type));

@@ -25,6 +25,9 @@ void print_expr(Expr *expr) {
     case EXPR_FLOAT: 
         printf("%f", expr->float_val); 
         break;
+	case EXPR_BOOL:
+		printf("%s", expr->bool_val ? "true" : "false"); 
+		break;
     case EXPR_STR: 
         printf("\"%s\"", expr->str_val); 
         break;

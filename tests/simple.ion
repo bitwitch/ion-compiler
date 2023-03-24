@@ -1,5 +1,8 @@
-struct Vec2 { x: int; y: int; }
-
 func f1(a: int): int {
-	return a;
+	fart: bool = true;
+	if (fart) {
+		return a;
+	} else {
+		return a+1;
+	}
 }

@@ -43,8 +43,14 @@ typedef enum {
 } TokenMod;
 
 typedef struct {
+	char *filepath;
+	int line;
+} SourcePos;
+
+typedef struct {
 	TokenKind kind;
 	TokenMod mod;
+	SourcePos pos;
     char *start, *end;
 	union {
 		uint64_t int_val;
@@ -57,6 +63,8 @@ typedef struct {
 
 Token token;
 char *stream;
+int current_line = 1;
+char *compilation_filepath;
 
 char *keyword_enum;
 char *keyword_typedef;
@@ -78,6 +86,8 @@ char *keyword_case;
 char *keyword_default;
 char *keyword_cast;
 char *keyword_sizeof;
+char *keyword_true;
+char *keyword_false;
 
 void init_keywords(void) {
     static bool first = true;
@@ -102,7 +112,9 @@ void init_keywords(void) {
         keyword_default = str_intern("default");
         keyword_cast = str_intern("cast");
         keyword_sizeof = str_intern("sizeof");
-    }
+		keyword_true = str_intern("true");
+		keyword_false = str_intern("false");
+	}
     first = false;
 }
 
@@ -127,8 +139,21 @@ bool is_keyword_name(char *check) {
            s == keyword_case     ||
            s == keyword_default  ||
            s == keyword_cast     ||
-           s == keyword_sizeof;
+           s == keyword_sizeof   ||
+           s == keyword_true     || 
+           s == keyword_false;
 }
+
+void syntax_error_at(char *filepath, int line, char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	printf("%s:%d: error: ", filepath, line);
+	vprintf(fmt, args);
+	printf("\n");
+	va_end(args);
+}
+#define syntax_error(fmt, ...) syntax_error_at(token.pos.filepath, token.pos.line, fmt, __VA_ARGS__)
+
 
 uint8_t char_to_digit[256] = {
     ['0'] = 0,
@@ -275,12 +300,19 @@ void next_token(void) {
 repeat:
     token.start = stream;
 	switch (*stream) {
-        case ' ': case '\n': case '\r': case '\t': case '\v':
+        case ' ': case '\r': case '\t': case '\v':
         {
             while (isspace(*stream)) ++stream;
             goto repeat;
             break;
         }
+
+		case '\n': {
+			++current_line;
+			++stream;
+			goto repeat;
+			break;
+		}
 
         /*case '\'':*/
             /*scan_chr();*/
@@ -385,14 +417,17 @@ repeat:
 			break;
         }
 	}
+	token.pos.filepath = compilation_filepath;
+	token.pos.line = current_line;
     token.end = stream;
 }
 
-void init_stream(char *source) {
+void init_stream(char *path, char *source) {
     stream = source;
+	compilation_filepath = path;
+	current_line = 1;
     next_token();
 }
-
 
 // Warning! this returns a pointer to a static buffer, so its contents will
 // change on each call
@@ -513,7 +548,7 @@ void lex_test(void) {
     init_keywords();
     {
         char *source = "+()_HELLO1,234+FOO!666";
-        init_stream(source);
+        init_stream("", source);
         assert_token('+');
         assert_token('(');
         assert_token(')');
@@ -528,7 +563,7 @@ void lex_test(void) {
     }
     {
         char *source = "239 0xc0ffee 0Xabc123 0b11011110 01234 0";
-        init_stream(source);
+        init_stream("", source);
         assert_token_int(239);
         assert_token_int(0xc0ffee);
         assert_token_int(0xabc123);
@@ -539,7 +574,7 @@ void lex_test(void) {
     }
     {
         char *source = "const a = 69;\nfunc pancake(i: int) { bake(); }";
-        init_stream(source);
+        init_stream("", source);
         assert_token_keyword(keyword_const);
         assert_token_name("a");
         assert_token('=');
@@ -562,7 +597,7 @@ void lex_test(void) {
     }
     {
         char *source = "3.14159 0.12 7. 5.0 .33";
-        init_stream(source);
+		init_stream("", source);
         assert_token_float(3.14159);
         assert_token_float(0.12);
         assert_token_float(7.0);
@@ -572,7 +607,7 @@ void lex_test(void) {
     }
     {
         char *source = "\"sally\" \"Geronimo\" fart poop 69";
-        init_stream(source);
+		init_stream("", source);
         assert_token_str("sally");
         assert_token_str("Geronimo");
         assert_token_name("fart");

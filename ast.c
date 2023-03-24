@@ -48,6 +48,12 @@ Expr *expr_str(char *val) {
     return expr;
 }
 
+Expr *expr_bool(int32_t val) {
+	Expr *expr = expr_alloc(EXPR_BOOL);
+	expr->bool_val = val;
+	return expr;
+}
+
 Expr *expr_name(char *name) {
     Expr *expr = expr_alloc(EXPR_NAME);
     expr->name = name;

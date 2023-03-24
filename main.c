@@ -29,12 +29,20 @@ void run_tests(void) {
     // parse_test();
     // resolve_test();
     type_intern_test();
-	compile_file("tests/resolve_test.ion");
+	compile_file("..\tests\resolve_test.ion");
     // printf("Tests Succeeded.\n");
 }
 
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
-    run_tests();
+	//run_tests();
+
+	if (argc < 2) {
+		printf("usage: %s <filepath>\n", argv[0]);
+		return 1;
+	}
+  	
+	compile_file(argv[1]);
+
     return 0;
 }

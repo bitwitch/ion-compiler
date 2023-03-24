@@ -39,14 +39,6 @@ void fatal(char *fmt, ...) {
     exit(1);
 }
 
-void syntax_error(char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    printf("Syntax Error: ");
-    vprintf(fmt, args);
-    printf("\n");
-    va_end(args);
-}
 
 
 // File IO

@@ -1,9 +1,12 @@
 void compile_file(char *path) {
+
 	FILE *fp = fopen(path, "r");
 	if (!fp) {
 		fprintf(stderr, "Error: failed to open %s: %s\n", path, strerror(errno));
 		return;
 	}
+
+	compilation_filepath = path;
 
 	char *file_data;
 	size_t file_size;
@@ -22,8 +25,10 @@ void compile_file(char *path) {
 	sym_put_type(str_intern("int"), type_int);
 	sym_put_type(str_intern("float"), type_float);
 	sym_put_type(str_intern("char"), type_char);
+	sym_put_type(str_intern("bool"), type_bool);
 
-	init_stream(file_data);
+
+	init_stream(path, file_data);
 
 	// parse decls until you reach end of file
 	while (token.kind != TOKEN_EOF) {

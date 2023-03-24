@@ -318,8 +318,8 @@ ResolvedExpr resolve_expr(Expr *expr);
 
 ResolvedExpr resolve_expr_cond(Expr *cond) {
 	ResolvedExpr resolved = resolve_expr(cond);
-	if (resolved.type != type_int)
-		fatal("condition must have type int");
+	if (resolved.type != type_int && resolved.type != type_bool)
+		fatal("condition must have type int or bool");
 	return resolved;
 }
 
@@ -329,6 +329,8 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
         return resolved_const(expr->int_val);
     case EXPR_FLOAT:
 		return resolved_rvalue(type_float);
+	case EXPR_BOOL:
+		return resolved_rvalue(type_bool);
     case EXPR_NAME:
         return resolve_expr_name(expr);
     case EXPR_UNARY:
@@ -797,7 +799,7 @@ void resolve_test(void) {
     };
 
     for (size_t i = 0; i<array_count(decls); ++i) {
-        init_stream(decls[i]);
+        init_stream("", decls[i]);
         Decl *decl = parse_decl();
         sym_put_decl(decl);
     }

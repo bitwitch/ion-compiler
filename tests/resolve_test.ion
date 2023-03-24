@@ -15,7 +15,7 @@ func test1(): void {
 	is_true := 1;
 	tern_result := is_true ? 69 : 420;
 	v := Vec2{3, 6};
-   x := v.x;
+  	x := v.x;
 	arr: int[5] = {1,2,3,4,5};
 	num := arr[3];
 	ptr := &arr[2];

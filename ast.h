@@ -48,6 +48,7 @@ typespec = NAME | '(' ':' type ')'
 base_expr = INT
           | FLOAT
           | STR
+		  | TRUE | FALSE
           | NAME
           | CAST '(' type ',' expr ')'
           | '(' expr ')'
@@ -81,6 +82,7 @@ typedef enum {
     EXPR_INT,
     EXPR_CHAR,
     EXPR_FLOAT,
+	EXPR_BOOL,
     EXPR_STR,
     EXPR_NAME,
     EXPR_TYPESPEC,
@@ -95,9 +97,11 @@ typedef enum {
 
 struct Expr {
     ExprKind kind;
+	SourcePos pos;
     union {
         int32_t int_val;
         double float_val;
+		int32_t bool_val;
         char *str_val;
         char *name;
         Expr *sizeof_expr;
