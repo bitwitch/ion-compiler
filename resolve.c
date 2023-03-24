@@ -622,7 +622,9 @@ Type *resolve_decl_func(Decl *decl) {
 		da_push(params, (TypeField){ .name=param.name, .type=resolve_typespec(param.type) });
 	}
 
-	Type *ret_type = resolve_typespec(decl->func.ret_type);
+	Type *ret_type = type_void;
+	if (decl->func.ret_type)
+		ret_type = resolve_typespec(decl->func.ret_type);
 
 	// TODO(shaw): should resolving the function body happen here?
 	// or lazily only when we really need to know the function body
