@@ -24,7 +24,7 @@ typedef enum SymState {
 
 // struct Sym is typedefed to Sym in type.c
 struct Sym {
-    const char *name;
+    char *name;
     SymKind kind;
     SymState state;
     Decl *decl;
@@ -121,6 +121,7 @@ void sym_put_decl(Decl *decl) {
 void sym_put_type(char *name, Type *type) {
     assert(sym_get(name) == NULL);
     Sym *sym = sym_type(name, type);
+	type->sym = sym;
     da_push(global_syms, sym);
 }
 
@@ -138,6 +139,31 @@ void sym_push_scoped(Sym *sym) {
 	}
 	*local_syms_end++ = sym;
 }
+
+char *type_to_str(Type *type) {
+	if (type->sym) 
+		return type->sym->name;
+
+	/*
+			switch (type->kind) {
+			case TYPE_VOID,
+			case TYPE_INT,
+			case TYPE_CHAR,
+			case TYPE_FLOAT,
+			case TYPE_BOOL,
+			case TYPE_PTR,
+			case TYPE_ARRAY,
+			case TYPE_STRUCT,
+			case TYPE_UNION,
+			case TYPE_ENUM,
+			case TYPE_FUNC,
+			case TYPE_CONST,
+			}
+			*/
+	assert(0);
+	return NULL;
+}
+
 
 Sym *resolve_name(char *name);
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type);
@@ -219,8 +245,7 @@ Type *resolve_typespec(Typespec *typespec) {
     {
         Sym *sym = resolve_name(typespec->name);
 		if (sym->kind != SYM_TYPE) {
-			// TODO: fatal(typespec->pos, "%s must denote a type", name);
-			fatal("%s must denote a type", typespec->name);
+			semantic_error(typespec->pos, "%s must denote a type", typespec->name);
 			return NULL;
 		}
         return sym->type;
@@ -237,7 +262,7 @@ Type *resolve_typespec(Typespec *typespec) {
 		Type *elem_type = resolve_typespec(typespec->array.elem);
 		ResolvedExpr size = resolve_expr(typespec->array.size);
 		if (!size.is_const) {
-			fatal("Array size must be a constant");
+			semantic_error(typespec->pos, "Array size must be a constant");
 			return NULL;
 		}
 		return type_array(elem_type, size.val);
@@ -280,12 +305,12 @@ ResolvedExpr resolve_expr_unary(Expr *expr) {
     switch (expr->unary.op) {
     case '*':
         if (operand.type->kind != TYPE_PTR) {
-            fatal("Cannot dereference a non-pointer type");
+            semantic_error(expr->pos, "Cannot dereference a non-pointer type");
         }
         return resolved_lvalue(operand.type->ptr.base);
     case '&':
         if (!operand.is_lvalue) {
-            fatal("Cannot take the address of a non-lvalue");
+			semantic_error(expr->pos, "Cannot take the address of a non-lvalue");
         }
         return resolved_rvalue(type_ptr(operand.type));
 	case '!':
@@ -310,7 +335,7 @@ ResolvedExpr resolve_expr_name(Expr *expr) {
     else if (sym->kind == SYM_FUNC) 
         return resolved_rvalue(sym->type);
     else {
-        fatal("%s must be a var or const", expr->name);
+		semantic_error(expr->pos, "%s must be a var or const", expr->name);
         return resolved_null;
     }
 }
@@ -319,7 +344,7 @@ ResolvedExpr resolve_expr(Expr *expr);
 ResolvedExpr resolve_expr_cond(Expr *cond) {
 	ResolvedExpr resolved = resolve_expr(cond);
 	if (resolved.type != type_int && resolved.type != type_bool)
-		fatal("condition must have type int or bool");
+		semantic_error(cond->pos, "condition must have type int or bool");
 	return resolved;
 }
 
@@ -355,7 +380,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		ResolvedExpr left  = resolve_expr(expr->binary.left);
 		ResolvedExpr right = resolve_expr(expr->binary.right);
 		if (left.type != right.type) {
-			fatal("Type mismatch for left and right side of binary expression");
+			semantic_error(expr->pos, "Type mismatch for left and right side of binary expression");
 		}
 		return resolved_rvalue(left.type);
 	}
@@ -365,7 +390,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		ResolvedExpr then_expr = resolve_expr(expr->ternary.then_expr);
 		ResolvedExpr else_expr = resolve_expr(expr->ternary.else_expr);
 		if (then_expr.type != else_expr.type) {
-			fatal("Type mismatch in ternary expression, else expr does not match then expr");
+			semantic_error(expr->pos, "Type mismatch in ternary expression, else expr does not match then expr");
 		}
 		return resolved_rvalue(then_expr.type);
 	}
@@ -373,19 +398,19 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 	case EXPR_CALL: {
 		ResolvedExpr resolved = resolve_expr(expr->call.expr);
 		if (resolved.type->kind != TYPE_FUNC) {
-			fatal("Attempting to call %s which is not a function", expr->call.expr->name);
+			semantic_error(expr->pos, "Attempting to call %s which is not a function", expr->call.expr->name);
 			return resolved_null;
 		}
 		Type *type = resolved.type;
 		if (expr->call.num_args != type->func.num_params) {
-			fatal("not enough arguments passed to function %s", type->sym->name);
+			semantic_error(expr->pos, "not enough arguments passed to function %s", type->sym->name);
 			return resolved_null;
 		}
 		TypeField *params = type->func.params;
 		for (int i = 0; i < expr->call.num_args; ++i) {
 			ResolvedExpr arg = resolve_expr_expected(expr->call.args[i], params[i].type);
 			if (arg.type != params[i].type) {
-				fatal("Type mismatch in function call. Expected %s for parameter %s, got %s", 
+				semantic_error(expr->pos, "Type mismatch in function call. Expected %s for parameter %s, got %s", 
 				      params[i].type->sym->name, params[i].name, arg.type->sym->name);
 			}
 		}
@@ -401,7 +426,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		} else if (type->kind == TYPE_PTR) {
 			return resolved_lvalue(type->ptr.base);
 		} else {
-			fatal("Attempting to index a non array or pointer type");
+			semantic_error(expr->pos, "Attempting to index a non array or pointer type");
 			return resolved_null;
 		}
 	}
@@ -410,7 +435,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		ResolvedExpr base = resolve_expr(expr->field.expr);
 		complete_type(base.type);
 		if (base.type->kind != TYPE_STRUCT && base.type->kind != TYPE_UNION) {
-			fatal("Attempting to access a field of a non struct or union");
+			semantic_error(expr->pos, "Attempting to access a field of a non struct or union");
 		}
 		TypeField *fields = base.type->aggregate.fields;
 		int num_fields =  base.type->aggregate.num_fields;
@@ -419,13 +444,13 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 				return resolved_lvalue(fields[i].type);
 			}
 		}
-		fatal("%s is not a field of %s", expr->field.name, base.type->sym->name);
+		semantic_error(expr->pos, "%s is not a field of %s", expr->field.name, base.type->sym->name);
 		break;
 	}
 
 	case EXPR_COMPOUND: {
 		if (!expr->compound.type && !expected_type) {
-			fatal("Compound literal is missing a type specification in a context where its type cannot be inferred.");
+			semantic_error(expr->pos, "Compound literal is missing a type specification in a context where its type cannot be inferred.");
 			break;
 		}
 
@@ -497,8 +522,11 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 			ResolvedExpr resolved = resolve_expr(stmt->return_stmt.expr);
 			if (resolved.type != expected_ret_type) {
 				// TODO(shaw): implement a function for getting a string version of a type for printing
-				// fatal("Expected return type %s, got %s", );
-				fatal("return type does not match expected type");
+				char *one = type_to_str(expected_ret_type);
+				char *two = type_to_str(resolved.type);
+				semantic_error(stmt->pos, "Expected return type %s, got %s", 
+				//	type_to_str(expected_ret_type), type_to_str(resolved.type));
+				      one, two);
 			}
 			break;
 		}
@@ -528,7 +556,7 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 		case STMT_SWITCH: {
 			ResolvedExpr expr = resolve_expr(stmt->switch_stmt.expr);
 			if (expr.type->kind != TYPE_INT) {
-				fatal("switch expression must have type int");
+				semantic_error(stmt->pos, "switch expression must have type int");
 			}
 			int num_cases = stmt->switch_stmt.num_cases;
 			SwitchCase *cases = stmt->switch_stmt.cases;
@@ -552,7 +580,7 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 			if (stmt->assign.right) {
 				ResolvedExpr right = resolve_expr(stmt->assign.right);
 				if (left.type != right.type) {
-					fatal("Type mismatch for left and right side of assignment statement");
+					semantic_error(stmt->pos, "Type mismatch for left and right side of assignment statement");
 				}
 			}
 			break;
@@ -566,7 +594,7 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 				ResolvedExpr resolved = resolve_expr_expected(stmt->init.expr, type);
 				type = resolved.type;
 			}
-			Decl *decl = decl_var(stmt->init.name, stmt->init.type, stmt->init.expr);
+			Decl *decl = decl_var(stmt->pos, stmt->init.name, stmt->init.type, stmt->init.expr);
 			Sym *sym = sym_init(decl, type);
 			sym_push_scoped(sym);
 			break;
@@ -607,7 +635,7 @@ Type *resolve_decl_var(Decl *decl) {
 		if (!type) {
 			type = resolved.type;
 		} else if (resolved.type != type) {
-            fatal("Type mismatch in var declaration");
+			semantic_error(decl->pos, "Type mismatch in var declaration");
             return NULL;
         }
     }
@@ -635,8 +663,8 @@ Type *resolve_decl_func(Decl *decl) {
 	Sym **scope_start = sym_enter_scope();
 	for (int i = 0; i < num_params; ++i) {
 		FuncParam param = decl->func.params[i];
-		Decl *decl = decl_var(param.name, param.type, NULL);
-		Sym *sym = sym_init(decl, params[i].type);
+		Decl *param_decl = decl_var(decl->pos, param.name, param.type, NULL);
+		Sym *sym = sym_init(param_decl, params[i].type);
 		sym_push_scoped(sym);
 	}
 	resolve_stmt_block(decl->func.block, ret_type);
@@ -695,7 +723,6 @@ Sym *resolve_name(char *name) {
     resolve_sym(sym);
     return sym;
 }
-
 
 
 void resolve_test(void) {

@@ -48,7 +48,7 @@ void print_expr(Expr *expr) {
         } else if (expr->binary.op == TOKEN_LOGICAL_AND) {
             printf("(and ");
         } else {
-            printf("(%s ", str_token_kind(expr->binary.op)); 
+            printf("(%s ", token_kind_to_str(expr->binary.op)); 
         }
         print_expr(expr->binary.left);
         printf(" ");
@@ -188,7 +188,7 @@ void print_stmt(Stmt *stmt) {
         printf(")");
         break;
     case STMT_ASSIGN:
-        printf("(%s ", str_token_kind(stmt->assign.op));
+        printf("(%s ", token_kind_to_str(stmt->assign.op));
         print_expr(stmt->assign.left);
         if (stmt->assign.right) {
             printf(" ");

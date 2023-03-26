@@ -58,6 +58,8 @@ Arena type_arena;
 BUF(Type **cached_ptr_types);
 BUF(Type **cached_array_types);
 BUF(Type **cached_func_types);
+
+// primative types
 Type *type_void   = &(Type){ .kind = TYPE_VOID };
 Type *type_int    = &(Type){ .kind = TYPE_INT,   .size = INT_SIZE,   .align = INT_SIZE };
 Type *type_char   = &(Type){ .kind = TYPE_CHAR,  .size = CHAR_SIZE,  .align = CHAR_SIZE };
@@ -137,6 +139,7 @@ Type *type_incomplete(Sym *sym) {
 	type->sym = sym;
 	return type;
 }
+
 
 void type_intern_test(void) {
     // primatives

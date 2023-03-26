@@ -1,4 +1,27 @@
-func main(argc: int, argv: char**): int {
-    printf("Well, hello friends\n");
-    return 0;
+func f1(a: int): int {
+
+	f: float;
+	return f;
+
+	str := "fried chicken";
+	str2: char*;
+	// TODO: this requires pointer decay
+	str2 = str;
+	str3 := "hey dude";
+	str2 = str3;
+	print(str3);
+
+	fart: bool = true;
+	// wat heppen?
+	if (fart) {
+		return a;
+	} else {
+		return a+1;
+	}
+	
 }
+
+func print(s: char*) {
+	
+}
+// dis last ting

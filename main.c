@@ -11,6 +11,7 @@
 #include <math.h>
 
 #include "common.c"
+#include "error.c"
 #include "lex.c"
 #include "ast.h"
 #include "ast.c"

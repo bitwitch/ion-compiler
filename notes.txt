@@ -6,6 +6,7 @@ TODO:
 	
 [ ] array pointer decay
 
+[ ] var args (...)
 
 [X] parse and resolve strings
 [X] handle bools and the identifiers true and false
@@ -38,12 +39,12 @@ TODO:
   [ ] replace other naive linear searches
 
 [X] order independent declarations
-[ ] type resolution, type checking
+[X] type resolution, type checking
 [ ] constant expression evaluation
 [ ] c code generation
 
-[ ] replace instances of fatal() with syntax_error() where appropriate. fatal is useful now in early development 
 [ ] improve error messages
+	[ ] replace instances of fatal() with syntax_error() where appropriate. fatal is useful now in early development 
 
 
 2023-03-19

@@ -217,7 +217,6 @@ char *str_intern_range(char *start, char *end) {
     char *str = xmalloc(len + 1);
     strncpy(str, start, len);
     str[len] = 0;
-    /*InternStr intern_str = { len, str };*/
 
     da_push(interns, (InternStr){ len, str });
 

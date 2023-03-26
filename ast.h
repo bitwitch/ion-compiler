@@ -164,6 +164,7 @@ typedef enum {
 
 struct Typespec {
     TypespecKind kind;
+	SourcePos pos;
     union {
         char *name;
         struct {
@@ -217,6 +218,7 @@ typedef enum {
 
 struct Stmt {
     StmtKind kind;
+	SourcePos pos;
     union {
         Expr *expr;
         Decl *decl;
@@ -276,6 +278,7 @@ typedef struct {
 
 struct Decl {
     DeclKind kind;
+	SourcePos pos;
     char *name;
     union {
         struct {

@@ -44,11 +44,6 @@ typedef enum {
 } TokenMod;
 
 typedef struct {
-	char *filepath;
-	int line;
-} SourcePos;
-
-typedef struct {
 	TokenKind kind;
 	TokenMod mod;
 	SourcePos pos;
@@ -144,17 +139,6 @@ bool is_keyword_name(char *check) {
            s == keyword_true     || 
            s == keyword_false;
 }
-
-void syntax_error_at(char *filepath, int line, char *fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-	printf("%s:%d: error: ", filepath, line);
-	vprintf(fmt, args);
-	printf("\n");
-	va_end(args);
-}
-#define syntax_error(fmt, ...) syntax_error_at(token.pos.filepath, token.pos.line, fmt, __VA_ARGS__)
-
 
 uint8_t char_to_digit[256] = {
     ['0'] = 0,
@@ -453,7 +437,7 @@ void init_stream(char *path, char *source) {
 
 // Warning! this returns a pointer to a static buffer, so its contents will
 // change on each call
-char *str_token_kind(TokenKind kind) {
+char *token_kind_to_str(TokenKind kind) {
     static char str[64] = {0};
     switch(kind) {
     case TOKEN_INT:         sprintf(str, "integer"); break;
@@ -493,7 +477,7 @@ char *str_token_kind(TokenKind kind) {
 char *token_info(void) {
     if (token.kind == TOKEN_NAME || token.kind == TOKEN_KEYWORD)
         return token.name;
-    return str_token_kind(token.kind);
+    return token_kind_to_str(token.kind);
 }
 
 bool is_token(TokenKind kind) {
@@ -534,12 +518,12 @@ void expect_token(TokenKind kind) {
     if (token.kind == kind) {
         next_token();
     } else {
-        // FIXME(shaw): str_token_kind needs to be fixed to not return a
+        // FIXME(shaw): token_kind_to_str needs to be fixed to not return a
         // pointer to a static buffer, arenas will probably be good for that
-        char *tmp = str_token_kind(kind);
+        char *tmp = token_kind_to_str(kind);
         char *expected = strdup(tmp);
         syntax_error("Expected token '%s', got '%s'\n", 
-                expected, str_token_kind(token.kind));
+                expected, token_kind_to_str(token.kind));
         exit(1);
     }
 }
