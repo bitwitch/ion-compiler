@@ -1,7 +1,7 @@
 func f1(a: int): int {
 
-	f: float;
-	return f;
+	//f: float;
+	//return f;
 
 	str := "fried chicken";
 	str2: char*;

@@ -54,6 +54,7 @@ Sym *sym_decl(Decl *decl) {
     case DECL_TYPEDEF:
     case DECL_STRUCT:
     case DECL_UNION:
+	case DECL_ENUM:
         kind = SYM_TYPE;
         break;
     case DECL_VAR:
@@ -97,6 +98,12 @@ Sym *sym_init(Decl *decl, Type *type) {
 	return sym;
 }
 
+Sym *sym_enum_const(char *name, Decl *decl) {
+	Sym *sym = sym_alloc(name, SYM_ENUM_CONST);
+	sym->decl = decl;
+	return sym;
+}
+
 Sym *sym_get(char *name) {
 	// first check symbols in local scopes
 	for (Sym **it = local_syms_end; it > local_syms; --it) {
@@ -113,8 +120,15 @@ Sym *sym_get(char *name) {
 
 void sym_put_decl(Decl *decl) {
     assert(sym_get(decl->name) == NULL);
-    Sym *sym = sym_decl(decl);
-    da_push(global_syms, sym);
+
+    da_push(global_syms, sym_decl(decl));
+
+	if (decl->kind == DECL_ENUM) {
+		EnumItem *items = decl->enum_decl.items;
+		for (int i = 0; i < decl->enum_decl.num_items; ++i) {
+			da_push(global_syms, sym_enum_const(items[i].name, decl));
+		}
+	}
 }
 
 // currently used for primative types
@@ -330,10 +344,10 @@ ResolvedExpr resolve_expr_name(Expr *expr) {
 
     if (sym->kind == SYM_VAR) 
         return resolved_lvalue(sym->type); 
-    else if (sym->kind == SYM_CONST)
-        return resolved_const(sym->val);
     else if (sym->kind == SYM_FUNC) 
         return resolved_rvalue(sym->type);
+	else if (sym->kind == SYM_CONST || sym->kind == SYM_ENUM_CONST) 
+		return resolved_const(sym->val);
     else {
 		semantic_error(expr->pos, "%s must be a var or const", expr->name);
         return resolved_null;
@@ -673,6 +687,32 @@ Type *resolve_decl_func(Decl *decl) {
 	return type_func(params, num_params, ret_type);
 }
 
+Type *resolve_decl_type(Decl *decl) {
+	if (decl->kind == DECL_ENUM) {
+		EnumItem *items = decl->enum_decl.items;
+		int val = 0;
+		for (int i = 0; i < decl->enum_decl.num_items; ++i) {
+			Sym *item_sym = sym_get(items[i].name);
+			// TODO(shaw): calculate constants for enum items
+			if (items[i].expr) {
+				ResolvedExpr resolved = resolve_expr(items[i].expr);
+				if (!resolved.is_const) {
+					semantic_error(items[i].expr->pos, "enum item can only be assigned a constant value");
+				}
+				val = resolved.val;
+			}
+			item_sym->val = val++;
+			item_sym->state = SYM_RESOLVED;
+		}
+		return type_enum();
+	} else if (decl->kind == DECL_TYPEDEF) {
+		assert(0);
+		return NULL;
+	} else {
+		assert(0);
+		return NULL;
+	}
+}
 
 void resolve_sym(Sym *sym) {
     if (sym->state == SYM_RESOLVED) {
@@ -694,16 +734,19 @@ void resolve_sym(Sym *sym) {
     case SYM_FUNC:  
         sym->type = resolve_decl_func(sym->decl);  
         break;
-		/*
     case SYM_TYPE: 
-        sym->type =resolve_decl_type(sym->decl);  
+        sym->type = resolve_decl_type(sym->decl);  
         break;
-        */
+	case SYM_ENUM_CONST:
+		// resolve the entire enum decl that this enum item is apart of
+		resolve_sym(sym_get(sym->decl->name));
+		return;
     default:
         assert(0);
         break;
     }
     sym->state = SYM_RESOLVED;
+	sym->type->sym = sym;
     da_push(ordered_syms, sym);
 }
 

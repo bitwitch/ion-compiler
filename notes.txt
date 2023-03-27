@@ -8,8 +8,11 @@ TODO:
 
 [ ] var args (...)
 
-[ ] resolving enums
+[ ] reformat for stupid tabs vs spaces
 
+[ ] resolving typedefs
+
+[X] resolving enums
 [X] parse and resolve strings
 [X] handle bools and the identifiers true and false
 [X] tracking source code position (line and column)

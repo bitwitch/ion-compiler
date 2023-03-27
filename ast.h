@@ -145,11 +145,6 @@ struct Expr {
 };
 
 typedef struct {
-    char *name; 
-    Expr *expr;
-} EnumItem;
-
-typedef struct {
     char *name;
     Typespec *type;
 } AggregateField;
@@ -270,6 +265,11 @@ typedef enum {
     DECL_CONST,
     DECL_TYPEDEF,
 } DeclKind;
+
+typedef struct {
+	char *name; 
+	Expr *expr;
+} EnumItem;
 
 typedef struct {
     char *name;

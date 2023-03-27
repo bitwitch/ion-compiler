@@ -1,9 +1,9 @@
-void compile_file(char *path) {
+int compile_file(char *path) {
 
 	FILE *fp = fopen(path, "r");
 	if (!fp) {
-		fprintf(stderr, "Error: failed to open %s: %s\n", path, strerror(errno));
-		return;
+		fprintf(stderr, "error: failed to open %s: %s\n", path, strerror(errno));
+		return 1;
 	}
 
 	compilation_filepath = path;
@@ -12,9 +12,9 @@ void compile_file(char *path) {
 	size_t file_size;
 	int rc = read_entire_file(fp, &file_data, &file_size);
 	if (rc != READ_ENTIRE_FILE_OK) {
-		fprintf(stderr, "Error: failed to read file %s\n", path);
+		fprintf(stderr, "error: failed to read file %s\n", path);
 		fclose(fp);
-		return;
+		return 1;
 	}
 	fclose(fp);
 
@@ -44,4 +44,6 @@ void compile_file(char *path) {
 		print_decl(sym->decl);
 		printf("\n");
 	}
+
+	return 0;
 }

@@ -1,12 +1,3 @@
-enum Things {
-	THING_ONE,
-	THING_TWO,
-	THING_THREE,
-	THING_SEVENTEEN = 17,
-	THING_EIGHTEEN,
-	THING_NINETEEN,
-}
-
 struct Vec2 { x: int; y: int; }
 
 func test1(): void {
@@ -44,6 +35,8 @@ func test1(): void {
 	func_ptr(7);
 	j := x / 64;
 	j /= 2;
+
+	thing := THING_ONE;
 }
 
 func vec3_dot(a: Vec3, b: Vec3): float {
@@ -58,5 +51,15 @@ func fib(n: int): int {
 		result += i;
 	}
 	return result;
+}
+
+enum Thing {
+	THING_ZERO,
+	THING_ONE,
+	THING_TWO,
+	THING_THREE,
+	THING_SEVENTEEN = 17,
+	THING_EIGHTEEN,
+	THING_NINETEEN,
 }
 // at the end

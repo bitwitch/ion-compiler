@@ -134,10 +134,17 @@ Type *type_func(TypeField *params, int num_params, Type *ret) {
     return t;
 }
 
+Type *type_enum(void) {
+	Type *t = type_alloc(TYPE_ENUM);
+	t->size = INT_SIZE;
+	t->align = INT_SIZE;
+	return t;
+}
+
 Type *type_incomplete(Sym *sym) {
-    Type *type = type_alloc(TYPE_INCOMPLETE);
-	type->sym = sym;
-	return type;
+    Type *t = type_alloc(TYPE_INCOMPLETE);
+	t->sym = sym;
+	return t;
 }
 
 
