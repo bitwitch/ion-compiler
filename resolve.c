@@ -209,6 +209,10 @@ void complete_type(Type *type) {
 	size_t align = 1;
 	for (int i=0; i<num_fields; ++i) {
 		Type *field_type = resolve_typespec(decl_fields[i].type);
+
+		if (field_type->kind != TYPE_PTR)
+			complete_type(field_type);
+
 		align = MAX(align, field_type->align);
 		da_push(type_fields, (TypeField){
 			.name = decl_fields[i].name,  
@@ -221,9 +225,11 @@ void complete_type(Type *type) {
 	// for the last one, add padding if required (after loop)
 	size_t accum = 0;
 	size_t size = 0;
+	size_t max_size = 0;
 	size_t pad = 0;
 	for (int i = 0; i < num_fields; ++i) {
 		size_t field_size = type_fields[i].type->size;
+		max_size = MAX(max_size, field_size);
 		if (accum + field_size > align) {
 			// TODO(shaw): should this padding be stored in the type somewhere??
 			// or do we just recontruct the padding positions when actually laying
@@ -242,14 +248,14 @@ void complete_type(Type *type) {
 
 	type->aggregate.fields = arena_memdup(&resolve_arena, type_fields, num_fields * sizeof(*type_fields));
 	type->aggregate.num_fields = num_fields;
-	type->size = size;
 	type->align = align;
-
-	if (decl->kind == DECL_STRUCT)
+	if (decl->kind == DECL_STRUCT) {
 		type->kind = TYPE_STRUCT;
-	else
+		type->size = size;
+	} else {
 		type->kind = TYPE_UNION;
-
+		type->size = max_size;
+	}
 	da_push(ordered_syms, type->sym);
 }
 
@@ -706,8 +712,7 @@ Type *resolve_decl_type(Decl *decl) {
 		}
 		return type_enum();
 	} else if (decl->kind == DECL_TYPEDEF) {
-		assert(0);
-		return NULL;
+		return resolve_typespec(decl->typedef_decl.type);
 	} else {
 		assert(0);
 		return NULL;

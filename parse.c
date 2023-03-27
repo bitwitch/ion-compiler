@@ -492,6 +492,7 @@ Decl *parse_decl_const(void) {
     char *name = parse_name();
     expect_token('=');
     Expr *expr = parse_expr();
+	expect_token(';');
 	return decl_const(pos, name, expr);
 }
 
@@ -506,6 +507,7 @@ Decl *parse_decl_var(void) {
     if (match_token('=')) {
         expr = parse_expr();
     }
+	expect_token(';');
 	return decl_var(pos, name, type, expr);
 }
 
@@ -514,6 +516,7 @@ Decl *parse_decl_typedef(void) {
     char *name = parse_name();
     expect_token('=');
     Typespec *type = parse_type();
+	expect_token(';');
 	return decl_typedef(pos, name, type);
 }
 
