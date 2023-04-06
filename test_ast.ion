@@ -1,0 +1,167 @@
+// ----------------------------------------------------------------------------
+// Decls
+// ----------------------------------------------------------------------------
+enum Ops {
+    OP_ADD = 0,
+    OP_SUB,
+    OP_MUL,
+}
+
+struct Color {
+	r: int;
+	g: int;
+	b: int;
+}
+
+union Stuff {
+	as_int: int;
+	as_float: float;
+}
+
+func fib(n: int): int {
+	result := 1;
+	for (i := 1; i<n; i++) {
+		result += i;
+	}
+	return result;
+}
+
+var yellow: Color;
+
+const height = 600;
+
+typedef U8 = char;
+
+// ----------------------------------------------------------------------------
+// Stmts
+// ----------------------------------------------------------------------------
+func test_statements(): int {
+	y: int;
+	x := 69;    // init
+	y = 420;    // assign
+	x + y;      // expr
+
+	{ // brace block
+		x := 33;
+		y = x;
+	}
+	
+	if (x > 40) {
+		y -= 12;
+	}
+
+	for (i := 0; i < 99; i++) {
+		x = y + i;
+	}
+	
+	while (x > 0) {
+		if (x % 2 == 0) {
+			continue;
+		}
+		y += 3;
+		x--;
+		if (y == 3987) {
+			break;
+		}
+	}
+
+	do {
+		y--;
+	} while (y > 0);
+
+	switch (x) {
+		case 1:  y = 1;  break;
+		case 3:  y = 3;  break;
+		case 5:  y = 5;  break;
+		default: y = 99; break;
+	}
+
+	return 0;
+}
+
+// ----------------------------------------------------------------------------
+// Typespecs
+// ----------------------------------------------------------------------------
+var ts_name: float;
+var func_ptr: func(int): int;
+var arr: int[16];
+var buf_ptr: int*;
+
+// ----------------------------------------------------------------------------
+// Exprs
+// ----------------------------------------------------------------------------
+struct Vec2 {
+	x: int;
+	y: int;
+}
+func test_exprs() {
+	x := 0;
+	ptr := &x;
+
+	// unary
+	+x;
+	-x;
+	&x;
+	!x;
+	~x;
+	*ptr;
+
+	// binary
+	x + x;
+	x - x;
+	x | x;
+	x ^ x;
+	x * x;
+	x / x;
+	x % x;
+	x & x;
+	x << x;
+	x >> x;
+
+	// ternary
+	x ? x : x;
+
+	// int
+	12;
+	// char
+	c: char = 0xd;
+	c;
+	// float
+	3.14;
+
+	// bool
+	b := true;
+	b;
+
+	// string
+	"well hello friends";
+
+	// name
+	x;
+
+	// typespec
+	f: func(int): int;
+
+	// cast
+	cast(float, x);
+
+	// call
+	f(x);
+
+	// index
+	a: int[16];
+	a[7];
+
+	// field
+	v: Vec2;
+	v.x;
+
+	// compound
+	Vec2{1,2};
+
+	// sizeof expr
+	sizeof(x);
+
+	// sizeof type
+	sizeof(:int);
+}

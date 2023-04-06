@@ -1,15 +1,6 @@
 /*
 Grammar
 
-
-enum Ops {
-    OP_ADD = 0,
-    OP_SUB,
-    OP_MUL,
-}
-
-
-
 enum_decl = NAME '{' (NAME ('=' expr)? ','?)* '}'
 var_decl = NAME '=' expr
          | NAME ':' type ('=' expr)?
@@ -23,7 +14,6 @@ decl = 'enum' enum_decl
      | 'const' const_decl
      | 'typedef' typedef_decl
      | 'func' func_decl
-
 
 for_init = 
 assign_op = EQ | AUTO_EQ | ADD_EQ | SUB_EQ | MUL_EQ | DIV_EQ | MOD_EQ | LSHIFT_EQ | RSHIFT_EQ | XOR_EQ | AND_EQ | OR_EQ

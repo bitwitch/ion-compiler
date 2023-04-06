@@ -336,7 +336,9 @@ ResolvedExpr resolve_expr_unary(Expr *expr) {
 	case '!':
 		assert(operand.type->kind == TYPE_INT);
 		return resolved_rvalue(operand.type);
+	case '+':
 	case '-':
+	case '~':
 		return resolved_rvalue(operand.type);
     default:
         assert(0);

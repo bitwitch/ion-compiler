@@ -1,16 +1,21 @@
 TODO:
 
+[ ] fix source position calculation
+
 [ ] comments
 	[X] single line
 	[ ] multi line 
 	
+[ ] declarations in functions (statement declarations)
+	- like a var, enum, or struct declared inside a function
+
 [ ] array pointer decay
 
 [ ] var args (...)
 
 [ ] reformat for stupid tabs vs spaces
 
-[ ] resolving typedefs
+[X] resolving typedefs
 
 [X] resolving enums
 [X] parse and resolve strings

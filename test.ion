@@ -50,6 +50,8 @@ func test1(): void {
 	j /= 2;
 
 	thing := THING_ONE;
+
+	byte: U8 = 0x69;
 }
 
 func vec3_dot(a: Vec3, b: Vec3): float {
@@ -57,6 +59,8 @@ func vec3_dot(a: Vec3, b: Vec3): float {
 }
 
 struct Vec3 { x: float; y: float; z: float; }
+
+typedef U8 = char;
 
 func fib(n: int): int {
 	result := 1;

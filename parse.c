@@ -166,7 +166,7 @@ Expr *parse_expr_call(void) {
 
 Expr *parse_expr_unary(void) {
 	SourcePos pos = token.pos;
-    if (is_token('-') || is_token('~') || is_token('&') || is_token('*') || is_token('!')) {
+    if (is_token('+') || is_token('-') || is_token('~') || is_token('&') || is_token('*') || is_token('!')) {
         TokenKind op = token.kind;
         next_token();
 		return expr_unary(pos, op, parse_expr_unary());

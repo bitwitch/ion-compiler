@@ -55,11 +55,6 @@ void fatal(char *fmt, ...) {
 #define  READ_ENTIRE_FILE_TOOMUCH    -3  /* Too much input */
 #define  READ_ENTIRE_FILE_NOMEM      -4  /* Out of memory */
 
-typedef enum {
-	MODE_READ_TEXT,
-	MODE_READ_BINARY
-} File_Read_Mode;
-
 int read_entire_file(FILE *fp, char **dataptr, size_t *sizeptr) {
 	/*
 	* See answer by Nominal Animal (note this is not the accepted answer)
