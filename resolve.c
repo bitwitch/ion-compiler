@@ -264,6 +264,9 @@ Type *resolve_typespec(Typespec *typespec) {
     case TYPESPEC_NAME:
     {
         Sym *sym = resolve_name(typespec->name);
+		if (!sym) {
+			semantic_error(typespec->pos, "Unknown type %s", typespec->name);
+		}
 		if (sym->kind != SYM_TYPE) {
 			semantic_error(typespec->pos, "%s must denote a type", typespec->name);
 			return NULL;
@@ -349,6 +352,9 @@ ResolvedExpr resolve_expr_unary(Expr *expr) {
 ResolvedExpr resolve_expr_name(Expr *expr) {
     assert(expr->kind == EXPR_NAME);
     Sym *sym = resolve_name(expr->name);
+	if (!sym) {
+		semantic_error(expr->pos, "Unknown symbol %s", expr->name);
+	}
 
     if (sym->kind == SYM_VAR) 
         return resolved_lvalue(sym->type); 
@@ -357,7 +363,8 @@ ResolvedExpr resolve_expr_name(Expr *expr) {
 	else if (sym->kind == SYM_CONST || sym->kind == SYM_ENUM_CONST) 
 		return resolved_const(sym->val);
     else {
-		semantic_error(expr->pos, "%s must be a var or const", expr->name);
+		assert(sym->kind == SYM_TYPE);
+		semantic_error(expr->pos, "Expected variable, constant, or function but got type (%s)", expr->name);
         return resolved_null;
     }
 }
@@ -766,10 +773,7 @@ void complete_sym(Sym *sym) {
 
 Sym *resolve_name(char *name) {
     Sym *sym = sym_get(name);
-    if (!sym) {
-        fatal("Unknown symbol: %s", name); 
-        return NULL;
-    }
+    if (!sym) return NULL;
     resolve_sym(sym);
     return sym;
 }

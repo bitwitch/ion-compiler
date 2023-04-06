@@ -287,7 +287,10 @@ repeat:
 	switch (*stream) {
         case ' ': case '\r': case '\t': case '\v':
         {
-            while (isspace(*stream)) ++stream;
+			while (isspace(*stream)) {
+				if (*stream == '\n') break;
+				++stream;
+			}
             goto repeat;
             break;
         }
@@ -309,8 +312,7 @@ repeat:
 				while (*stream != '\n' && *stream != '\0')
 					++stream;
 				token.str_val = str_intern_range(token.start, stream);
-				token.kind = TOKEN_COMMENT;
-				while (isspace(*stream)) ++stream;
+				token.kind = TOKEN_COMMENT;	
 
 				// @HACK TEMPORARY
 				// just discarding comments for now, can think about if we want to 

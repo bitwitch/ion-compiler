@@ -15,7 +15,6 @@ char *parse_name(void) {
     }
 }
 
-
 Typespec *parse_type_func(void) {
 	SourcePos pos = token.pos;
 	expect_token('(');
@@ -328,13 +327,13 @@ Stmt *parse_simple_stmt(void) {
 
 	if (match_token(TOKEN_AUTO_ASSIGN)) {
 		if (expr->kind != EXPR_NAME) {
-			syntax_error(":= must be preceded by a name");
+			syntax_error("':=' must be preceded by a name");
 			return NULL;
 		}
 		stmt = stmt_init(pos, expr->name, NULL, parse_expr());
 	} else if (match_token(':')) {
 		if (expr->kind != EXPR_NAME) {
-			syntax_error(": must be preceded by a name in a variable init statement");
+			syntax_error("':' must be preceded by a name in a variable init statement");
 			return NULL;
 		}
 		Typespec *type = parse_type();
