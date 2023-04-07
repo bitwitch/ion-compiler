@@ -187,18 +187,23 @@ Type *resolve_typespec(Typespec *type);
 
 void complete_type(Type *type) {
     if (type->kind == TYPE_COMPLETING) {
-        fatal("Cyclic type completion");
+		assert(type->sym && type->sym->decl);
+        semantic_error(type->sym->decl->pos, "Cyclic type dependency");
         return;
     } else if (type->kind != TYPE_INCOMPLETE) {
         return;
     }
+
+	type->kind = TYPE_COMPLETING;
 
 	assert(type->sym);
 	Decl *decl = type->sym->decl;
 	assert(decl);
 
 	if (decl->kind != DECL_STRUCT && decl->kind != DECL_UNION) {
-		fatal("Cannot complete a type that is not a struct or union");
+		// NOTE(shaw): not sure if this should be a semantic error (for the user)
+		// but regardless having the source position is useful
+		semantic_error(decl->pos, "Cannot complete a type that is not a struct or union");
 		return;
 	}
 
@@ -593,9 +598,10 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 				SwitchCase c = cases[i];
 				if (!c.is_default) {
 					for (int j = 0; j < c.num_exprs; ++j) {
-						ResolvedExpr resolved = resolve_expr(c.exprs[j]);
+						Expr *case_expr = c.exprs[j];
+						ResolvedExpr resolved = resolve_expr(case_expr);
 						if (resolved.type->kind != TYPE_INT) {
-							fatal("case expression must have type int");
+							semantic_error(case_expr->pos, "case expression must have type int");
 						}
 					}
 				}
@@ -647,7 +653,7 @@ Type *resolve_decl_const(Decl *decl, int64_t *val) {
     assert(decl->kind == DECL_CONST);
     ResolvedExpr resolved = resolve_expr(decl->const_decl.expr);
     if (!resolved.is_const) {
-        fatal("Right hand side of const declaration is not a constant");
+        semantic_error(decl->pos, "Right hand side of const declaration is not a constant");
         return NULL;
     }
     *val = resolved.val;
@@ -732,7 +738,7 @@ void resolve_sym(Sym *sym) {
     if (sym->state == SYM_RESOLVED) {
         return;
     } else if (sym->state == SYM_RESOLVING) {
-        fatal("Cyclic dependency");
+		semantic_error(sym->decl->pos, "Cyclic dependency");
         return;
     } 
     assert(sym->state == SYM_UNRESOLVED);

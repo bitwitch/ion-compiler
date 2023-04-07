@@ -1,10 +1,8 @@
 TODO:
 
-[ ] fix source position calculation
-
 [ ] comments
 	[X] single line
-	[ ] multi line 
+	[ ] multi line  
 	
 [ ] declarations in functions (statement declarations)
 	- like a var, enum, or struct declared inside a function
@@ -15,8 +13,13 @@ TODO:
 
 [ ] reformat for stupid tabs vs spaces
 
-[X] resolving typedefs
+[ ] assertion fires for the following declaration, need to produce an error message for it instead
+	- typedef U8 = U8;
 
+[ ] local_syms should probably be a stretchy buffer
+
+[X] fix source position calculation
+[X] resolving typedefs
 [X] resolving enums
 [X] parse and resolve strings
 [X] handle bools and the identifiers true and false
