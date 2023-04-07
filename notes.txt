@@ -57,7 +57,7 @@ TODO:
 [ ] c code generation
 
 [ ] improve error messages
-	[ ] replace instances of fatal() with syntax_error() where appropriate. fatal is useful now in early development 
+	[X] replace instances of fatal() with syntax_error() where appropriate. fatal is useful now in early development 
 
 
 2023-03-19
@@ -205,7 +205,6 @@ Ion Compiler High Level Algorithm
 3. go through all entities and resolve each one recursively
 
 
-resolving a typespec is turning the syntactic typespec into a semantic type
 
 incomplete types - aggregate types begin their life as incomplete types. as
 resolution proceeds, types are sort of lazily resolved where fields are only
@@ -214,11 +213,14 @@ resolved at the time of first use,
 there are two types of resolving going on: declaration level ordering and stuff,
 and then type level dependency resolution
 
-A "Type" is an interned, canonical version of a type that can be compared
-directly with pointers 
-
 
 
 difference in Type and Typespec?
 
+resolving a typespec is turning the syntactic typespec into a semantic type
+
+A "Type" is an interned, canonical version of a type that can be compared
+directly with pointers 
+
+A "Typespec" is sort of like a reference to a type. 
 

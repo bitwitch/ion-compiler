@@ -20,6 +20,7 @@
 #include "type.c"
 #include "resolve.c"
 #include "ion.c"
+#include "codegen.c"
 
 void run_tests(void) {
     init_keywords();
@@ -30,18 +31,29 @@ void run_tests(void) {
     // parse_test();
     // resolve_test();
     type_intern_test();
-	compile_file("..\tests\resolve_test.ion");
+	compile_file("tests\\resolve_test.ion");
     // printf("Tests Succeeded.\n");
+
 }
 
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
-	//run_tests();
+	codegen_test();
 
+	/*
 	if (argc < 2) {
 		printf("usage: %s <filepath>\n", argv[0]);
 		return 1;
 	}
-  	
-	return compile_file(argv[1]);
+
+	if (compile_file(argv[1]) != 0) {
+		return 1;
+	}
+
+	for (int i = 0; i<da_len(ordered_syms); ++i) {
+		Sym *sym = ordered_syms[i];
+		print_decl(sym->decl);
+		printf("\n");
+	}
+	*/
 }

@@ -113,7 +113,7 @@ void print_expr(Expr *expr) {
         printf(")");
         break;
     default:
-        fprintf(stderr, "Error: Printer: Unkown expr kind: %d\n", expr->kind);
+        printf("Error: Printer: Unknown expr kind: %d\n", expr->kind);
         assert(0);
         break;
     }
