@@ -1,6 +1,18 @@
 // @LEAK all the strf calls allocate and leak, right now strf calls malloc, but
 // will switch to arena allocator in future
 
+#define INDENT_WIDTH 4
+static int gen_indent = 0; 
+
+#define gen_newline(b) (b) = gen__newline(b)
+char *gen__newline(char *buf) {
+    if (gen_indent > 0)
+        da_printf(buf, "\n%*s", gen_indent*INDENT_WIDTH, " ");
+    else
+        da_printf(buf, "\n");
+	return buf;
+}
+
 char *gen_type_c(Type *type, char *inner) {
 	assert(type);
 	char *sep = *inner ? " " : "";
@@ -43,12 +55,10 @@ char *gen_type_c(Type *type, char *inner) {
 	case TYPE_STRUCT:
 	case TYPE_UNION:
 	case TYPE_ENUM:
-	case TYPE_CONST:
-	default: 
+	default:
 		assert(0);
 		return NULL;
 	}
-
 }
 
 char *gen_expr_c(Expr *expr) {
@@ -98,29 +108,34 @@ char *gen_expr_c(Expr *expr) {
         return strf("%s.%s",
             gen_expr_c(expr->field.expr),
             expr->field.name);
-	/*
     case EXPR_COMPOUND: {
         // TODO(shaw): get the decl for the type here so that we can have named fields (designated initializer)
         // (Vec2){ .x = 69, .y = 420 }
+
+		// TODO(shaw): handle more than TYPESPEC_NAME
+		assert(expr->compound.type->kind == TYPESPEC_NAME);
         int num_args = expr->compound.num_args;
-        char *str = strf("(%s){", gen_type_c(expr->compound.type));
+        char *str = strf("(%s){", expr->compound.type->name);
         for (int i=0; i<num_args; ++i) {
             str = strf("%s%s%s",
                 str,
                 gen_expr_c(expr->compound.args[i]),
                 i == num_args - 1 ? "" : ", ");
         }
-        return strf("%s}", str):
+        return strf("%s}", str);
     }
 	case EXPR_CAST:
+		// TODO(shaw): handle more than TYPESPEC_NAME
+		assert(expr->cast.type->kind == TYPESPEC_NAME);
 		return strf("(%s)(%s)", 
-			gen_type_c(expr->cast.type), 
+			expr->cast.type->name, 
 			gen_expr_c(expr->cast.expr));
 	case EXPR_SIZEOF_EXPR:
         return strf("sizeof(%s)", gen_expr_c(expr->sizeof_expr));
     case EXPR_SIZEOF_TYPE:
-        return strf("sizeof(%s)", gen_type_c(expr->sizeof_type));
-	*/
+		// TODO(shaw): handle more than TYPESPEC_NAME
+		assert(expr->sizeof_type->kind == TYPESPEC_NAME);
+        return strf("sizeof(%s)", expr->sizeof_type->name);
     default:
         printf("Error: Codegen: Unknown expr kind: %d\n", expr->kind);
         assert(0);
@@ -140,11 +155,57 @@ char *gen_sym_c(Sym *sym) {
 		return strf("%s;", str);
 	}
 
-	case DECL_FUNC:
-	case DECL_ENUM:
-	case DECL_STRUCT:
+	case DECL_TYPEDEF: {
+		// TODO(shaw): handle more than TYPESPEC_NAME
+		assert(decl->typedef_decl.type->kind == TYPESPEC_NAME);
+		return strf("typedef %s %s;", decl->typedef_decl.type->name, decl->name);
+	}
+
 	case DECL_UNION:
-	case DECL_TYPEDEF:
+	case DECL_STRUCT: {
+		BUF(char *str) = NULL; // @LEAK
+		da_printf(str, "%s %s {", decl->kind == DECL_STRUCT ? "struct" : "union", decl->name);
+		++gen_indent;
+		gen_newline(str);
+
+		int num_fields = decl->aggregate.num_fields;
+		for (int i=0; i<num_fields; ++i) {
+			AggregateField field = decl->aggregate.fields[i];
+			// TODO(shaw): handle more than TYPESPEC_NAME
+			assert(field.type->kind == TYPESPEC_NAME);
+			Sym *field_sym = sym_get(field.type->name);
+			da_printf(str, "%s;", gen_type_c(field_sym->type, field.name));
+			if (i == num_fields - 1) 
+				--gen_indent;
+			gen_newline(str);
+		}
+		da_printf(str, "}");
+		// TODO(shaw): wasting space in stretchy buf from len to cap
+		return str;
+	}
+
+	case DECL_ENUM: {
+		BUF(char *str) = NULL; // @LEAK
+		da_printf(str, "enum %s {", decl->name);
+		++gen_indent;
+		gen_newline(str);
+
+		int num_items = decl->enum_decl.num_items;
+		for (int i=0; i<num_items; ++i){
+			EnumItem item = decl->enum_decl.items[i];
+			da_printf(str, "%s", item.name);
+			if (item.expr)
+				da_printf(str, " = %s", gen_expr_c(item.expr));
+			da_printf(str, ",");
+			if (i == num_items - 1) 
+				--gen_indent;
+			gen_newline(str);
+		}
+		da_printf(str, "}");
+		return str;
+	}
+
+	case DECL_FUNC:
 	case DECL_CONST:
 	default: 
 		assert(0);
@@ -174,6 +235,15 @@ void codegen_test(void) {
 	assert(0 == strcmp(str, "~42"));
     str = gen_expr_c(expr_binary(pos, '+', expr_int(pos, 33), expr_int(pos, 36)));
 	assert(0 == strcmp(str, "33 + 36"));
+	Expr *args[] = { expr_int(pos, 1), expr_int(pos, 2), expr_int(pos, 3) };
+    str = gen_expr_c(expr_compound(pos, typespec_name(pos, "x"), args, array_count(args)));
+	assert(0 == strcmp(str, "(x){1, 2, 3}"));
+    str = gen_expr_c(expr_cast(pos, typespec_name(pos, "int"), expr_name(pos, "x")));
+	assert(0 == strcmp(str, "(int)(x)"));
+    str = gen_expr_c(expr_sizeof_expr(pos, expr_name(pos, "x")));
+	assert(0 == strcmp(str, "sizeof(x)"));
+    str = gen_expr_c(expr_sizeof_type(pos, typespec_name(pos, "int")));
+	assert(0 == strcmp(str, "sizeof(int)"));
      
 	// types
     str = gen_type_c(type_int, "");
@@ -189,7 +259,7 @@ void codegen_test(void) {
 		{ "param1", type_int },
 		{ "param2", type_int },
 	};
-	Type *func_int_int = type_func(params, 2, type_int);
+	Type *func_int_int = type_func(params, array_count(params), type_int);
 
 	str = gen_type_c(type_array(type_int, 16), "x");
 	assert(0 == strcmp(str, "int (x)[16]"));
@@ -200,7 +270,7 @@ void codegen_test(void) {
 	str = gen_type_c(type_array(type_ptr(func_int_int), 3), "x");
 	assert(0 == strcmp(str, "int (*((x)[3]))(int, int)"));
 	
-	/*
+
 	if (compile_file("codegen_test.ion") != 0) {
 		printf("Compilation failed\n");
 		return;
@@ -211,6 +281,5 @@ void codegen_test(void) {
 		char *str = gen_sym_c(ordered_syms[i]);
 		printf("%s\n", str);
 	}
-
-	*/
 }
+#undef INDENT_WIDTH

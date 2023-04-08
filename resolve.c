@@ -171,7 +171,6 @@ char *type_to_str(Type *type) {
 			case TYPE_UNION,
 			case TYPE_ENUM,
 			case TYPE_FUNC,
-			case TYPE_CONST,
 			}
 			*/
 	assert(0);
@@ -555,12 +554,8 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 			if (!stmt->return_stmt.expr) break;
 			ResolvedExpr resolved = resolve_expr(stmt->return_stmt.expr);
 			if (resolved.type != expected_ret_type) {
-				// TODO(shaw): implement a function for getting a string version of a type for printing
-				char *one = type_to_str(expected_ret_type);
-				char *two = type_to_str(resolved.type);
 				semantic_error(stmt->pos, "Expected return type %s, got %s", 
-				//	type_to_str(expected_ret_type), type_to_str(resolved.type));
-				      one, two);
+					type_to_str(expected_ret_type), type_to_str(resolved.type));
 			}
 			break;
 		}

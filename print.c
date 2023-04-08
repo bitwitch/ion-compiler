@@ -3,11 +3,11 @@ void print_type(Typespec *type);
 void print_stmt(Stmt *stmt);
 
 #define INDENT_WIDTH 4
-static int indent = 0; // for printing
+static int print_indent = 0;
 
 void print_newline(void) {
-    if (indent > 0)
-        printf("\n%*s", indent*INDENT_WIDTH, " ");
+    if (print_indent > 0)
+        printf("\n%*s", print_indent*INDENT_WIDTH, " ");
     else
         printf("\n");
 }
@@ -87,12 +87,12 @@ void print_expr(Expr *expr) {
     case EXPR_COMPOUND: 
         printf("(");
         print_type(expr->compound.type);
-        ++indent;
+        ++print_indent;
         for (int i=0; i<expr->compound.num_args; ++i) {
             print_newline();
             print_expr(expr->compound.args[i]);
         }
-        --indent;
+        --print_indent;
         printf(")");
         break;
     case EXPR_CAST:
@@ -121,12 +121,12 @@ void print_expr(Expr *expr) {
 
 void print_stmt_block(StmtBlock block) {
     printf("(block");
-    ++indent;
+    ++print_indent;
     for (int i=0; i<block.num_stmts; ++i) {
         print_newline();
         print_stmt(block.stmts[i]);
     }
-    --indent;
+    --print_indent;
     printf(")");
 }
 
@@ -160,19 +160,19 @@ void print_stmt(Stmt *stmt) {
     case STMT_IF:
         printf("(if ");
         print_expr(stmt->if_stmt.cond);
-        ++indent;
+        ++print_indent;
         print_newline();
         print_stmt_block(stmt->if_stmt.then_block);
-        --indent;
+        --print_indent;
         for (int i=0; i<stmt->if_stmt.num_else_ifs; ++i) {
             ElseIf else_if = stmt->if_stmt.else_ifs[i];
             print_newline();
             printf("(elseif ");
             print_expr(else_if.cond);
-            ++indent;
+            ++print_indent;
             print_newline();
             print_stmt_block(else_if.block);
-            --indent;
+            --print_indent;
         }
         if (stmt->if_stmt.else_block.num_stmts > 0) {
             print_newline();
@@ -226,7 +226,7 @@ void print_stmt(Stmt *stmt) {
     case STMT_SWITCH:
         printf("(switch ");
         print_expr(stmt->switch_stmt.expr);
-        ++indent;
+        ++print_indent;
         for (int i=0; i<stmt->switch_stmt.num_cases; ++i) {
             SwitchCase *sc = &stmt->switch_stmt.cases[i];
             print_newline();
@@ -242,7 +242,7 @@ void print_stmt(Stmt *stmt) {
             print_stmt_block(sc->block);
             printf(")");
         }
-        --indent;
+        --print_indent;
         printf(")");
         break;
     default:
@@ -336,7 +336,7 @@ void print_decl(Decl *decl) {
             printf("(union %s ", decl->name);
         }
 
-        ++indent;
+        ++print_indent;
         for (int i=0; i<decl->aggregate.num_fields; ++i) {
             print_newline();
             AggregateField f = decl->aggregate.fields[i];
@@ -344,12 +344,12 @@ void print_decl(Decl *decl) {
             print_type(f.type);
             printf(")");
         }
-        --indent;
+        --print_indent;
         printf(")");
         break;
     case DECL_ENUM:
         printf("(enum %s ", decl->name);
-        ++indent;
+        ++print_indent;
         for (int i=0; i<decl->enum_decl.num_items; ++i) {
             print_newline();
             EnumItem item = decl->enum_decl.items[i];
@@ -357,7 +357,7 @@ void print_decl(Decl *decl) {
             print_expr(item.expr);
             printf(")");
         }
-        --indent;
+        --print_indent;
         printf(")");
         break;
     default:
@@ -365,3 +365,4 @@ void print_decl(Decl *decl) {
         break;
     }
 }
+#undef INDENT_WIDTH

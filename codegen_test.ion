@@ -1,0 +1,36 @@
+var x: int;
+var y: int = 69;
+var p: int* = &x;
+
+typedef U8 = char;
+
+struct Stuff {
+	i: int;
+	f: float;
+	c: char;
+}
+
+union Things {
+	i: int;
+	f: float;
+	c: char;
+}
+
+enum Guy {
+	GUY_ZERO,
+	GUY_ONE,
+	GUY_TWO,
+	GUY_THREE,
+	GUY_SEVENTEEN = 17,
+	GUY_EIGHTEEN,
+	GUY_NINETEEN,
+}
+
+
+// func func1(i: int): int {
+	// return i;
+// }
+
+
+
+// const height = 600;

@@ -21,7 +21,6 @@ typedef enum {
     TYPE_UNION,
     TYPE_ENUM,
     TYPE_FUNC,
-    TYPE_CONST,
 } TypeKind;
 
 typedef struct {
