@@ -88,6 +88,7 @@ typedef enum {
 struct Expr {
     ExprKind kind;
 	SourcePos pos;
+	struct Type *type;
     union {
         int32_t int_val;
         double float_val;
@@ -158,8 +159,8 @@ struct Typespec {
             Typespec *ret;
         } func;
         struct {
-            Typespec *elem;
-            Expr *size;
+            Typespec *base;
+            Expr *num_items;
         } array;
         struct {
             Typespec *base;

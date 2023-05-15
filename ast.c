@@ -154,10 +154,10 @@ Typespec *typespec_ptr(SourcePos pos, Typespec *base) {
     return typespec;
 }
 
-Typespec *typespec_array(SourcePos pos, Typespec *elem, Expr *size) {
+Typespec *typespec_array(SourcePos pos, Typespec *base, Expr *num_items) {
 	Typespec *typespec = typespec_alloc(TYPESPEC_ARRAY, pos);
-    typespec->array.elem = elem;
-    typespec->array.size = size;
+    typespec->array.base = base;
+    typespec->array.num_items = num_items;
     return typespec;
 }
 

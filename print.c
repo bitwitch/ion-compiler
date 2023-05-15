@@ -268,9 +268,9 @@ void print_type(Typespec *type) {
         break;
     case TYPESPEC_ARRAY:
         printf("(array ");
-        print_expr(type->array.size);
+        print_expr(type->array.num_items);
         printf(" ");
-        print_type(type->array.elem);
+        print_type(type->array.base);
         printf(")");
         break;
 	case TYPESPEC_FUNC:

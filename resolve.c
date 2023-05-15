@@ -139,6 +139,14 @@ void sym_put_type(char *name, Type *type) {
     da_push(global_syms, sym);
 }
 
+void init_primative_types(void) {
+	if (!sym_get(str_intern("void")))  sym_put_type(str_intern("void"),  type_void);
+	if (!sym_get(str_intern("int")))   sym_put_type(str_intern("int"),   type_int);
+	if (!sym_get(str_intern("float"))) sym_put_type(str_intern("float"), type_float);
+	if (!sym_get(str_intern("char")))  sym_put_type(str_intern("char"),  type_char);
+	if (!sym_get(str_intern("bool")))  sym_put_type(str_intern("bool"),  type_bool);
+}
+	
 Sym **sym_enter_scope(void) {
 	return local_syms_end;
 }
@@ -286,8 +294,8 @@ Type *resolve_typespec(Typespec *typespec) {
 		return type_func(params, da_len(params), ret_type);
 	}
 	case TYPESPEC_ARRAY: {
-		Type *elem_type = resolve_typespec(typespec->array.elem);
-		ResolvedExpr size = resolve_expr(typespec->array.size);
+		Type *elem_type = resolve_typespec(typespec->array.base);
+		ResolvedExpr size = resolve_expr(typespec->array.num_items);
 		if (!size.is_const) {
 			semantic_error(typespec->pos, "Array size must be a constant");
 			return NULL;
@@ -382,32 +390,43 @@ ResolvedExpr resolve_expr_cond(Expr *cond) {
 }
 
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
+    ResolvedExpr result = resolved_null;
+
     switch (expr->kind) {
     case EXPR_INT: 
-        return resolved_const(expr->int_val);
+        result = resolved_const(expr->int_val);
+		break;
     case EXPR_FLOAT:
-		return resolved_rvalue(type_float);
+		result = resolved_rvalue(type_float);
+		break;
 	case EXPR_BOOL:
-		return resolved_rvalue(type_bool);
+		result = resolved_rvalue(type_bool);
+		break;
 	case EXPR_STR:
-		//return resolved_rvalue(type_array(type_char, strlen(expr->str_val) + 1));
-		return resolved_rvalue(type_ptr(type_char));
+		//result = resolved_rvalue(type_array(type_char, strlen(expr->str_val) + 1));
+		result = resolved_rvalue(type_ptr(type_char));
+		break;
     case EXPR_NAME:
-        return resolve_expr_name(expr);
+        result = resolve_expr_name(expr);
+		break;
     case EXPR_UNARY:
-        return resolve_expr_unary(expr);
+        result = resolve_expr_unary(expr);
+		break;
     case EXPR_SIZEOF_EXPR: {
         ResolvedExpr sizeof_expr = resolve_expr(expr->sizeof_expr);
-        return resolved_const(sizeof_expr.type->size);
+        result = resolved_const(sizeof_expr.type->size);
+		break;
     }
     case EXPR_SIZEOF_TYPE: {
         Type *type = resolve_typespec(expr->sizeof_type);
-        return resolved_const(type->size);
+        result = resolved_const(type->size);
+		break;
 	}
 	case EXPR_CAST: {
 		Type *type = resolve_typespec(expr->cast.type);
 		ResolvedExpr resolved_expr = resolve_expr(expr->cast.expr);
-		return resolved_rvalue(type);
+		result = resolved_rvalue(type);
+		break;
 	}
 	case EXPR_BINARY: {
 		ResolvedExpr left  = resolve_expr(expr->binary.left);
@@ -415,7 +434,8 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		if (left.type != right.type) {
 			semantic_error(expr->pos, "Type mismatch for left and right side of binary expression");
 		}
-		return resolved_rvalue(left.type);
+		result = resolved_rvalue(left.type);
+		break;
 	}
 
 	case EXPR_TERNARY: {
@@ -425,19 +445,22 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		if (then_expr.type != else_expr.type) {
 			semantic_error(expr->pos, "Type mismatch in ternary expression, else expr does not match then expr");
 		}
-		return resolved_rvalue(then_expr.type);
+		result = resolved_rvalue(then_expr.type);
+		break;
 	}
 
 	case EXPR_CALL: {
 		ResolvedExpr resolved = resolve_expr(expr->call.expr);
 		if (resolved.type->kind != TYPE_FUNC) {
 			semantic_error(expr->pos, "Attempting to call %s which is not a function", expr->call.expr->name);
-			return resolved_null;
+			result = resolved_null;
+			break;
 		}
 		Type *type = resolved.type;
 		if (expr->call.num_args != type->func.num_params) {
 			semantic_error(expr->pos, "not enough arguments passed to function %s", type->sym->name);
-			return resolved_null;
+			result = resolved_null;
+			break;
 		}
 		TypeField *params = type->func.params;
 		for (int i = 0; i < expr->call.num_args; ++i) {
@@ -447,7 +470,8 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 				      params[i].type->sym->name, params[i].name, arg.type->sym->name);
 			}
 		}
-		return resolved_rvalue(type->func.ret);
+		result = resolved_rvalue(type->func.ret);
+		break;
 	}
 	
 	case EXPR_INDEX: {
@@ -455,13 +479,14 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		ResolvedExpr index = resolve_expr(expr->index.index);
 		Type *type = resolved_expr.type;
 		if (type->kind == TYPE_ARRAY) {
-			return resolved_lvalue(type->array.base);
+			result = resolved_lvalue(type->array.base);
 		} else if (type->kind == TYPE_PTR) {
-			return resolved_lvalue(type->ptr.base);
+			result = resolved_lvalue(type->ptr.base);
 		} else {
 			semantic_error(expr->pos, "Attempting to index a non array or pointer type");
-			return resolved_null;
+			result = resolved_null;
 		}
+		break;
 	}
 
 	case EXPR_FIELD: {
@@ -472,12 +497,17 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		}
 		TypeField *fields = base.type->aggregate.fields;
 		int num_fields =  base.type->aggregate.num_fields;
+		bool found = false;
 		for (int i = 0; i < num_fields; ++i) {
 			if (expr->field.name == fields[i].name) {
-				return resolved_lvalue(fields[i].type);
+				result = resolved_lvalue(fields[i].type);
+				found = true; 
+				break;
 			}
 		}
-		semantic_error(expr->pos, "%s is not a field of %s", expr->field.name, base.type->sym->name);
+		if (!found) {
+			semantic_error(expr->pos, "%s is not a field of %s", expr->field.name, base.type->sym->name);
+		}
 		break;
 	}
 
@@ -510,15 +540,21 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		}
 		// TODO(shaw): need to think more about this, it seems like a compound
 		// literal should be r-value, but not totally sure
-		return resolved_rvalue(type);
+		result = resolved_rvalue(type);
+		break;
 	}
 
     default:
         assert(0);
         break;
     }
-    return resolved_null;
 
+    if (result.type) {
+        assert(!expr->type || expr->type == result.type);
+        expr->type = result.type;
+    }
+
+    return result;
 }
 
 ResolvedExpr resolve_expr(Expr *expr) {
@@ -781,11 +817,9 @@ Sym *resolve_name(char *name) {
 
 
 void resolve_test(void) {
-	// insert primative types into the symbol table at startup 
-	sym_put_type(str_intern("void"), type_void);
-    sym_put_type(str_intern("int"), type_int);
-    sym_put_type(str_intern("float"), type_float);
-    sym_put_type(str_intern("char"), type_char);
+
+	init_keywords();
+	init_primative_types();
 	
     char *decls[] = {
 		"struct Vec2 { x: int; y: int; }",
@@ -900,6 +934,14 @@ void resolve_test(void) {
         print_decl(sym->decl);
         printf("\n");
     }
+
+	da_free(global_syms);
+	da_free(ordered_syms);
+
+	if (compile_file("tests/resolve_test.ion") != 0) {
+		fprintf(stderr, "Failed to compile tests/resolve_test.ion\n");
+	}
+
 }
 
 

@@ -26,11 +26,12 @@ enum Guy {
 	GUY_NINETEEN,
 }
 
-
-// func func1(i: int): int {
-	// return i;
-// }
-
-
+func func1(i: int, j: float, k: char*): int {
+	count := 0;
+	if (i) {
+		count = 1;
+	}
+	return i + count;
+}
 
 // const height = 600;

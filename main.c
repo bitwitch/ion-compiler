@@ -23,21 +23,20 @@
 #include "codegen.c"
 
 void run_tests(void) {
-    init_keywords();
-
 	da_test();
-    str_intern_test();
+	str_intern_test();
 	lex_test();
-    // parse_test();
-    // resolve_test();
-    type_intern_test();
-	compile_file("tests\\resolve_test.ion");
-    // printf("Tests Succeeded.\n");
-
+	parse_test();
+	resolve_test();
+	type_intern_test();
+	
+    init_keywords();
+	init_primative_types();
 }
 
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
+	// run_tests();
 	codegen_test();
 
 	/*

@@ -1,6 +1,3 @@
-// @LEAK all the strf calls allocate and leak, right now strf calls malloc, but
-// will switch to arena allocator in future
-
 #define INDENT_WIDTH 4
 static int gen_indent = 0; 
 
@@ -13,6 +10,12 @@ char *gen__newline(char *buf) {
 	return buf;
 }
 
+char *gen_parens(char *str, bool b) {
+	return b ? strf("(%s)", str) : str;
+}
+
+// @LEAK all the strf calls allocate and leak, right now strf calls malloc, but
+// will switch to arena allocator in future
 char *gen_type_c(Type *type, char *inner) {
 	assert(type);
 	char *sep = *inner ? " " : "";
@@ -27,39 +30,45 @@ char *gen_type_c(Type *type, char *inner) {
 		return strf("float%s%s", sep, inner);
 	case TYPE_BOOL:
 		return strf("bool%s%s", sep, inner);
+	case TYPE_STRUCT:
+	case TYPE_UNION:
+	case TYPE_ENUM:
+		return strf("%s%s%s", type->sym->name, sep, inner);
 
 	case TYPE_PTR: {
 		// int *(x)
-		char *str = strf("*(%s)", inner);
+		char *str = gen_parens(strf("*%s", inner), *inner);
 		return gen_type_c(type->ptr.base, str);
 	}
 
 	case TYPE_ARRAY: {
 		// int (x)[8]
-		char *str = strf("(%s)[%d]", inner, type->array.num_items);
+		char *str = gen_parens(strf("%s[%d]", inner, type->array.num_items), *inner);
 		return gen_type_c(type->array.base, str);
 	}
 
 	case TYPE_FUNC: {
-		// int (x)(int)
+		// int (*x)(int)
 		BUF(char *params) = NULL; // @LEAK
 		int num_params = type->func.num_params;
+		if (num_params == 0) {
+			da_printf(params, "void");
+		}
 		for (int i=0; i<num_params; ++i) {
 			TypeField param = type->func.params[i];
 			da_printf(params, "%s%s", gen_type_c(param.type, ""), i == num_params-1 ? "" : ", ");
 		}
-		char *str = strf("(%s)(%s)", inner, params);
+		char *str = strf("(*%s)(%s)", inner, params);
 		return gen_type_c(type->func.ret, str);
 	}
 
-	case TYPE_STRUCT:
-	case TYPE_UNION:
-	case TYPE_ENUM:
 	default:
 		assert(0);
 		return NULL;
 	}
 }
+
+char *gen_typespec_c(Typespec *typespec, char *inner);
 
 char *gen_expr_c(Expr *expr) {
     assert(expr);
@@ -75,30 +84,29 @@ char *gen_expr_c(Expr *expr) {
     case EXPR_NAME: 
         return strf("%s", expr->name); 
     case EXPR_UNARY: 
-		return strf("%c%s", expr->unary.op, gen_expr_c(expr->unary.expr));
+		return strf("%c(%s)", expr->unary.op, gen_expr_c(expr->unary.expr));
     case EXPR_BINARY:
-        return strf("%s %s %s", 
+        return strf("(%s) %s (%s)", 
             gen_expr_c(expr->binary.left),
             token_kind_to_str(expr->binary.op),
             gen_expr_c(expr->binary.right));
     case EXPR_TERNARY: 
-        return strf("%s ? %s : %s",
+        return strf("(%s ? %s : %s)",
             gen_expr_c(expr->ternary.cond),
             gen_expr_c(expr->ternary.then_expr),
             gen_expr_c(expr->ternary.else_expr));
     case EXPR_CALL: {
-        char *name = expr->call.expr->name;
+        char *name = gen_expr_c(expr->call.expr);
         Expr **args = expr->call.args;
         int num_args = expr->call.num_args;
 
-        char *str = strf("%s(", name);
+		BUF(char *str) = NULL;
+		da_printf(str, "%s(", name);
         for (int i=0; i<num_args; ++i) {
-            str = strf("%s%s%s",
-                str,
-                gen_expr_c(args[i]),
-                i == num_args - 1 ? "" : ", ");
+			da_printf(str, "%s%s", gen_expr_c(args[i]), i == num_args - 1 ? "" : ", ");
         }
-        return strf("%s)", str);
+		da_printf(str, ")");
+        return str;
     }
     case EXPR_INDEX: 
         return strf("%s[%s]",
@@ -133,14 +141,130 @@ char *gen_expr_c(Expr *expr) {
 	case EXPR_SIZEOF_EXPR:
         return strf("sizeof(%s)", gen_expr_c(expr->sizeof_expr));
     case EXPR_SIZEOF_TYPE:
-		// TODO(shaw): handle more than TYPESPEC_NAME
-		assert(expr->sizeof_type->kind == TYPESPEC_NAME);
-        return strf("sizeof(%s)", expr->sizeof_type->name);
+        return strf("sizeof(%s)", gen_typespec_c(expr->sizeof_type, ""));
     default:
         printf("Error: Codegen: Unknown expr kind: %d\n", expr->kind);
         assert(0);
         return NULL;
     }
+}
+
+
+char *gen_typespec_c(Typespec *typespec, char *inner) {
+	assert(typespec);
+	char *sep = *inner ? " " : "";
+
+	switch (typespec->kind) {
+	case TYPESPEC_NAME:
+        return strf("%s%s%s", typespec->name, sep, inner);
+
+	case TYPESPEC_ARRAY: {
+		char *str = gen_parens(strf("%s[%d]", inner, typespec->array.num_items), *inner);
+		return gen_typespec_c(typespec->array.base, str);
+	}
+
+	case TYPESPEC_POINTER: {
+		char *str = gen_parens(strf("*%s", inner), *inner);
+		return gen_typespec_c(typespec->ptr.base, str);
+	}
+
+	case TYPESPEC_FUNC: {
+		BUF(char *params) = NULL; // @LEAK
+		int num_params = typespec->func.num_params;
+		if (num_params == 0) {
+			da_printf(params, "void");
+		}
+		for (int i=0; i<num_params; ++i) {
+			da_printf(params, "%s%s", gen_typespec_c(typespec->func.params[i], ""), i == num_params-1 ? "" : ", ");
+		}
+		char *str = strf("(*%s)(%s)", inner, params);
+		return gen_typespec_c(typespec->func.ret, str);
+	}
+
+	default: 
+		assert(0);
+		return NULL;
+	}
+}
+
+char *gen_stmt_block_c(StmtBlock block);
+
+char *gen_stmt_c(Stmt *stmt) {
+	switch (stmt->kind) {
+	case STMT_CONTINUE:
+		return "continue;";
+	case STMT_BREAK:
+		return "break;";
+	case STMT_RETURN:
+		return strf("return %s;", gen_expr_c(stmt->return_stmt.expr));
+	case STMT_BRACE_BLOCK:
+		return gen_stmt_block_c(stmt->block);
+	case STMT_EXPR:
+		return gen_expr_c(stmt->expr);
+
+	case STMT_ASSIGN: {
+		char *lhs = gen_expr_c(stmt->assign.left);
+		if (stmt->assign.right) {
+			return strf("%s %s %s;",
+				lhs,
+				token_kind_to_str(stmt->assign.op),
+				gen_expr_c(stmt->assign.right));
+		} else {
+			return strf("%s %s %s;", lhs, token_kind_to_str(stmt->assign.op));
+		}
+	}
+
+	case STMT_INIT: {
+		assert(stmt->init.expr);
+		return strf("%s = %s;", 
+			gen_type_c(stmt->init.expr->type, stmt->init.name),
+			gen_expr_c(stmt->init.expr));
+	}
+
+	case STMT_IF: {
+		BUF(char *str) = NULL;
+		da_printf(str, "if (%s) %s", 
+				gen_expr_c(stmt->if_stmt.cond),
+				gen_stmt_block_c(stmt->if_stmt.then_block));
+
+		ElseIf *else_ifs = stmt->if_stmt.else_ifs; 
+		for (int i=0; i < stmt->if_stmt.num_else_ifs; ++i) {
+			da_printf(str, " else if (%s) %s", 
+				gen_expr_c(else_ifs[i].cond),
+				gen_stmt_block_c(else_ifs[i].block));
+		}
+
+		StmtBlock else_block = stmt->if_stmt.else_block;
+		if (else_block.num_stmts > 0) {
+			da_printf(str, " else %s", gen_stmt_block_c(stmt->if_stmt.then_block));
+		}
+		return str;
+	}
+
+	case STMT_FOR:
+	case STMT_DO:
+	case STMT_WHILE:
+	case STMT_SWITCH:
+	default: 
+		assert(0);
+		return NULL;
+	}
+}
+
+char *gen_stmt_block_c(StmtBlock block) {
+	BUF(char *str) = NULL; // @LEAK
+	da_printf(str, "{");
+	++gen_indent;
+	gen_newline(str);
+	for (int i=0; i<block.num_stmts; ++i) {
+		da_printf(str, "%s", gen_stmt_c(block.stmts[i]));
+		if (i < block.num_stmts - 1) 
+			gen_newline(str);
+	}
+	--gen_indent;
+	gen_newline(str);
+	da_printf(str, "}");
+	return str;
 }
 
 char *gen_sym_c(Sym *sym) {
@@ -149,10 +273,12 @@ char *gen_sym_c(Sym *sym) {
 
 	switch (decl->kind) {
 	case DECL_VAR: {
-		char *str = strf("%s", gen_type_c(sym->type, sym->name));
+		BUF(char *str) = NULL; // @LEAK
+		da_printf(str, "%s", gen_type_c(sym->type, sym->name));
 		if (decl->var.expr)
-			str = strf("%s = %s", str, gen_expr_c(decl->var.expr));
-		return strf("%s;", str);
+			da_printf(str, " = %s", gen_expr_c(decl->var.expr));
+		da_printf(str, ";");
+		return str;
 	}
 
 	case DECL_TYPEDEF: {
@@ -205,7 +331,31 @@ char *gen_sym_c(Sym *sym) {
 		return str;
 	}
 
-	case DECL_FUNC:
+	case DECL_FUNC: {
+		BUF(char *str) = NULL; // @LEAK
+
+		if (decl->func.ret_type) {
+			da_printf(str, "%s ", gen_typespec_c(decl->func.ret_type, ""));
+		} else {
+			da_printf(str, "void ");
+		}
+
+		da_printf(str, "(*%s)(", decl->name);
+
+		int num_params = decl->func.num_params;
+		if (num_params == 0) {
+			da_printf(str, "void");
+		}
+		for (int i=0; i<num_params; ++i) {
+			FuncParam param = decl->func.params[i];
+			da_printf(str, "%s%s", gen_typespec_c(param.type, param.name), i == num_params-1 ? "" : ", ");
+		}
+
+		da_printf(str, ") %s", gen_stmt_block_c(decl->func.block));
+
+		return str;
+	}
+
 	case DECL_CONST:
 	default: 
 		assert(0);
@@ -232,9 +382,9 @@ void codegen_test(void) {
     str = gen_expr_c(expr_name(pos, "Vector3"));
 	assert(0 == strcmp(str, "Vector3"));
     str = gen_expr_c(expr_unary(pos, '~', expr_int(pos, 42)));
-	assert(0 == strcmp(str, "~42"));
+	assert(0 == strcmp(str, "~(42)"));
     str = gen_expr_c(expr_binary(pos, '+', expr_int(pos, 33), expr_int(pos, 36)));
-	assert(0 == strcmp(str, "33 + 36"));
+	assert(0 == strcmp(str, "(33) + (36)"));
 	Expr *args[] = { expr_int(pos, 1), expr_int(pos, 2), expr_int(pos, 3) };
     str = gen_expr_c(expr_compound(pos, typespec_name(pos, "x"), args, array_count(args)));
 	assert(0 == strcmp(str, "(x){1, 2, 3}"));
@@ -262,13 +412,13 @@ void codegen_test(void) {
 	Type *func_int_int = type_func(params, array_count(params), type_int);
 
 	str = gen_type_c(type_array(type_int, 16), "x");
-	assert(0 == strcmp(str, "int (x)[16]"));
+	assert(0 == strcmp(str, "int (x[16])"));
 	str = gen_type_c(func_int_int, "x");
-	assert(0 == strcmp(str, "int (x)(int, int)"));
+	assert(0 == strcmp(str, "int (*x)(int, int)"));
 	str = gen_type_c(type_ptr(func_int_int), "x");
-	assert(0 == strcmp(str, "int (*(x))(int, int)"));
+	assert(0 == strcmp(str, "int (*(*x))(int, int)"));
 	str = gen_type_c(type_array(type_ptr(func_int_int), 3), "x");
-	assert(0 == strcmp(str, "int (*((x)[3]))(int, int)"));
+	assert(0 == strcmp(str, "int (*(*(x[3])))(int, int)"));
 	
 
 	if (compile_file("codegen_test.ion") != 0) {
@@ -283,3 +433,4 @@ void codegen_test(void) {
 	}
 }
 #undef INDENT_WIDTH
+
