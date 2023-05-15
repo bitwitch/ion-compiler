@@ -384,8 +384,12 @@ ResolvedExpr resolve_expr(Expr *expr);
 
 ResolvedExpr resolve_expr_cond(Expr *cond) {
 	ResolvedExpr resolved = resolve_expr(cond);
-	if (resolved.type != type_int && resolved.type != type_bool)
-		semantic_error(cond->pos, "condition must have type int or bool");
+
+	// coerce all values to truthy values, i.e. anything that is not zero becomes 1
+	// and force the type to be int
+	if (resolved.val) resolved.val = 1;
+	resolved.type = type_int;
+
 	return resolved;
 }
 
@@ -439,7 +443,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 	}
 
 	case EXPR_TERNARY: {
-		ResolvedExpr cond_expr = resolve_expr_cond(expr->ternary.cond);
+		resolve_expr_cond(expr->ternary.cond);
 		ResolvedExpr then_expr = resolve_expr(expr->ternary.then_expr);
 		ResolvedExpr else_expr = resolve_expr(expr->ternary.else_expr);
 		if (then_expr.type != else_expr.type) {
@@ -937,11 +941,6 @@ void resolve_test(void) {
 
 	da_free(global_syms);
 	da_free(ordered_syms);
-
-	if (compile_file("tests/resolve_test.ion") != 0) {
-		fprintf(stderr, "Failed to compile tests/resolve_test.ion\n");
-	}
-
 }
 
 

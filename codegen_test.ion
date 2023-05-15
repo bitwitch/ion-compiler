@@ -1,8 +1,11 @@
+typedef int_func = func(int):int;
+
 var x: int;
 var y: int = 69;
 var p: int* = &x;
 
 typedef U8 = char;
+
 
 struct Stuff {
 	i: int;
@@ -31,7 +34,51 @@ func func1(i: int, j: float, k: char*): int {
 	if (i) {
 		count = 1;
 	}
+
+	do {
+		j += 0.69;
+	} while(j < 3.14);
+
+	while (i < 65536) {
+		i += 1;
+	}
+
+	switch (i) {
+		case 0:
+			j = 1.1;
+			break;
+		case 1:
+			j = 1.2;
+			break;
+		case 2:
+		case 4:
+		case 6:
+			j = 1.69;
+			break;
+		case 3:
+			j = 1.3;
+			break;
+		case 5:
+			j = 1.5;
+			break;
+		default:
+			j = 3.14;
+			break;
+	}
+
 	return i + count;
 }
 
-// const height = 600;
+func fib(n: int): int {
+	if (n == 0) { return 0; }
+	prev := 0;
+	result := 1;
+	for (i := 1; i < n; i++) {
+		new := result + prev;
+		prev = result;
+		result = new;
+	}
+	return result;
+}
+
+const height = 600;

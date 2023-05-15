@@ -1,3 +1,6 @@
+// @LEAK all the strf calls allocate and leak, right now strf calls malloc, but
+// will switch to arena allocator in future
+
 #define INDENT_WIDTH 4
 static int gen_indent = 0; 
 
@@ -14,8 +17,6 @@ char *gen_parens(char *str, bool b) {
 	return b ? strf("(%s)", str) : str;
 }
 
-// @LEAK all the strf calls allocate and leak, right now strf calls malloc, but
-// will switch to arena allocator in future
 char *gen_type_c(Type *type, char *inner) {
 	assert(type);
 	char *sep = *inner ? " " : "";
@@ -85,11 +86,13 @@ char *gen_expr_c(Expr *expr) {
         return strf("%s", expr->name); 
     case EXPR_UNARY: 
 		return strf("%c(%s)", expr->unary.op, gen_expr_c(expr->unary.expr));
-    case EXPR_BINARY:
+    case EXPR_BINARY: {
+		char *op = strf("%s", token_kind_to_str(expr->binary.op));
         return strf("(%s) %s (%s)", 
             gen_expr_c(expr->binary.left),
-            token_kind_to_str(expr->binary.op),
+            op,
             gen_expr_c(expr->binary.right));
+	}
     case EXPR_TERNARY: 
         return strf("(%s ? %s : %s)",
             gen_expr_c(expr->ternary.cond),
@@ -120,17 +123,21 @@ char *gen_expr_c(Expr *expr) {
         // TODO(shaw): get the decl for the type here so that we can have named fields (designated initializer)
         // (Vec2){ .x = 69, .y = 420 }
 
-		// TODO(shaw): handle more than TYPESPEC_NAME
-		assert(expr->compound.type->kind == TYPESPEC_NAME);
+		BUF(char *str) = NULL; // @LEAK
+
+		if (expr->type->kind != TYPE_ARRAY) {
+			da_printf(str, "(%s)", gen_type_c(expr->type, ""));
+		}
+		da_printf(str, "{");
+
         int num_args = expr->compound.num_args;
-        char *str = strf("(%s){", expr->compound.type->name);
         for (int i=0; i<num_args; ++i) {
-            str = strf("%s%s%s",
-                str,
-                gen_expr_c(expr->compound.args[i]),
-                i == num_args - 1 ? "" : ", ");
+			da_printf(str, "%s%s", 
+				gen_expr_c(expr->compound.args[i]),
+				i == num_args - 1 ? "" : ", ");
         }
-        return strf("%s}", str);
+		da_printf(str, "}");
+		return str;
     }
 	case EXPR_CAST:
 		// TODO(shaw): handle more than TYPESPEC_NAME
@@ -187,16 +194,42 @@ char *gen_typespec_c(Typespec *typespec, char *inner) {
 	}
 }
 
+char *gen_forward_decls_c(Sym **global_syms) {
+	BUF(char *str) = NULL;
+
+	// forward declare types
+	for (int i=0; i<da_len(global_syms); ++i) {
+		Sym *sym = global_syms[i];
+		// NOTE(shaw): primative types don't have declarations, skip those
+		if (!sym->decl) continue;
+		if (sym->kind == SYM_TYPE) {
+			if (sym->decl->kind == DECL_STRUCT) {
+				da_printf(str, "typedef struct %s %s;", sym->name, sym->name);
+				gen_newline(str);
+			} else if (sym->decl->kind == DECL_UNION) {
+				da_printf(str, "typedef union %s %s;", sym->name, sym->name);
+				gen_newline(str);
+			} else if (sym->decl->kind == DECL_ENUM) {
+				da_printf(str, "typedef enum %s %s;", sym->name, sym->name);
+				gen_newline(str);
+			}
+		}
+	}
+
+	return str;
+}
+
+
 char *gen_stmt_block_c(StmtBlock block);
 
 char *gen_stmt_c(Stmt *stmt) {
 	switch (stmt->kind) {
 	case STMT_CONTINUE:
-		return "continue;";
+		return "continue";
 	case STMT_BREAK:
-		return "break;";
+		return "break";
 	case STMT_RETURN:
-		return strf("return %s;", gen_expr_c(stmt->return_stmt.expr));
+		return strf("return %s", gen_expr_c(stmt->return_stmt.expr));
 	case STMT_BRACE_BLOCK:
 		return gen_stmt_block_c(stmt->block);
 	case STMT_EXPR:
@@ -205,20 +238,23 @@ char *gen_stmt_c(Stmt *stmt) {
 	case STMT_ASSIGN: {
 		char *lhs = gen_expr_c(stmt->assign.left);
 		if (stmt->assign.right) {
-			return strf("%s %s %s;",
+			return strf("%s %s %s",
 				lhs,
 				token_kind_to_str(stmt->assign.op),
 				gen_expr_c(stmt->assign.right));
 		} else {
-			return strf("%s %s %s;", lhs, token_kind_to_str(stmt->assign.op));
+			return strf("%s%s", lhs, token_kind_to_str(stmt->assign.op));
 		}
 	}
 
 	case STMT_INIT: {
-		assert(stmt->init.expr);
-		return strf("%s = %s;", 
-			gen_type_c(stmt->init.expr->type, stmt->init.name),
-			gen_expr_c(stmt->init.expr));
+		if (stmt->init.expr) {
+			return strf("%s = %s", 
+				gen_type_c(stmt->init.expr->type, stmt->init.name),
+				gen_expr_c(stmt->init.expr));
+		} else {
+			return strf("%s", gen_typespec_c(stmt->init.type, stmt->init.name));
+		}
 	}
 
 	case STMT_IF: {
@@ -241,14 +277,65 @@ char *gen_stmt_c(Stmt *stmt) {
 		return str;
 	}
 
-	case STMT_FOR:
-	case STMT_DO:
-	case STMT_WHILE:
-	case STMT_SWITCH:
-	default: 
+	case STMT_FOR: {
+		char *init = stmt->for_stmt.init ? gen_stmt_c(stmt->for_stmt.init) : "";
+		char *cond = stmt->for_stmt.cond ? gen_expr_c(stmt->for_stmt.cond) : "";
+		char *next = stmt->for_stmt.next ? gen_stmt_c(stmt->for_stmt.next) : "";
+		return strf("for (%s; %s; %s) %s", init, cond, next, gen_stmt_block_c(stmt->for_stmt.block));
+	}
+
+	case STMT_DO: {
+		return strf("do %s while(%s)", 
+			gen_stmt_block_c(stmt->while_stmt.block),
+			gen_expr_c(stmt->while_stmt.cond));
+	}
+
+	case STMT_WHILE: {
+		return strf("while(%s) %s", 
+			gen_expr_c(stmt->while_stmt.cond),
+			gen_stmt_block_c(stmt->while_stmt.block));
+	}
+
+	case STMT_SWITCH: {
+		BUF(char *str) = NULL; // @LEAK
+		da_printf(str, "switch (%s) {", gen_expr_c(stmt->switch_stmt.expr));
+		++gen_indent;
+		gen_newline(str);
+		for (int i=0; i < stmt->switch_stmt.num_cases; ++i) {
+			SwitchCase switch_case = stmt->switch_stmt.cases[i];
+			if (switch_case.is_default) {
+				da_printf(str, "default: ");
+			} else {
+				for (int j=0; j < switch_case.num_exprs; ++j) {
+					da_printf(str, "case %s: ", gen_expr_c(switch_case.exprs[j]));
+					if (j < switch_case.num_exprs - 1)
+						gen_newline(str);
+				}
+			}
+			da_printf(str, "%s", gen_stmt_block_c(switch_case.block));
+			if (i < stmt->switch_stmt.num_cases - 1)
+				gen_newline(str);
+		}
+		--gen_indent;
+		gen_newline(str);
+		da_printf(str, "}");
+		return str;
+	}
+
+	default:
 		assert(0);
 		return NULL;
 	}
+}
+
+bool semicolon_follows_stmt_c(Stmt *stmt) {
+	return stmt->kind == STMT_RETURN   ||
+		   stmt->kind == STMT_CONTINUE ||
+		   stmt->kind == STMT_BREAK    ||
+		   stmt->kind == STMT_DO       ||
+		   stmt->kind == STMT_ASSIGN   ||
+		   stmt->kind == STMT_INIT     ||
+		   stmt->kind == STMT_EXPR;
 }
 
 char *gen_stmt_block_c(StmtBlock block) {
@@ -257,7 +344,10 @@ char *gen_stmt_block_c(StmtBlock block) {
 	++gen_indent;
 	gen_newline(str);
 	for (int i=0; i<block.num_stmts; ++i) {
-		da_printf(str, "%s", gen_stmt_c(block.stmts[i]));
+		Stmt *stmt = block.stmts[i];
+		da_printf(str, "%s", gen_stmt_c(stmt));
+		if (semicolon_follows_stmt_c(stmt))
+			da_printf(str, ";");
 		if (i < block.num_stmts - 1) 
 			gen_newline(str);
 	}
@@ -272,6 +362,10 @@ char *gen_sym_c(Sym *sym) {
 	assert(decl);
 
 	switch (decl->kind) {
+	case DECL_CONST: {
+		return strf("enum { %s = %s };", decl->name, gen_expr_c(decl->const_decl.expr));
+	}
+
 	case DECL_VAR: {
 		BUF(char *str) = NULL; // @LEAK
 		da_printf(str, "%s", gen_type_c(sym->type, sym->name));
@@ -282,9 +376,7 @@ char *gen_sym_c(Sym *sym) {
 	}
 
 	case DECL_TYPEDEF: {
-		// TODO(shaw): handle more than TYPESPEC_NAME
-		assert(decl->typedef_decl.type->kind == TYPESPEC_NAME);
-		return strf("typedef %s %s;", decl->typedef_decl.type->name, decl->name);
+		return strf("typedef %s;", gen_typespec_c(decl->typedef_decl.type, decl->name));
 	}
 
 	case DECL_UNION:
@@ -305,7 +397,7 @@ char *gen_sym_c(Sym *sym) {
 				--gen_indent;
 			gen_newline(str);
 		}
-		da_printf(str, "}");
+		da_printf(str, "};");
 		// TODO(shaw): wasting space in stretchy buf from len to cap
 		return str;
 	}
@@ -327,7 +419,7 @@ char *gen_sym_c(Sym *sym) {
 				--gen_indent;
 			gen_newline(str);
 		}
-		da_printf(str, "}");
+		da_printf(str, "};");
 		return str;
 	}
 
@@ -340,7 +432,7 @@ char *gen_sym_c(Sym *sym) {
 			da_printf(str, "void ");
 		}
 
-		da_printf(str, "(*%s)(", decl->name);
+		da_printf(str, "%s(", decl->name);
 
 		int num_params = decl->func.num_params;
 		if (num_params == 0) {
@@ -356,13 +448,14 @@ char *gen_sym_c(Sym *sym) {
 		return str;
 	}
 
-	case DECL_CONST:
 	default: 
 		assert(0);
 		return NULL;
 	}
 }
 
+
+int compile_file(char *path);
 
 void codegen_test(void) {
     SourcePos pos = {"", 0};
@@ -422,15 +515,12 @@ void codegen_test(void) {
 	
 
 	if (compile_file("codegen_test.ion") != 0) {
-		printf("Compilation failed\n");
+		fprintf(stderr, "Failed to compile codegen_test.ion\n");
 		return;
 	}
 
-	for (int i = 0; i<da_len(ordered_syms); ++i) {
-		Sym *sym = ordered_syms[i];
-		char *str = gen_sym_c(ordered_syms[i]);
-		printf("%s\n", str);
-	}
+	da_free(global_syms);
+	da_free(ordered_syms);
 }
 #undef INDENT_WIDTH
 

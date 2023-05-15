@@ -454,8 +454,8 @@ char *token_kind_to_str(TokenKind kind) {
     case TOKEN_RSHIFT_EQ:   sprintf(str, ">>=");     break;
     case TOKEN_LSHIFT:      sprintf(str, "<<");      break;
     case TOKEN_RSHIFT:      sprintf(str, ">>");      break;
-    case TOKEN_INC:         sprintf(str, "inc");     break;
-    case TOKEN_DEC:         sprintf(str, "dec");     break;
+    case TOKEN_INC:         sprintf(str, "++");      break;
+    case TOKEN_DEC:         sprintf(str, "--");      break;
     case TOKEN_ADD_EQ:      sprintf(str, "+=");      break;
     case TOKEN_SUB_EQ:      sprintf(str, "-=");      break;
     case TOKEN_MUL_EQ:      sprintf(str, "*=");      break;
