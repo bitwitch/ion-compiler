@@ -1,5 +1,6 @@
 ion
 *.dSYM/
+activity_log.txt
 build/
 tags
 editor_workspace.10x
