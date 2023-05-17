@@ -291,7 +291,7 @@ Type *resolve_typespec(Typespec *typespec) {
 			da_push(params, (TypeField){ .type = resolve_typespec(typespec->func.params[i]) });
 		}
 		Type *ret_type = resolve_typespec(typespec->func.ret);
-		return type_func(params, da_len(params), ret_type);
+		return type_func(params, da_len(params), typespec->func.is_variadic, ret_type);
 	}
 
 	case TYPESPEC_ARRAY: {
@@ -461,17 +461,29 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 			break;
 		}
 		Type *type = resolved.type;
-		if (expr->call.num_args != type->func.num_params) {
+		if (expr->call.num_args < type->func.num_params) {
 			semantic_error(expr->pos, "not enough arguments passed to function %s", type->sym->name);
 			result = resolved_null;
 			break;
+		} else if (expr->call.num_args > type->func.num_params) {
+			// only allowed if variadic function
+			if (!type->func.is_variadic) {
+				semantic_error(expr->pos, "too many arguments passed to function %s", type->sym->name);
+				result = resolved_null;
+				break;
+			}
 		}
 		TypeField *params = type->func.params;
 		for (int i = 0; i < expr->call.num_args; ++i) {
 			ResolvedExpr arg = resolve_expr_expected(expr->call.args[i], params[i].type);
-			if (arg.type != params[i].type) {
-				semantic_error(expr->pos, "Type mismatch in function call. Expected %s for parameter %s, got %s", 
-				      params[i].type->sym->name, params[i].name, arg.type->sym->name);
+			if (i < type->func.num_params) {
+				if (arg.type != params[i].type) {
+					semantic_error(expr->pos, "Type mismatch in function call. Expected %s for parameter %s, got %s", 
+						  params[i].type->sym->name, params[i].name, arg.type->sym->name);
+				}
+			} else {
+				assert(type->func.is_variadic);
+				// cannot typecheck var args, so do nothing
 			}
 		}
 		result = resolved_rvalue(type->func.ret);
@@ -740,7 +752,7 @@ Type *resolve_decl_func(Decl *decl) {
 	resolve_stmt_block(decl->func.block, ret_type);
 	sym_leave_scope(scope_start);
 
-	return type_func(params, num_params, ret_type);
+	return type_func(params, num_params, decl->func.is_variadic, ret_type);
 }
 
 Type *resolve_decl_type(Decl *decl) {

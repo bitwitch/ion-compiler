@@ -1,21 +1,22 @@
 TODO:
 
+[\] var args (...)
+	[X] enforce at least one param must precede ... 
+	[X] enforce ... must be last argument
+
+[ ] creating bindings to c functions like printf
+
+[ ] integer promotions and implicit conversions for binary expressions
+  
+[ ] allow implicitly sized arrays
+	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
+
 [ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
 [ ] initializing var decls with non constant values should error
 
 [ ] think about removing var keyword, could just look ahead to see if the next
 		token is ':' to tell if it is a DECL_VAR
-
-[] resolving the condition in the following while statement gives the error: 
-   Type mismatch for left and right side of binary expression
-   (where k: char*)
-	 while (*k < 122) {
-		 *k += 1;
-		 i -= 1;
-	 }
-   dereferencing a char* should give us a char no??
-
 
 [ ] comments
 	[X] single line
@@ -26,7 +27,10 @@ TODO:
 
 [ ] array pointer decay
 
-[ ] var args (...)
+[ ] implicit break for switch cases
+	[ ] support commas in switch cases for multiple case expressions to use the
+			same block, this alleviates need for fallthrough
+
 
 [ ] reformat for stupid tabs vs spaces
 
@@ -239,11 +243,35 @@ Resolving Symbols/Entities
 - type checking/inference
 
 
+--------------------------------------------------------------------------------
+
+How It Works
+
 
 Ion Compiler High Level Algorithm
-1. parse a bunch of declarations corresponding to a package
-2. install entities for each of them (entity => package level binding)
-3. go through all entities and resolve each one recursively
+1. Parse a bunch of declarations corresponding to a package
+2. Create a new symbol for each decl, and add it to a symbol table
+   (a symbol is basically a package level binding)
+3. Iterate through all symbols and resolve each one recursively, adding them to
+   a list of ordered symbols 
+
+
+What does it mean to "resolve" a symbol?
+There are two kinds of "resolution" happening:
+1. Discovering dependencies and ordering
+2. Type completion
+
+
+TODO
+Order Independent Declarations
+
+
+A dependency on a particular symbol does not necessarily mean that it must
+precede in the ordering, only if the symbol is used in a way that its full
+definition must be known is the type completed and the symbol put into the
+ordered symbol list.  For example, a dependency on a pointer to a type does not
+require the type to precede in the ordering, but a dependency on a type as a
+value does require it to precede.
 
 
 
@@ -264,4 +292,17 @@ A "Type" is an interned, canonical version of a type that can be compared
 directly with pointers 
 
 A "Typespec" is sort of like a reference to a type. 
+
+One illustrative example is an array type:
+The following is a typespec, where the size of the array is an expression:
+var arr: int[const1 + const2];
+
+Once this is resolved into a type, the size of the array must be resolved into a
+constant value. So if the values of const1 and const2 are 10 and 6, the type
+would be:
+var arr: int[16];
+
+
+
+
 

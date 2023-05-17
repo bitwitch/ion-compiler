@@ -161,10 +161,11 @@ Typespec *typespec_array(SourcePos pos, Typespec *base, Expr *num_items) {
     return typespec;
 }
 
-Typespec *typespec_func(SourcePos pos, Typespec **args, int num_args, Typespec *ret) {
+Typespec *typespec_func(SourcePos pos, Typespec **args, int num_args, bool is_variadic, Typespec *ret) {
 	Typespec *typespec = typespec_alloc(TYPESPEC_FUNC, pos);
     typespec->func.params = ast_memdup(args, num_args * sizeof(*args));
     typespec->func.num_params = num_args;
+    typespec->func.is_variadic = is_variadic;
     typespec->func.ret = ret;
     return typespec;
 }
@@ -309,11 +310,12 @@ Decl *decl_aggregate(SourcePos pos, DeclKind kind, char *name, AggregateField *f
     return decl;
 }
 
-Decl *decl_func(SourcePos pos, char *name, FuncParam *params, int num_params, Typespec *ret_type, StmtBlock block) {
+Decl *decl_func(SourcePos pos, char *name, FuncParam *params, int num_params, bool is_variadic, Typespec *ret_type, StmtBlock block) {
 	Decl *decl = decl_alloc(DECL_FUNC, pos);
     decl->name = name;
     decl->func.params = ast_memdup(params, num_params * sizeof(*params));
     decl->func.num_params = num_params;
+    decl->func.is_variadic = is_variadic;
     decl->func.ret_type = ret_type;
     decl->func.block = block;
     return decl;

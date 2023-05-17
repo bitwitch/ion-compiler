@@ -155,6 +155,7 @@ struct Typespec {
         struct {
             Typespec **params;
             int num_params;
+			bool is_variadic;
             Typespec *ret;
         } func;
         struct {
@@ -282,6 +283,7 @@ struct Decl {
         struct {
             FuncParam *params;
             int num_params;
+			bool is_variadic;
             Typespec *ret_type;
             StmtBlock block;
         } func;

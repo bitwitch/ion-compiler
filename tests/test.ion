@@ -1,3 +1,9 @@
+func variadic(n: int, ...) { }
+
+func call_it() {
+	variadic(69, 1, 2, 3);
+}
+
 union Stuff {
 	as_int: int;
 	as_float: float;
@@ -14,6 +20,12 @@ const HEIGHT = 400;
 typedef String = char*;
 
 func find_me() {
+	str := "tacos";
+	c := str[0];
+	while (c < cast(char, 122)) {
+	   c += cast(char, 1);
+	}
+ 
 	any: void*;
 	func_ptr := cast(func(int):int, any);
 	as_float := cast(float, global_int);

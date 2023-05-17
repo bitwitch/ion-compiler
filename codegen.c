@@ -59,6 +59,9 @@ char *gen_type_c(Type *type, char *inner) {
 			TypeField param = type->func.params[i];
 			da_printf(params, "%s%s", gen_type_c(param.type, ""), i == num_params-1 ? "" : ", ");
 		}
+		if (type->func.is_variadic) {
+			da_printf(params, ", ...");
+		}
 		char *str = strf("(*%s)(%s)", inner, params);
 		return gen_type_c(type->func.ret, str);
 	}
@@ -185,6 +188,9 @@ char *gen_typespec_c(Typespec *typespec, char *inner) {
 		}
 		for (int i=0; i<num_params; ++i) {
 			da_printf(params, "%s%s", gen_typespec_c(typespec->func.params[i], ""), i == num_params-1 ? "" : ", ");
+		}
+		if (typespec->func.is_variadic) {
+			da_printf(params, ", ...");
 		}
 		char *str = strf("(*%s)(%s)", inner, params);
 		return gen_typespec_c(typespec->func.ret, str);
@@ -448,7 +454,9 @@ char *gen_sym_c(Sym *sym) {
 			FuncParam param = decl->func.params[i];
 			da_printf(str, "%s%s", gen_typespec_c(param.type, param.name), i == num_params-1 ? "" : ", ");
 		}
-
+		if (decl->func.is_variadic) {
+			da_printf(str, ", ...");
+		}
 		da_printf(str, ") %s", gen_stmt_block_c(decl->func.block));
 
 		return str;
@@ -508,7 +516,7 @@ void codegen_test(void) {
 		{ "param1", type_int },
 		{ "param2", type_int },
 	};
-	Type *func_int_int = type_func(params, array_count(params), type_int);
+	Type *func_int_int = type_func(params, array_count(params), false, type_int);
 
 	str = gen_type_c(type_array(type_int, 16), "x");
 	assert(0 == strcmp(str, "int (x[16])"));

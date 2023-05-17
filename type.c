@@ -48,6 +48,7 @@ struct Type {
         struct {
             TypeField *params;
             int num_params;
+			bool is_variadic;
             Type *ret;
         } func;
     };
@@ -107,7 +108,7 @@ Type *type_array(Type *base, int num_items) {
     return t;
 }
 
-Type *type_func(TypeField *params, int num_params, Type *ret) {
+Type *type_func(TypeField *params, int num_params, bool is_variadic, Type *ret) {
     for (int i=0; i<da_len(cached_func_types); ++i) {
         Type *cached = cached_func_types[i];
         if (cached->func.num_params == num_params && cached->func.ret == ret) {
@@ -128,6 +129,7 @@ Type *type_func(TypeField *params, int num_params, Type *ret) {
 	t->align = PTR_SIZE;
     t->func.params = arena_memdup(&type_arena, params, num_params * sizeof(*params));
     t->func.num_params = num_params;
+    t->func.is_variadic = is_variadic;
     t->func.ret = ret;
     da_push(cached_func_types, t);
     return t;
@@ -164,9 +166,9 @@ void type_intern_test(void) {
         {.name = str_intern("x"), .type = type_int }, 
         {.name = str_intern("y"), .type = int_ptr },
     };
-    Type *func_one = type_func(params_one, array_count(params_one), type_int);
-    Type *func_two = type_func(params_two, array_count(params_two), type_int);
-    Type *func_three = type_func(NULL, 0, type_int);
+    Type *func_one = type_func(params_one, array_count(params_one), false, type_int);
+    Type *func_two = type_func(params_two, array_count(params_two), false, type_int);
+    Type *func_three = type_func(NULL, 0, false, type_int);
     assert(func_one == func_two);
     assert(func_one != func_three);
     assert(func_two != func_three);

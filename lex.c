@@ -34,6 +34,7 @@ typedef enum {
     TOKEN_LT_EQ,
     TOKEN_GT_EQ,
 	TOKEN_COMMENT,
+	TOKEN_ELLIPSIS,
 } TokenKind;
 
 typedef enum {
@@ -332,6 +333,9 @@ repeat:
         case '.': {
             if (isdigit(stream[1])) {
                 scan_float();
+			} else if (stream[1] == '.' && stream[2] == '.') {
+                token.kind = TOKEN_ELLIPSIS;
+                stream += 3;
             } else {
                 token.kind = *stream;
                 ++stream;
@@ -554,6 +558,18 @@ void print_token(Token token) {
 #define assert_token_eof() assert(token.kind == 0)
 void lex_test(void) {
     init_keywords();
+	{
+        char *source = "func variadic (n: int, ...);";
+		init_stream("", source);
+		assert_token_keyword(keyword_func);
+        assert_token_name("variadic");
+        assert_token('(');
+        assert_token_name("n");
+        assert_token(':');
+        assert_token_name("int");
+        assert_token(',');
+        assert_token(TOKEN_ELLIPSIS);
+	}
     {
         char *source = "+()_HELLO1,234+FOO!666";
         init_stream("", source);
@@ -623,8 +639,6 @@ void lex_test(void) {
         assert_token_int(69);
         assert_token_eof();
     }
-
-
 }
 #undef assert_token
 #undef assert_token_name

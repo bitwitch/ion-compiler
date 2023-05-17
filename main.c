@@ -48,4 +48,6 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "Failed to compile file %s\n", argv[1]);
 		return 1;
 	}
+
+	return 0;
 }

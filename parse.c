@@ -17,12 +17,28 @@ char *parse_name(void) {
 
 Typespec *parse_type_func(void) {
 	SourcePos pos = token.pos;
+	bool is_variadic = false;
 	expect_token('(');
 	BUF(Typespec **param_types) = NULL; // @LEAK
+
 	if (!is_token(')')) {
-		do {
+		// parse first parameter
+		if (match_token(TOKEN_ELLIPSIS)) {
+			syntax_error("at least one parameter must precede '...' in a variadic function");
+			is_variadic = true;
+		} else { 
 			da_push(param_types, parse_type());
-		} while (match_token(','));
+		}
+		// parse remaining parameters
+		while (match_token(',')) {
+			if (match_token(TOKEN_ELLIPSIS)) {
+				is_variadic = true;
+			} else {
+				if (is_variadic) syntax_error("no parameters can follow '...' in a variadic function");
+				da_push(param_types, parse_type());
+			}
+		}
+
 	}
 	expect_token(')');
 
@@ -31,7 +47,7 @@ Typespec *parse_type_func(void) {
 		ret_type = parse_type();
 	}
 
-	return typespec_func(pos, param_types, da_len(param_types), ret_type);
+	return typespec_func(pos, param_types, da_len(param_types), is_variadic, ret_type);
 }
 
 Typespec *parse_type_base(void) {
@@ -556,12 +572,26 @@ FuncParam parse_decl_func_param(void) {
 Decl *parse_decl_func(void) {
 	SourcePos pos = token.pos;
     char *name = parse_name();
+	bool is_variadic = false;
     expect_token('(');
     BUF(FuncParam *params) = NULL; // @LEAK
     if (!is_token(')')) {
-        do {
-            da_push(params, parse_decl_func_param());
-        } while (match_token(','));
+		// parse first parameter
+		if (match_token(TOKEN_ELLIPSIS)) {
+			syntax_error("at least one parameter must precede '...' in a variadic function");
+			is_variadic = true;
+		} else { 
+			da_push(params, parse_decl_func_param());
+		}
+		// parse remaining parameters
+		while (match_token(',')) {
+			if (match_token(TOKEN_ELLIPSIS)) {
+				is_variadic = true;
+			} else {
+				if (is_variadic) syntax_error("no parameters can follow '...' in a variadic function");
+				da_push(params, parse_decl_func_param());
+			}
+		}
     }
     expect_token(')');
 
@@ -572,7 +602,7 @@ Decl *parse_decl_func(void) {
 
     StmtBlock block = parse_stmt_block();
 
-	return decl_func(pos, name, params, da_len(params), ret_type, block);
+	return decl_func(pos, name, params, da_len(params), is_variadic, ret_type, block);
 }
 
 Decl *parse_decl(void) {
@@ -713,6 +743,9 @@ void parse_stmt_test(void) {
 void parse_decl_test(void) {
     init_keywords();
     char *declarations[] = {
+		// var args
+        "func variadic(n: int, ...) {}", 
+
         // enum
         "enum Ops { OP_ADD = 0, OP_SUB, OP_MUL, }",
         "enum Things { A = 69, B = OP_ADD, C, D = 2+2, E = 0x32 }",
@@ -747,8 +780,8 @@ void parse_decl_test(void) {
 }
 
 void parse_test(void) {
-    parse_expr_test();
-    /*parse_stmt_test();*/
-    /*parse_decl_test();*/
+    // parse_expr_test();
+    // parse_stmt_test();
+    parse_decl_test();
 }
 

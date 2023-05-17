@@ -315,9 +315,11 @@ void print_decl(Decl *decl) {
         for (int i=0; i<decl->func.num_params; ++i) {
             FuncParam p = decl->func.params[i];
             if (i > 0) printf(" ");
-            printf("%s ", p.name);
-            print_type(p.type);
+			printf("%s ", p.name);
+			print_type(p.type);
         }
+		if (decl->func.is_variadic)
+			printf(" ...");
         printf(")");
         if (decl->func.ret_type) {
             printf(" ");
