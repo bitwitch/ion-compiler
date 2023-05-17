@@ -144,10 +144,8 @@ char *gen_expr_c(Expr *expr) {
 		return str;
     }
 	case EXPR_CAST:
-		// TODO(shaw): handle more than TYPESPEC_NAME
-		assert(expr->cast.type->kind == TYPESPEC_NAME);
 		return strf("(%s)(%s)", 
-			expr->cast.type->name, 
+			gen_typespec_c(expr->cast.type, ""),
 			gen_expr_c(expr->cast.expr));
 	case EXPR_SIZEOF_EXPR:
         return strf("sizeof(%s)", gen_expr_c(expr->sizeof_expr));
