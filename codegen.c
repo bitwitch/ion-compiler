@@ -126,6 +126,7 @@ char *gen_expr_c(Expr *expr) {
 		BUF(char *str) = NULL; // @LEAK
 
 		if (expr->type->kind != TYPE_ARRAY) {
+
 			da_printf(str, "(%s)", gen_type_c(expr->type, ""));
 		}
 		da_printf(str, "{");
@@ -272,7 +273,7 @@ char *gen_stmt_c(Stmt *stmt) {
 
 		StmtBlock else_block = stmt->if_stmt.else_block;
 		if (else_block.num_stmts > 0) {
-			da_printf(str, " else %s", gen_stmt_block_c(stmt->if_stmt.then_block));
+			da_printf(str, " else %s", gen_stmt_block_c(stmt->if_stmt.else_block));
 		}
 		return str;
 	}
