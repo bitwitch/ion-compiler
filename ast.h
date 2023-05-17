@@ -75,7 +75,6 @@ typedef enum {
 	EXPR_BOOL,
     EXPR_STR,
     EXPR_NAME,
-    EXPR_TYPESPEC,
     EXPR_CAST,
     EXPR_CALL,
     EXPR_INDEX,
