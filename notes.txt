@@ -1,14 +1,8 @@
 TODO:
 
-[ ] c codegen
-	[ ] forward decls
-	[X] functions
-	[X] statements
-	[X] constants
-	[X] use gen_typespec_c wherever possible to retain more syntactic information
-			(for example an expression for an array size rather than just a resolved constant value)
-	
 [ ] designated initializers ( pos := Vec3{x=6, y=9} )
+
+[ ] initializing var decls with non constant values should error
 
 [ ] think about removing var keyword, could just look ahead to see if the next
 		token is ':' to tell if it is a DECL_VAR
@@ -41,6 +35,13 @@ TODO:
 
 [ ] local_syms should probably be a stretchy buffer
 
+[X] c codegen
+	[X] forward declaring struct, union, enums
+	[X] functions
+	[X] statements
+	[X] constants
+	[X] use gen_typespec_c wherever possible to retain more syntactic information
+			(for example an expression for an array size rather than just a resolved constant value)
 [X] fix source position calculation
 [X] resolving typedefs
 [X] resolving enums

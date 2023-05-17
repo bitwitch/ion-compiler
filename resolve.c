@@ -273,8 +273,7 @@ void complete_type(Type *type) {
 
 Type *resolve_typespec(Typespec *typespec) {
     switch (typespec->kind) {
-    case TYPESPEC_NAME:
-    {
+    case TYPESPEC_NAME: {
         Sym *sym = resolve_name(typespec->name);
 		if (!sym) {
 			semantic_error(typespec->pos, "Unknown type %s", typespec->name);
@@ -285,6 +284,7 @@ Type *resolve_typespec(Typespec *typespec) {
 		}
         return sym->type;
     }
+
 	case TYPESPEC_FUNC: {
 		BUF(TypeField *params) = NULL;
 		for (int i = 0; i < typespec->func.num_params; ++i) {
@@ -293,6 +293,7 @@ Type *resolve_typespec(Typespec *typespec) {
 		Type *ret_type = resolve_typespec(typespec->func.ret);
 		return type_func(params, da_len(params), ret_type);
 	}
+
 	case TYPESPEC_ARRAY: {
 		Type *elem_type = resolve_typespec(typespec->array.base);
 		ResolvedExpr size = resolve_expr(typespec->array.num_items);
@@ -302,15 +303,15 @@ Type *resolve_typespec(Typespec *typespec) {
 		}
 		return type_array(elem_type, size.val);
 	}
-    case TYPESPEC_POINTER:
+
+    case TYPESPEC_POINTER: {
         return type_ptr(resolve_typespec(typespec->ptr.base));
+	}
+
     default:
         assert(0);
-        break;
+		return NULL;
     }
-
-    assert(0);
-    return NULL;
 }
 
 ResolvedExpr resolved_rvalue(Type *type) {
@@ -398,9 +399,11 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
         result = resolved_const(expr->int_val);
 		break;
     case EXPR_FLOAT:
+		// TODO(shaw): float consts
 		result = resolved_rvalue(type_float);
 		break;
 	case EXPR_BOOL:
+		// TODO(shaw): bool consts
 		result = resolved_rvalue(type_bool);
 		break;
 	case EXPR_STR:
@@ -746,7 +749,6 @@ Type *resolve_decl_type(Decl *decl) {
 		int val = 0;
 		for (int i = 0; i < decl->enum_decl.num_items; ++i) {
 			Sym *item_sym = sym_get(items[i].name);
-			// TODO(shaw): calculate constants for enum items
 			if (items[i].expr) {
 				ResolvedExpr resolved = resolve_expr(items[i].expr);
 				if (!resolved.is_const) {
