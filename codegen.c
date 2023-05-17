@@ -126,8 +126,11 @@ char *gen_expr_c(Expr *expr) {
 		BUF(char *str) = NULL; // @LEAK
 
 		if (expr->type->kind != TYPE_ARRAY) {
-
-			da_printf(str, "(%s)", gen_type_c(expr->type, ""));
+			if (expr->compound.type) {
+				da_printf(str, "(%s)", gen_typespec_c(expr->compound.type, ""));
+			} else {
+				da_printf(str, "(%s)", gen_type_c(expr->type, ""));
+			}
 		}
 		da_printf(str, "{");
 
@@ -167,7 +170,7 @@ char *gen_typespec_c(Typespec *typespec, char *inner) {
         return strf("%s%s%s", typespec->name, sep, inner);
 
 	case TYPESPEC_ARRAY: {
-		char *str = gen_parens(strf("%s[%d]", inner, typespec->array.num_items), *inner);
+		char *str = gen_parens(strf("%s[%s]", inner, gen_expr_c(typespec->array.num_items)), *inner);
 		return gen_typespec_c(typespec->array.base, str);
 	}
 
@@ -249,12 +252,14 @@ char *gen_stmt_c(Stmt *stmt) {
 	}
 
 	case STMT_INIT: {
+		char *type = stmt->init.type 
+			? gen_typespec_c(stmt->init.type, stmt->init.name)
+			: gen_type_c(stmt->init.expr->type, stmt->init.name);
+
 		if (stmt->init.expr) {
-			return strf("%s = %s", 
-				gen_type_c(stmt->init.expr->type, stmt->init.name),
-				gen_expr_c(stmt->init.expr));
+			return strf("%s = %s", type, gen_expr_c(stmt->init.expr));
 		} else {
-			return strf("%s", gen_typespec_c(stmt->init.type, stmt->init.name));
+			return strf("%s", type);
 		}
 	}
 
@@ -368,12 +373,15 @@ char *gen_sym_c(Sym *sym) {
 	}
 
 	case DECL_VAR: {
-		BUF(char *str) = NULL; // @LEAK
-		da_printf(str, "%s", gen_type_c(sym->type, sym->name));
-		if (decl->var.expr)
-			da_printf(str, " = %s", gen_expr_c(decl->var.expr));
-		da_printf(str, ";");
-		return str;
+		char *type = decl->var.type
+			? gen_typespec_c(decl->var.type, decl->name)
+			: gen_type_c(sym->type, decl->name);
+
+		if (decl->var.expr) {
+			return strf("%s = %s;", type, gen_expr_c(decl->var.expr));
+		} else {
+			return strf("%s;", type);
+		}
 	}
 
 	case DECL_TYPEDEF: {
@@ -390,14 +398,12 @@ char *gen_sym_c(Sym *sym) {
 		int num_fields = decl->aggregate.num_fields;
 		for (int i=0; i<num_fields; ++i) {
 			AggregateField field = decl->aggregate.fields[i];
-			// TODO(shaw): handle more than TYPESPEC_NAME
-			assert(field.type->kind == TYPESPEC_NAME);
-			Sym *field_sym = sym_get(field.type->name);
-			da_printf(str, "%s;", gen_type_c(field_sym->type, field.name));
-			if (i == num_fields - 1) 
-				--gen_indent;
-			gen_newline(str);
+			da_printf(str, "%s;", gen_typespec_c(field.type, field.name));
+			if (i < num_fields - 1) 
+				gen_newline(str);
 		}
+		--gen_indent;
+		gen_newline(str);
 		da_printf(str, "};");
 		// TODO(shaw): wasting space in stretchy buf from len to cap
 		return str;
@@ -416,10 +422,11 @@ char *gen_sym_c(Sym *sym) {
 			if (item.expr)
 				da_printf(str, " = %s", gen_expr_c(item.expr));
 			da_printf(str, ",");
-			if (i == num_items - 1) 
-				--gen_indent;
-			gen_newline(str);
+			if (i < num_items - 1) 
+				gen_newline(str);
 		}
+		--gen_indent;
+		gen_newline(str);
 		da_printf(str, "};");
 		return str;
 	}

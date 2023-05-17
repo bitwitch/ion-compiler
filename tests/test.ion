@@ -5,12 +5,17 @@ union Stuff {
 	as_string: String;
 }
 
-var global_var: int = 69;
+var global_int: int = 69;
+var global_float = 3.14;
+var h = HEIGHT + sizeof(global_int);
 
 const HEIGHT = 400;
 
 typedef String = char*;
 
+func find_me() {
+	arr: int[5] = {1,2,3,4,5};
+}
 
 func test1(): void {
 	count := 0;
@@ -24,6 +29,12 @@ func test1(): void {
 			count += 2;
 		}
 	}
+	fib_count := 0;
+	fib_i := 0;
+	do {
+		fib_count++;
+		fib_i++;
+	} while(fib(fib_i) < 1000);
 	// single line comment
 	is_true := 1;
 	tern_result := is_true ? 69 : 420;
@@ -46,7 +57,7 @@ func test1(): void {
 	func_ptr: func(int): int;
 
 	func_ptr = fib;
-	func_ptr(7);
+	fib_result2 := func_ptr(7);
 	j := x / 64;
 	j /= 2;
 

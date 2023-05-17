@@ -1,12 +1,17 @@
 TODO:
 
 [ ] c codegen
-	[ ] functions
-	[ ] statements
-	[ ] constants
+	[ ] forward decls
+	[X] functions
+	[X] statements
+	[X] constants
+	[X] use gen_typespec_c wherever possible to retain more syntactic information
+			(for example an expression for an array size rather than just a resolved constant value)
+	
+[ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
 [ ] think about removing var keyword, could just look ahead to see if the next
-		token is ':' to tell if it is a VAR_DECL
+		token is ':' to tell if it is a DECL_VAR
 
 [] resolving the condition in the following while statement gives the error: 
    Type mismatch for left and right side of binary expression
