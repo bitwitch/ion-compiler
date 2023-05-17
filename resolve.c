@@ -384,12 +384,9 @@ ResolvedExpr resolve_expr(Expr *expr);
 
 ResolvedExpr resolve_expr_cond(Expr *cond) {
 	ResolvedExpr resolved = resolve_expr(cond);
-
-	// coerce all values to truthy values, i.e. anything that is not zero becomes 1
-	// and force the type to be int
-	if (resolved.val) resolved.val = 1;
-	resolved.type = type_int;
-
+	// TODO(shaw): We need to do some kind of checking here, for
+	// example what would we do if a compound expression is used as a condition?
+	// seems wrong, but not totally sure what the rules should be
 	return resolved;
 }
 
