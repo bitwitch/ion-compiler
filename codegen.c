@@ -223,7 +223,6 @@ char *gen_forward_decls_c(Sym **global_syms) {
 			}
 		}
 	}
-
 	return str;
 }
 
@@ -367,9 +366,22 @@ char *gen_stmt_block_c(StmtBlock block) {
 	return str;
 }
 
+bool note_is_foreign(Decl *decl) {
+	for (int i=0; i<decl->notes.num_notes; ++i) {
+		if (decl->notes.notes[i].name == name_foreign)
+			return true;
+	}
+	return false;
+}
+
 char *gen_sym_c(Sym *sym) {
 	Decl *decl = sym->decl;
 	assert(decl);
+
+	// don't generate code for foreign declarations
+	if (note_is_foreign(decl)) {
+		return NULL;
+	}
 
 	switch (decl->kind) {
 	case DECL_CONST: {
@@ -466,6 +478,10 @@ char *gen_sym_c(Sym *sym) {
 		assert(0);
 		return NULL;
 	}
+}
+
+char *gen_preamble_c(void) {
+	return "#include <stdio.h>\n#include <stdbool.h>\n#include <stdlib.h>\n#include <time.h>";
 }
 
 

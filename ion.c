@@ -35,12 +35,16 @@ int compile_file(char *path) {
 		complete_sym(global_syms[i]);
 	}
 
-	printf("%s\n", gen_forward_decls_c(global_syms));
+	char *preamble = gen_preamble_c();
+	if (preamble) printf("%s\n", preamble);
+
+	char *forward_decls = gen_forward_decls_c(global_syms);
+	if (forward_decls) printf("%s\n", forward_decls);
 
 	for (int i = 0; i<da_len(ordered_syms); ++i) {
 		Sym *sym = ordered_syms[i];
 		char *str = gen_sym_c(ordered_syms[i]);
-		printf("%s\n", str);
+		if (str) printf("%s\n", str);
 	}
 
 	return 0;

@@ -3,8 +3,9 @@
 
 typedef enum {
     TOKEN_EOF,
-
+	//
     // NOTE(shaw): reserving values 0-127 for ascii chars to use
+	//
 	TOKEN_INT = 128,
 	TOKEN_CHR,
 	TOKEN_FLOAT,
@@ -86,6 +87,9 @@ char *keyword_sizeof;
 char *keyword_true;
 char *keyword_false;
 
+// non-keyword string interned names
+char *name_foreign;
+
 void init_keywords(void) {
     static bool first = true;
     if (first) {
@@ -111,6 +115,8 @@ void init_keywords(void) {
         keyword_sizeof = str_intern("sizeof");
 		keyword_true = str_intern("true");
 		keyword_false = str_intern("false");
+
+		name_foreign = str_intern("foreign");
 	}
     first = false;
 }

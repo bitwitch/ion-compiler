@@ -261,6 +261,11 @@ Stmt *stmt_switch(SourcePos pos, Expr *expr, SwitchCase *cases, int num_cases) {
 }
 
 
+// Notes (annotations)
+NoteList note_list(SourcePos pos, Note *notes, int num_notes) {
+	return (NoteList){.pos=pos, .notes=notes, .num_notes=num_notes};
+}
+
 
 // Declarations
 Decl *decl_alloc(DeclKind kind, SourcePos pos) {

@@ -1,10 +1,12 @@
 TODO:
 
-[\] var args (...)
-	[X] enforce at least one param must precede ... 
-	[X] enforce ... must be last argument
+[X] creating bindings to c functions like printf
 
-[ ] creating bindings to c functions like printf
+[ ] built in NULL
+
+[ ] array pointer decay
+
+[ ] implement the different integer types (uint, etc.)
 
 [ ] integer promotions and implicit conversions for binary expressions
   
@@ -22,23 +24,35 @@ TODO:
 	[X] single line
 	[ ] multi line  
 	
+[ ] character literals
+
+[ ] string escape chars
+
 [ ] declarations in functions (statement declarations)
 	- like a var, enum, or struct declared inside a function
 
-[ ] array pointer decay
 
 [ ] implicit break for switch cases
 	[ ] support commas in switch cases for multiple case expressions to use the
 			same block, this alleviates need for fallthrough
 
-
 [ ] reformat for stupid tabs vs spaces
-
-[ ] assertion fires for the following declaration, need to produce an error message for it instead
-	- typedef U8 = U8;
 
 [ ] local_syms should probably be a stretchy buffer
 
+[ ] hash table
+  [ ] replace the linear search in str_intern
+  [ ] replace other naive linear searches
+
+[ ] constant expression evaluation
+
+[ ] improve error messages
+
+
+
+[\] var args (...)
+	[X] enforce at least one param must precede ... 
+	[X] enforce ... must be last argument
 [X] c codegen
 	[X] forward declaring struct, union, enums
 	[X] functions
@@ -74,18 +88,10 @@ TODO:
 	[X] field
 [X] remove redundant expr kinds: "EXPR_OR, EXPR_AND, EXPR_CMP"
 [X] replace system allocations with arena allocator
-
-[ ] hash table
-  [ ] replace the linear search in str_intern
-  [ ] replace other naive linear searches
-
 [X] order independent declarations
 [X] type resolution, type checking
-[ ] constant expression evaluation
-[ ] c code generation
+[X] replace instances of fatal() with syntax_error() where appropriate. fatal is useful now in early development 
 
-[ ] improve error messages
-	[X] replace instances of fatal() with syntax_error() where appropriate. fatal is useful now in early development 
 
 
 2023-05-14

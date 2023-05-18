@@ -246,6 +246,17 @@ struct Stmt {
     };
 };
 
+// annotations
+typedef struct {
+	char *name;
+} Note;
+
+typedef struct {
+	SourcePos pos;
+	Note *notes;
+	int num_notes;
+} NoteList;
+
 typedef enum {
     DECL_NONE,
     DECL_ENUM,
@@ -271,6 +282,7 @@ struct Decl {
     DeclKind kind;
 	SourcePos pos;
     char *name;
+	NoteList notes;  // annotations
     union {
         struct {
             EnumItem *items;

@@ -605,24 +605,49 @@ Decl *parse_decl_func(void) {
 	return decl_func(pos, name, params, da_len(params), is_variadic, ret_type, block);
 }
 
+Note parse_note(void) {
+	char *name = token.name;
+	next_token();
+	return (Note){ .name = name };
+}
+
+NoteList parse_note_list(void) {
+	BUF(Note *notes) = NULL;
+	SourcePos pos = token.pos;
+	while (match_token('@')) {
+		da_push(notes, parse_note());
+	}
+	return note_list(pos, notes, da_len(notes));
+}
+
 Decl *parse_decl(void) {
+	Decl *decl = NULL;
+
+	NoteList notes = {0};
+	if (is_token('@')) {
+		notes = parse_note_list();
+	}
+
     if (match_keyword(keyword_enum)) {
-        return parse_decl_enum();
+        decl = parse_decl_enum();
     } else if (match_keyword(keyword_struct)) {
-        return parse_decl_aggregate(DECL_STRUCT);
+        decl = parse_decl_aggregate(DECL_STRUCT);
     } else if (match_keyword(keyword_union)) {
-        return parse_decl_aggregate(DECL_UNION);
+        decl = parse_decl_aggregate(DECL_UNION);
     } else if (match_keyword(keyword_var)) {
-        return parse_decl_var();
+        decl = parse_decl_var();
     } else if (match_keyword(keyword_const)) {
-        return parse_decl_const();
+        decl = parse_decl_const();
     } else if (match_keyword(keyword_func)) {
-        return parse_decl_func();
+        decl = parse_decl_func();
     } else if (match_keyword(keyword_typedef)) {
-        return parse_decl_typedef();
-    }
-    syntax_error("Expected top level declaration, got %s", token_kind_to_str(token.kind));
-    return NULL;
+        decl = parse_decl_typedef();
+    } else {
+		syntax_error("Expected top level declaration, got %s", token_kind_to_str(token.kind));
+	}
+
+	decl->notes = notes;
+    return decl;
 }
 
 void parse_expr_test(void) {

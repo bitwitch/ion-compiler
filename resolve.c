@@ -166,23 +166,22 @@ char *type_to_str(Type *type) {
 	if (type->sym) 
 		return type->sym->name;
 
-	/*
-			switch (type->kind) {
-			case TYPE_VOID,
-			case TYPE_INT,
-			case TYPE_CHAR,
-			case TYPE_FLOAT,
-			case TYPE_BOOL,
-			case TYPE_PTR,
-			case TYPE_ARRAY,
-			case TYPE_STRUCT,
-			case TYPE_UNION,
-			case TYPE_ENUM,
-			case TYPE_FUNC,
-			}
-			*/
-	assert(0);
-	return NULL;
+	switch (type->kind) {
+		case TYPE_PTR:
+			return strf("%s*", type_to_str(type->ptr.base));
+		case TYPE_ARRAY:
+			return strf("%s[%d]", type_to_str(type->array.base), type->array.num_items);
+
+		// TODO:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_ENUM:
+		case TYPE_FUNC:
+
+		default:
+			assert(0);
+			return NULL;
+	}
 }
 
 
@@ -350,7 +349,7 @@ ResolvedExpr resolve_expr_unary(Expr *expr) {
         }
         return resolved_rvalue(type_ptr(operand.type));
 	case '!':
-		assert(operand.type->kind == TYPE_INT);
+		assert(operand.type->kind == TYPE_INT || operand.type->kind == TYPE_BOOL);
 		return resolved_rvalue(operand.type);
 	case '+':
 	case '-':
