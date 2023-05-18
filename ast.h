@@ -93,6 +93,7 @@ struct Expr {
         double float_val;
 		int32_t bool_val;
         char *str_val;
+		char char_val;
         char *name;
         Expr *sizeof_expr;
         Typespec *sizeof_type;

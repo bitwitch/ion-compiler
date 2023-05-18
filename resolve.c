@@ -324,9 +324,10 @@ ResolvedExpr resolved_lvalue(Type *type) {
     };
 }
 
-ResolvedExpr resolved_const(int64_t val) {
+ResolvedExpr resolved_const(Type *type, int64_t val) {
+	assert(type == type_int || type == type_char);
     return (ResolvedExpr){ 
-        .type = type_int,
+        .type = type,
         .is_const = true,
         .val = val,
     };
@@ -373,7 +374,7 @@ ResolvedExpr resolve_expr_name(Expr *expr) {
     else if (sym->kind == SYM_FUNC) 
         return resolved_rvalue(sym->type);
 	else if (sym->kind == SYM_CONST || sym->kind == SYM_ENUM_CONST) 
-		return resolved_const(sym->val);
+		return resolved_const(sym->type, sym->val);
     else {
 		assert(sym->kind == SYM_TYPE);
 		semantic_error(expr->pos, "Expected variable, constant, or function but got type (%s)", expr->name);
@@ -390,12 +391,21 @@ ResolvedExpr resolve_expr_cond(Expr *cond) {
 	return resolved;
 }
 
+void pointer_decay(ResolvedExpr *resolved) {
+	assert(resolved->type->kind == TYPE_ARRAY);
+	resolved->type = type_ptr(resolved->type->array.base);
+	resolved->is_lvalue = false;
+}
+
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
     ResolvedExpr result = resolved_null;
 
     switch (expr->kind) {
     case EXPR_INT: 
-        result = resolved_const(expr->int_val);
+        result = resolved_const(type_int, expr->int_val);
+		break;
+    case EXPR_CHAR: 
+        result = resolved_const(type_char, expr->int_val);
 		break;
     case EXPR_FLOAT:
 		// TODO(shaw): float consts
@@ -417,12 +427,12 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		break;
     case EXPR_SIZEOF_EXPR: {
         ResolvedExpr sizeof_expr = resolve_expr(expr->sizeof_expr);
-        result = resolved_const(sizeof_expr.type->size);
+        result = resolved_const(sizeof_expr.type, sizeof_expr.type->size);
 		break;
     }
     case EXPR_SIZEOF_TYPE: {
         Type *type = resolve_typespec(expr->sizeof_type);
-        result = resolved_const(type->size);
+        result = resolved_const(type, type->size);
 		break;
 	}
 	case EXPR_CAST: {
@@ -435,7 +445,8 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		ResolvedExpr left  = resolve_expr(expr->binary.left);
 		ResolvedExpr right = resolve_expr(expr->binary.right);
 		if (left.type != right.type) {
-			semantic_error(expr->pos, "Type mismatch for left and right side of binary expression");
+			semantic_error(expr->pos, "Type mismatch for left and right side of binary expression, left is %s right is %s",
+				type_to_str(left.type), type_to_str(right.type));
 		}
 		result = resolved_rvalue(left.type);
 		break;
@@ -460,14 +471,16 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 			break;
 		}
 		Type *type = resolved.type;
+
+		// resolve call arguments
 		if (expr->call.num_args < type->func.num_params) {
-			semantic_error(expr->pos, "not enough arguments passed to function %s", type->sym->name);
+			semantic_error(expr->pos, "not enough arguments passed to function %s", type_to_str(type));
 			result = resolved_null;
 			break;
 		} else if (expr->call.num_args > type->func.num_params) {
 			// only allowed if variadic function
 			if (!type->func.is_variadic) {
-				semantic_error(expr->pos, "too many arguments passed to function %s", type->sym->name);
+				semantic_error(expr->pos, "too many arguments passed to function %s", type_to_str(type));
 				result = resolved_null;
 				break;
 			}
@@ -475,16 +488,20 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		TypeField *params = type->func.params;
 		for (int i = 0; i < expr->call.num_args; ++i) {
 			ResolvedExpr arg = resolve_expr_expected(expr->call.args[i], params[i].type);
+			if (arg.type->kind == TYPE_ARRAY) {
+				pointer_decay(&arg);
+			}
 			if (i < type->func.num_params) {
 				if (arg.type != params[i].type) {
 					semantic_error(expr->pos, "Type mismatch in function call. Expected %s for parameter %s, got %s", 
-						  params[i].type->sym->name, params[i].name, arg.type->sym->name);
+						  type_to_str(params[i].type), params[i].name, type_to_str(arg.type));
 				}
 			} else {
 				assert(type->func.is_variadic);
 				// cannot typecheck var args, so do nothing
 			}
 		}
+
 		result = resolved_rvalue(type->func.ret);
 		break;
 	}
@@ -521,7 +538,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 			}
 		}
 		if (!found) {
-			semantic_error(expr->pos, "%s is not a field of %s", expr->field.name, base.type->sym->name);
+			semantic_error(expr->pos, "%s is not a field of %s", expr->field.name, type_to_str(base.type));
 		}
 		break;
 	}

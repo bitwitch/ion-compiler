@@ -49,6 +49,12 @@ Expr *expr_str(SourcePos pos, char *val) {
     return expr;
 }
 
+Expr *expr_char(SourcePos pos, int32_t val) {
+	Expr *expr = expr_alloc(EXPR_CHAR, pos);
+    expr->int_val = val;
+    return expr;
+}
+
 Expr *expr_bool(SourcePos pos, int32_t val) {
 	Expr *expr = expr_alloc(EXPR_BOOL, pos);
 	expr->bool_val = val;

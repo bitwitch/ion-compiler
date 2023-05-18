@@ -234,11 +234,21 @@ void scan_float(void) {
     token.float_val = val;
 }
 
+bool check_escape_char(char c) {
+	return c == 'n' || c == 't' || c == '\\' || c == '\'' || c == '"';
+}
+
 // TODO(shaw): handle escape sequences in strings
 void scan_str(void) {
     ++stream; // skip opening quote
     char *str_start = stream;
     while (*stream != '"') {
+		if (*stream == '\\') {
+			++stream;
+			if (!check_escape_char(*stream)) {
+				syntax_error("Invalid escape sequence found in string literal, '\\%c'", *stream);
+			}
+		}
         if (!isprint(*stream)) {
             syntax_error("Invalid character found in string literal, '%c'", *stream);
         }
@@ -253,6 +263,7 @@ void scan_chr(void) {
     ++stream; // skip opening quote
     token.kind = TOKEN_CHR;
     token.int_val = *stream;
+	++stream;
     if (*stream != '\'') {
         syntax_error("Expected closing single quote for character literal, but got '%c'", *stream);
     }
@@ -292,8 +303,7 @@ void next_token(void) {
 repeat:
     token.start = stream;
 	switch (*stream) {
-        case ' ': case '\r': case '\t': case '\v':
-        {
+        case ' ': case '\r': case '\t': case '\v': {
 			while (isspace(*stream)) {
 				if (*stream == '\n') break;
 				++stream;
@@ -329,12 +339,15 @@ repeat:
 			break;
 		}	
 
-        /*case '\'':*/
-            /*scan_chr();*/
-            /*break;*/
-        case '"':
+        case '\'': {
+            scan_chr();
+            break;
+		}
+
+        case '"': {
             scan_str();
             break;
+		}
 
         case '.': {
             if (isdigit(stream[1])) {
@@ -397,8 +410,7 @@ repeat:
         }
 
 		case '0': case '1': case '2': case '3': case '4':
-		case '5': case '6': case '7': case '8': case '9':
-		{
+		case '5': case '6': case '7': case '8': case '9': {
             while (isdigit(*stream)) 
                 ++stream;
             char c = *stream;
@@ -420,16 +432,15 @@ repeat:
 		case 'J': case 'K': case 'L': case 'M': case 'N':
 		case 'O': case 'P': case 'Q': case 'R': case 'S':
 		case 'T': case 'U': case 'V': case 'W': case 'X':
-		case 'Y': case 'Z': case '_':
-		{
+		case 'Y': case 'Z': case '_': {
             while (isalnum(*stream) || *stream == '_')
                 ++stream;
             token.name = str_intern_range(token.start, stream);
             token.kind = is_keyword_name(token.name) ? TOKEN_KEYWORD : TOKEN_NAME;
 			break;
 		}
-		default:
-        {
+
+		default: {
 			token.kind = *stream;
 			++stream;
 			break;
@@ -474,6 +485,8 @@ char *token_kind_to_str(TokenKind kind) {
     case TOKEN_AND_EQ:      sprintf(str, "&=");      break;
     case TOKEN_OR_EQ:       sprintf(str, "|=");      break;
     case TOKEN_XOR_EQ:      sprintf(str, "^=");      break;
+    case TOKEN_LOGICAL_OR:  sprintf(str, "||");      break;
+    case TOKEN_LOGICAL_AND: sprintf(str, "&&");      break;
     default:
         if (kind < 128 && isprint(kind)) {
             sprintf(str, "%c", kind);

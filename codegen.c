@@ -85,6 +85,8 @@ char *gen_expr_c(Expr *expr) {
 		return strf("%s", expr->bool_val ? "true" : "false"); 
     case EXPR_STR: 
         return strf("\"%s\"", expr->str_val); 
+    case EXPR_CHAR: 
+        return strf("\'%c\'", expr->int_val); 
     case EXPR_NAME: 
         return strf("%s", expr->name); 
     case EXPR_UNARY: 
