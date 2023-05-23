@@ -1,8 +1,8 @@
 @foreign func printf(fmt: char*, ...): int {}
 @foreign func scanf(fmt: char*, ...): int {}
 @foreign func rand(): int {}
-// @foreign func time( arg: int* ): int {}
-// @foreign func srand(seed: uint) {}
+@foreign func time( arg: int* ): int {}
+@foreign func srand(seed: uint) {}
 
 
 var board: char[3][3] = {0};
@@ -81,7 +81,7 @@ func winner(side: char): bool {
 }
 
 func main(argc: int, argv: char**): int {
-	// srand(time(NULL));
+	srand(time(NULL));
 	draw_board();
 	while (true) {
 		// get users move
@@ -94,24 +94,24 @@ func main(argc: int, argv: char**): int {
 			scanf("%d,%d", &row, &col);
 		}
 		draw_board();
-		if (no_moves()) {
-			printf("Tie game!");
-			break;
-		}
 		if (winner('x')) {
 			printf("You win!");
+			break;
+		}
+		if (no_moves()) {
+			printf("Tie game!");
 			break;
 		}
 
 		// get computers move
 		make_random_move('o');
 		draw_board();
-		if (no_moves()) {
-			printf("Tie game!");
-			break;
-		}
 		if (winner('o')) {
 			printf("You lose!");
+			break;
+		}
+		if (no_moves()) {
+			printf("Tie game!");
 			break;
 		}
 	}
