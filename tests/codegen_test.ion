@@ -1,3 +1,11 @@
+func test_bool(check: bool) {
+	b: bool;
+	b = true;
+	if (b == check) {
+		b = false;
+	}
+}
+
 typedef int_func = func(int):int;
 
 const WIDTH = 800;

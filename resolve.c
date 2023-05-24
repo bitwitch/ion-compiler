@@ -145,7 +145,7 @@ void sym_put_type(char *name, Type *type) {
 
 void sym_put_const(char *name, Type *type, Val val) {
 	assert(sym_get(name) == NULL);
-	Sym *sym   = sym_alloc(str_intern("NULL"), SYM_CONST);
+	Sym *sym   = sym_alloc(name, SYM_CONST);
 	sym->state = SYM_RESOLVED;
 	sym->type  = type;
 	sym->val   = val;
@@ -163,6 +163,8 @@ void sym_init_table(void) {
 	if (!sym_get(str_intern("bool")))  sym_put_type(str_intern("bool"),  type_bool);
 
 	// built-in constants
+	if (!sym_get(str_intern("true")))  sym_put_const(str_intern("true"),  type_bool, (Val){.i=1});
+	if (!sym_get(str_intern("false"))) sym_put_const(str_intern("false"), type_bool, (Val){.i=0});
 	if (!sym_get(str_intern("NULL")))  sym_put_const(str_intern("NULL"),  type_ptr(type_void),  (Val){.p=0});
 }
 
@@ -344,7 +346,7 @@ ResolvedExpr resolved_lvalue(Type *type) {
 }
 
 ResolvedExpr resolved_const(Type *type, Val val) {
-	assert(type == type_int || type->kind == TYPE_PTR);
+	assert(type == type_int || type == type_bool || type->kind == TYPE_PTR);
     return (ResolvedExpr){ 
         .type = type,
         .is_const = true,

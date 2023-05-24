@@ -115,10 +115,6 @@ Expr *parse_expr_base(void) {
 		} else {
 			expr = expr_name(pos, name);
 		}
-	} else if (match_keyword(keyword_true)) {
-		expr = expr_bool(pos, 1);
-	} else if (match_keyword(keyword_false)) {
-		expr = expr_bool(pos, 0);
     } else if (match_keyword(keyword_cast)) {
         expect_token('(');
         Typespec *type = parse_type();
