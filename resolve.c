@@ -1,13 +1,18 @@
 #define MAX_LOCAL_SYMS 2048
 
+typedef union {
+	int64_t i;
+	void *p;
+} Val;
+
 typedef struct {
     Type *type;
     bool is_const;
     bool is_lvalue;
-    int64_t val;
+    Val val;
 } ResolvedExpr;
 
-typedef enum SymKind {
+typedef enum {
     SYM_NONE,
     SYM_VAR,
     SYM_CONST,
@@ -16,7 +21,7 @@ typedef enum SymKind {
     SYM_ENUM_CONST,
 } SymKind;
 
-typedef enum SymState {
+typedef enum {
     SYM_UNRESOLVED,
     SYM_RESOLVING,
     SYM_RESOLVED,
@@ -29,7 +34,7 @@ struct Sym {
     SymState state;
     Decl *decl;
     Type *type;
-    int64_t val;
+    Val val;
 };
 
 
@@ -73,7 +78,6 @@ Sym *sym_decl(Decl *decl) {
     Sym *sym = sym_alloc(decl->name, kind);
     sym->decl = decl;
     sym->state = SYM_UNRESOLVED;
-    sym->kind = kind;
 
     if (decl->kind == DECL_STRUCT || decl->kind == DECL_UNION) {
         sym->state = SYM_RESOLVED;
@@ -139,14 +143,29 @@ void sym_put_type(char *name, Type *type) {
     da_push(global_syms, sym);
 }
 
-void init_primative_types(void) {
+void sym_put_const(char *name, Type *type, Val val) {
+	assert(sym_get(name) == NULL);
+	Sym *sym   = sym_alloc(str_intern("NULL"), SYM_CONST);
+	sym->state = SYM_RESOLVED;
+	sym->type  = type;
+	sym->val   = val;
+    da_push(global_syms, sym);
+}
+
+// initializes primative types and built-in constants
+void sym_init_table(void) {
+	// primative types
 	if (!sym_get(str_intern("void")))  sym_put_type(str_intern("void"),  type_void);
 	if (!sym_get(str_intern("int")))   sym_put_type(str_intern("int"),   type_int);
+	if (!sym_get(str_intern("uint")))  sym_put_type(str_intern("uint"),  type_uint);
 	if (!sym_get(str_intern("float"))) sym_put_type(str_intern("float"), type_float);
 	if (!sym_get(str_intern("char")))  sym_put_type(str_intern("char"),  type_char);
 	if (!sym_get(str_intern("bool")))  sym_put_type(str_intern("bool"),  type_bool);
+
+	// built-in constants
+	if (!sym_get(str_intern("NULL")))  sym_put_const(str_intern("NULL"),  type_ptr(type_void),  (Val){.p=0});
 }
-	
+
 Sym **sym_enter_scope(void) {
 	return local_syms_end;
 }
@@ -300,7 +319,7 @@ Type *resolve_typespec(Typespec *typespec) {
 			semantic_error(typespec->pos, "Array size must be a constant");
 			return NULL;
 		}
-		return type_array(elem_type, size.val);
+		return type_array(elem_type, size.val.i);
 	}
 
     case TYPESPEC_POINTER: {
@@ -324,8 +343,8 @@ ResolvedExpr resolved_lvalue(Type *type) {
     };
 }
 
-ResolvedExpr resolved_const(Type *type, int64_t val) {
-	assert(type == type_int || type == type_char);
+ResolvedExpr resolved_const(Type *type, Val val) {
+	assert(type == type_int || type->kind == TYPE_PTR);
     return (ResolvedExpr){ 
         .type = type,
         .is_const = true,
@@ -402,10 +421,10 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 
     switch (expr->kind) {
     case EXPR_INT: 
-        result = resolved_const(type_int, expr->int_val);
+        result = resolved_const(type_int, (Val){.i=expr->int_val});
 		break;
     case EXPR_CHAR: 
-        result = resolved_const(type_char, expr->int_val);
+        result = resolved_const(type_char, (Val){.i=expr->int_val});
 		break;
     case EXPR_FLOAT:
 		// TODO(shaw): float consts
@@ -427,12 +446,12 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		break;
     case EXPR_SIZEOF_EXPR: {
         ResolvedExpr sizeof_expr = resolve_expr(expr->sizeof_expr);
-        result = resolved_const(sizeof_expr.type, sizeof_expr.type->size);
+        result = resolved_const(sizeof_expr.type, (Val){.i=sizeof_expr.type->size});
 		break;
     }
     case EXPR_SIZEOF_TYPE: {
         Type *type = resolve_typespec(expr->sizeof_type);
-        result = resolved_const(type, type->size);
+        result = resolved_const(type, (Val){.i=type->size});
 		break;
 	}
 	case EXPR_CAST: {
@@ -690,7 +709,7 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 				type = resolve_typespec(stmt->init.type);
 			if (stmt->init.expr) {
 				ResolvedExpr resolved = resolve_expr_expected(stmt->init.expr, type);
-				type = resolved.type;
+				if (!type) type = resolved.type;
 			}
 			Decl *decl = decl_var(stmt->pos, stmt->init.name, stmt->init.type, stmt->init.expr);
 			Sym *sym = sym_init(decl, type);
@@ -712,7 +731,7 @@ void resolve_stmt_block(StmtBlock block, Type *expected_ret_type) {
 	sym_leave_scope(scope_start);
 }
 
-Type *resolve_decl_const(Decl *decl, int64_t *val) {
+Type *resolve_decl_const(Decl *decl, Val *val) {
     assert(decl->kind == DECL_CONST);
     ResolvedExpr resolved = resolve_expr(decl->const_decl.expr);
     if (!resolved.is_const) {
@@ -774,7 +793,7 @@ Type *resolve_decl_func(Decl *decl) {
 Type *resolve_decl_type(Decl *decl) {
 	if (decl->kind == DECL_ENUM) {
 		EnumItem *items = decl->enum_decl.items;
-		int val = 0;
+		Val val = {.i=0};
 		for (int i = 0; i < decl->enum_decl.num_items; ++i) {
 			Sym *item_sym = sym_get(items[i].name);
 			if (items[i].expr) {
@@ -784,7 +803,7 @@ Type *resolve_decl_type(Decl *decl) {
 				}
 				val = resolved.val;
 			}
-			item_sym->val = val++;
+			item_sym->val.i = val.i++;
 			item_sym->state = SYM_RESOLVED;
 		}
 		return type_enum();
@@ -850,7 +869,7 @@ Sym *resolve_name(char *name) {
 void resolve_test(void) {
 
 	init_keywords();
-	init_primative_types();
+	sym_init_table();
 	
     char *decls[] = {
 		"struct Vec2 { x: int; y: int; }",

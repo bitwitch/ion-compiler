@@ -24,7 +24,7 @@
 
 void run_tests(void) {
     init_keywords();
-	init_primative_types();
+	sym_init_table();
 
 	da_test();
 	str_intern_test();

@@ -21,7 +21,7 @@ int compile_file(char *path) {
 	init_keywords();
 
 	// insert primative types into the symbol table at startup 
-	init_primative_types();
+	sym_init_table();
 
 	init_stream(path, file_data);
 

@@ -1,5 +1,8 @@
 typedef int_func = func(int):int;
 
+const WIDTH = 800;
+const HEIGHT = 600;
+
 var x: int;
 var y: int = 69;
 var p: int* = &x;
@@ -30,6 +33,9 @@ enum Guy {
 }
 
 func func1(i: int, j: float, k: char*): int {
+	stuff := Stuff{ 69, 3.14, 45 };
+	things: Things;
+	things.f = 4.20;
 	count := 0;
 	if (i) {
 		count = 1;

@@ -510,9 +510,6 @@ void codegen_test(void) {
 	assert(0 == strcmp(str, "~(42)"));
     str = gen_expr_c(expr_binary(pos, '+', expr_int(pos, 33), expr_int(pos, 36)));
 	assert(0 == strcmp(str, "(33) + (36)"));
-	Expr *args[] = { expr_int(pos, 1), expr_int(pos, 2), expr_int(pos, 3) };
-    str = gen_expr_c(expr_compound(pos, typespec_name(pos, "x"), args, array_count(args)));
-	assert(0 == strcmp(str, "(x){1, 2, 3}"));
     str = gen_expr_c(expr_cast(pos, typespec_name(pos, "int"), expr_name(pos, "x")));
 	assert(0 == strcmp(str, "(int)(x)"));
     str = gen_expr_c(expr_sizeof_expr(pos, expr_name(pos, "x")));
@@ -546,7 +543,7 @@ void codegen_test(void) {
 	assert(0 == strcmp(str, "int (*(*(x[3])))(int, int)"));
 	
 
-	if (compile_file("codegen_test.ion") != 0) {
+	if (compile_file("tests/codegen_test.ion") != 0) {
 		fprintf(stderr, "Failed to compile codegen_test.ion\n");
 		return;
 	}

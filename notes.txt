@@ -2,7 +2,9 @@ TODO:
 
 [X] creating bindings to c functions like printf
 
-[ ] built in NULL
+[ ] built in NULL 
+
+[ ] move true and false to symbol table instead of keywords
 
 [ ] array pointer decay
 
@@ -15,7 +17,7 @@ TODO:
 
 [ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
-[ ] initializing var decls with non constant values should error
+[ ] initializing global var decls with non constant values should error
 
 [ ] think about removing var keyword, could just look ahead to see if the next
 		token is ':' to tell if it is a DECL_VAR
