@@ -1,7 +1,7 @@
 TODO:
 
-
-
+[ ] in ast nodes, be consistent about calling things typespec always when they
+    are of Typespec to differentiate from Type
 
 [ ] array pointer decay
 
