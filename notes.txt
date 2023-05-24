@@ -1,10 +1,7 @@
 TODO:
 
-[X] creating bindings to c functions like printf
 
-[ ] built in NULL 
 
-[ ] move true and false to symbol table instead of keywords
 
 [ ] array pointer decay
 
@@ -21,6 +18,9 @@ TODO:
 
 [ ] think about removing var keyword, could just look ahead to see if the next
 		token is ':' to tell if it is a DECL_VAR
+
+[ ] control flow analysis, like detecting if all branches of an if statement
+    return a value if they should
 
 [ ] comments
 	[X] single line
@@ -51,7 +51,10 @@ TODO:
 [ ] improve error messages
 
 
-
+[X] move true and false to symbol table instead of keywords
+[X] built in NULL 
+[X] creating bindings to c functions like printf
+[X] the backpointer from type to its symbol not being set correctly
 [\] var args (...)
 	[X] enforce at least one param must precede ... 
 	[X] enforce ... must be last argument

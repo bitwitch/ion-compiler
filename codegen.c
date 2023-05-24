@@ -25,6 +25,8 @@ char *gen_type_c(Type *type, char *inner) {
 		return strf("void%s%s", sep, inner);
 	case TYPE_INT:
 		return strf("int%s%s", sep, inner);
+	case TYPE_UINT:
+		return strf("unsigned int%s%s", sep, inner);
 	case TYPE_CHAR:
 		return strf("char%s%s", sep, inner);
 	case TYPE_FLOAT:
@@ -163,6 +165,12 @@ char *gen_expr_c(Expr *expr) {
     }
 }
 
+char *gen_typespec_name_c(char *name) {
+	if (name == str_intern("uint"))
+		return "unsigned int";
+	else 
+		return name;
+}
 
 char *gen_typespec_c(Typespec *typespec, char *inner) {
 	assert(typespec);
@@ -170,7 +178,7 @@ char *gen_typespec_c(Typespec *typespec, char *inner) {
 
 	switch (typespec->kind) {
 	case TYPESPEC_NAME:
-        return strf("%s%s%s", typespec->name, sep, inner);
+        return strf("%s%s%s", gen_typespec_name_c(typespec->name), sep, inner);
 
 	case TYPESPEC_ARRAY: {
 		char *str = gen_parens(strf("%s[%s]", inner, gen_expr_c(typespec->array.num_items)), *inner);

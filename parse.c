@@ -103,7 +103,7 @@ Expr *parse_expr_base(void) {
     } else if (is_token(TOKEN_STR)) {
 		expr = expr_str(pos, token.str_val);
         next_token();
-    } else if (is_token(TOKEN_CHR)) {
+    } else if (is_token(TOKEN_CHAR)) {
 		expr = expr_char(pos, token.int_val);
         next_token();
 	} else if (is_token(TOKEN_NAME)) {

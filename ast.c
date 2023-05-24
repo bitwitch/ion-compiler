@@ -49,9 +49,9 @@ Expr *expr_str(SourcePos pos, char *val) {
     return expr;
 }
 
-Expr *expr_char(SourcePos pos, int32_t val) {
+Expr *expr_char(SourcePos pos, char val) {
 	Expr *expr = expr_alloc(EXPR_CHAR, pos);
-    expr->int_val = val;
+    expr->char_val = val;
     return expr;
 }
 

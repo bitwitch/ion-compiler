@@ -2,6 +2,7 @@
 
 typedef union {
 	int64_t i;
+	char c;
 	void *p;
 } Val;
 
@@ -346,7 +347,8 @@ ResolvedExpr resolved_lvalue(Type *type) {
 }
 
 ResolvedExpr resolved_const(Type *type, Val val) {
-	assert(type == type_int || type == type_bool || type->kind == TYPE_PTR);
+	assert(type);
+	assert(is_integer_type(type) || type == type_bool || type->kind == TYPE_PTR);
     return (ResolvedExpr){ 
         .type = type,
         .is_const = true,
@@ -418,6 +420,27 @@ void pointer_decay(ResolvedExpr *resolved) {
 	resolved->is_lvalue = false;
 }
 
+// based on the C standard, see https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1548.pdf
+bool is_convertible(Type *from, Type *to) {
+	if (from->kind == TYPE_PTR) {
+		Type *base = from->ptr.base;
+		if (to->kind == TYPE_PTR) {
+			// from void* to any pointer type
+			if (base->kind == TYPE_VOID)
+				return true;
+			// from any pointer type to void*
+			if (to->ptr.base->kind == TYPE_VOID)
+				return true;
+		} else {
+			// from is ptr but to is not
+		}
+	} 
+
+	// TODO(shaw): implement the rest of conversions
+	
+	return false;
+}
+
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
     ResolvedExpr result = resolved_null;
 
@@ -426,7 +449,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
         result = resolved_const(type_int, (Val){.i=expr->int_val});
 		break;
     case EXPR_CHAR: 
-        result = resolved_const(type_char, (Val){.i=expr->int_val});
+        result = resolved_const(type_char, (Val){.c=expr->char_val});
 		break;
     case EXPR_FLOAT:
 		// TODO(shaw): float consts
@@ -493,7 +516,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		}
 		Type *type = resolved.type;
 
-		// resolve call arguments
+		// check that num of args in call match the function signature
 		if (expr->call.num_args < type->func.num_params) {
 			semantic_error(expr->pos, "not enough arguments passed to function %s", type_to_str(type));
 			result = resolved_null;
@@ -506,16 +529,18 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 				break;
 			}
 		}
-		TypeField *params = type->func.params;
+		// resolve call arguments and type check against function parameters
 		for (int i = 0; i < expr->call.num_args; ++i) {
-			ResolvedExpr arg = resolve_expr_expected(expr->call.args[i], params[i].type);
+			TypeField param = type->func.params[i];
+			ResolvedExpr arg = resolve_expr_expected(expr->call.args[i], param.type);
 			if (arg.type->kind == TYPE_ARRAY) {
 				pointer_decay(&arg);
 			}
 			if (i < type->func.num_params) {
-				if (arg.type != params[i].type) {
-					semantic_error(expr->pos, "Type mismatch in function call. Expected %s for parameter %s, got %s", 
-						  type_to_str(params[i].type), params[i].name, type_to_str(arg.type));
+				if (arg.type != param.type && !is_convertible(arg.type, param.type)) {
+					semantic_error(expr->pos, 
+						"Type mismatch in function call. Expected %s for parameter %s, got %s", 
+						type_to_str(param.type), param.name, type_to_str(arg.type));
 				}
 			} else {
 				assert(type->func.is_variadic);
@@ -613,7 +638,6 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 ResolvedExpr resolve_expr(Expr *expr) {
 	return resolve_expr_expected(expr, NULL);
 }
-
 
 
 void resolve_stmt_block(StmtBlock block, Type *expected_ret_type);
@@ -754,8 +778,13 @@ Type *resolve_decl_var(Decl *decl) {
 		if (!type) {
 			type = resolved.type;
 		} else if (resolved.type != type) {
-			semantic_error(decl->pos, "Type mismatch in var declaration");
-            return NULL;
+			// check if expression can be implicitly converted to specified type
+			if (!is_convertible(resolved.type, type)) {
+				semantic_error(decl->pos, 
+					"Type mismatch in var declaration: specified type is %s, expression type is %s",
+					type_to_str(type), type_to_str(resolved.type));
+				return NULL;
+			}
         }
     }
 
@@ -805,6 +834,7 @@ Type *resolve_decl_type(Decl *decl) {
 				}
 				val = resolved.val;
 			}
+			item_sym->type  = type_int;
 			item_sym->val.i = val.i++;
 			item_sym->state = SYM_RESOLVED;
 		}
@@ -839,6 +869,7 @@ void resolve_sym(Sym *sym) {
         break;
     case SYM_TYPE: 
         sym->type = resolve_decl_type(sym->decl);  
+		sym->type->sym = sym;
         break;
 	case SYM_ENUM_CONST:
 		// resolve the entire enum decl that this enum item is apart of
@@ -849,7 +880,6 @@ void resolve_sym(Sym *sym) {
         break;
     }
     sym->state = SYM_RESOLVED;
-	sym->type->sym = sym;
     da_push(ordered_syms, sym);
 }
 

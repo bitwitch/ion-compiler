@@ -12,6 +12,7 @@ typedef enum {
     TYPE_COMPLETING,
 	TYPE_VOID,
     TYPE_INT,
+    TYPE_UINT,
     TYPE_CHAR,
     TYPE_FLOAT,
 	TYPE_BOOL,
@@ -62,10 +63,15 @@ BUF(Type **cached_func_types);
 // primative types
 Type *type_void   = &(Type){ .kind = TYPE_VOID };
 Type *type_int    = &(Type){ .kind = TYPE_INT,   .size = INT_SIZE,   .align = INT_SIZE };
+Type *type_uint   = &(Type){ .kind = TYPE_UINT,  .size = INT_SIZE,   .align = INT_SIZE };
 Type *type_char   = &(Type){ .kind = TYPE_CHAR,  .size = CHAR_SIZE,  .align = CHAR_SIZE };
 Type *type_float  = &(Type){ .kind = TYPE_FLOAT, .size = FLOAT_SIZE, .align = FLOAT_SIZE };
 Type *type_bool   = &(Type){ .kind = TYPE_BOOL,  .size = INT_SIZE,   .align = INT_SIZE };
 
+
+bool is_integer_type(Type *type) {
+	return type == type_int || type == type_uint || type == type_char;
+}
 
 void complete_type(Type *type);
 
@@ -147,7 +153,6 @@ Type *type_incomplete(Sym *sym) {
 	t->sym = sym;
 	return t;
 }
-
 
 void type_intern_test(void) {
     // primatives

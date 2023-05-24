@@ -7,7 +7,7 @@ typedef enum {
     // NOTE(shaw): reserving values 0-127 for ascii chars to use
 	//
 	TOKEN_INT = 128,
-	TOKEN_CHR,
+	TOKEN_CHAR,
 	TOKEN_FLOAT,
 	TOKEN_NAME,
 	TOKEN_STR,
@@ -255,7 +255,7 @@ void scan_str(void) {
 
 void scan_chr(void) {
     ++stream; // skip opening quote
-    token.kind = TOKEN_CHR;
+    token.kind = TOKEN_CHAR;
     token.int_val = *stream;
 	++stream;
     if (*stream != '\'') {
