@@ -3,8 +3,6 @@ TODO:
 [ ] in ast nodes, be consistent about calling things typespec always when they
     are of Typespec to differentiate from Type
 
-[ ] array pointer decay
-
 [ ] implement the different integer types (uint, etc.)
 
 [ ] integer promotions and implicit conversions for binary expressions
@@ -51,6 +49,7 @@ TODO:
 [ ] improve error messages
 
 
+[X] array pointer decay
 [X] move true and false to symbol table instead of keywords
 [X] built in NULL 
 [X] creating bindings to c functions like printf
