@@ -735,7 +735,7 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 				type = resolve_typespec(stmt->init.typespec);
 			if (stmt->init.expr) {
 				ResolvedExpr resolved = resolve_expr_expected(stmt->init.expr, type);
-				if (resolved.type->kind == TYPE_ARRAY) {
+				if (resolved.type->kind == TYPE_ARRAY && stmt->init.expr->kind != EXPR_COMPOUND) {
 					pointer_decay(&resolved);
 					stmt->init.expr->type = resolved.type;
 				}
@@ -779,7 +779,7 @@ Type *resolve_decl_var(Decl *decl) {
 		type = resolve_typespec(decl->var.typespec);
     if (decl->var.expr) {
         ResolvedExpr resolved = resolve_expr_expected(decl->var.expr, type);
-		if (resolved.type->kind == TYPE_ARRAY) {
+		if (resolved.type->kind == TYPE_ARRAY && decl->var.expr->kind != EXPR_COMPOUND) {
 			pointer_decay(&resolved);
 			decl->var.expr->type = resolved.type;
 		}

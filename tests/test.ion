@@ -1,11 +1,19 @@
 var global_nums: int[69];
+var global_nums2: int* = global_nums;
+var global_nums3: int[6] = {0};
 var array_ptr = global_nums;
+var array2d: int[4][4];
+var array2d_ptr = array2d;
 
 func test_decay1(arr: int*) { }
 func test_decay2() {
 	nums: int[32];
 	test_decay1(nums);
 	nums_ptr := nums;
+	nums_ptr2: int* = nums;
+	arr2d: int[6][6];
+	arr2d_ptr := arr2d;
+	nums2: int[12] = {0};
 }
 
 func variadic(n: int, ...) { }
