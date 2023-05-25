@@ -67,9 +67,9 @@ Expr *expr_name(SourcePos pos, char *name) {
     return expr;
 }
 
-Expr *expr_cast(SourcePos pos, Typespec *type, Expr *expr) {
+Expr *expr_cast(SourcePos pos, Typespec *typespec, Expr *expr) {
 	Expr *new_expr = expr_alloc(EXPR_CAST, pos);
-    new_expr->cast.type = type;
+    new_expr->cast.typespec = typespec;
     new_expr->cast.expr = expr;
     return new_expr;
 }
@@ -119,17 +119,17 @@ Expr *expr_field(SourcePos pos, Expr *expr, char *field) {
     return new_expr;
 }
 
-Expr *expr_compound(SourcePos pos, Typespec *type, Expr **args, int num_args) {
+Expr *expr_compound(SourcePos pos, Typespec *typespec, Expr **args, int num_args) {
 	Expr *expr = expr_alloc(EXPR_COMPOUND, pos);
-    expr->compound.type = type;
+    expr->compound.typespec = typespec;
     expr->compound.args = ast_memdup(args, num_args * sizeof(*args));
     expr->compound.num_args = num_args;
     return expr;
 }
 
-Expr *expr_sizeof_type(SourcePos pos, Typespec *type) {
+Expr *expr_sizeof_typespec(SourcePos pos, Typespec *typespec) {
 	Expr *expr = expr_alloc(EXPR_SIZEOF_TYPE, pos);
-    expr->sizeof_type = type;
+    expr->sizeof_typespec = typespec;
     return expr;
 }
 
@@ -211,10 +211,10 @@ Stmt *stmt_assign(SourcePos pos, TokenKind op, Expr *left, Expr *right) {
     return stmt;
 }
 
-Stmt *stmt_init(SourcePos pos, char *name, Typespec *type, Expr *expr) {
+Stmt *stmt_init(SourcePos pos, char *name, Typespec *typespec, Expr *expr) {
 	Stmt *stmt = stmt_alloc(STMT_INIT, pos);
     stmt->init.name = name;
-	stmt->init.type = type;
+	stmt->init.typespec = typespec;
     stmt->init.expr = expr;
     return stmt;
 }
@@ -288,18 +288,18 @@ Decl *decl_const(SourcePos pos, char *name, Expr *expr) {
     return decl;
 }
 
-Decl *decl_var(SourcePos pos, char *name, Typespec *type, Expr *expr) {
+Decl *decl_var(SourcePos pos, char *name, Typespec *typespec, Expr *expr) {
 	Decl *decl = decl_alloc(DECL_VAR, pos);
     decl->name = name;
-    decl->var.type = type;
+    decl->var.typespec = typespec;
     decl->var.expr = expr;
     return decl;
 }
 
-Decl *decl_typedef(SourcePos pos, char *name, Typespec *type) {
+Decl *decl_typedef(SourcePos pos, char *name, Typespec *typespec) {
 	Decl *decl = decl_alloc(DECL_TYPEDEF, pos);
     decl->name = name;
-    decl->typedef_decl.type = type;
+    decl->typedef_decl.typespec = typespec;
     return decl;
 }
 
@@ -321,13 +321,13 @@ Decl *decl_aggregate(SourcePos pos, DeclKind kind, char *name, AggregateField *f
     return decl;
 }
 
-Decl *decl_func(SourcePos pos, char *name, FuncParam *params, int num_params, bool is_variadic, Typespec *ret_type, StmtBlock block) {
+Decl *decl_func(SourcePos pos, char *name, FuncParam *params, int num_params, bool is_variadic, Typespec *ret_typespec, StmtBlock block) {
 	Decl *decl = decl_alloc(DECL_FUNC, pos);
     decl->name = name;
     decl->func.params = ast_memdup(params, num_params * sizeof(*params));
     decl->func.num_params = num_params;
     decl->func.is_variadic = is_variadic;
-    decl->func.ret_type = ret_type;
+    decl->func.ret_typespec = ret_typespec;
     decl->func.block = block;
     return decl;
 }

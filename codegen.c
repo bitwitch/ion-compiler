@@ -133,8 +133,8 @@ char *gen_expr_c(Expr *expr) {
 		BUF(char *str) = NULL; // @LEAK
 
 		if (expr->type->kind != TYPE_ARRAY) {
-			if (expr->compound.type) {
-				da_printf(str, "(%s)", gen_typespec_c(expr->compound.type, ""));
+			if (expr->compound.typespec) {
+				da_printf(str, "(%s)", gen_typespec_c(expr->compound.typespec, ""));
 			} else {
 				da_printf(str, "(%s)", gen_type_c(expr->type, ""));
 			}
@@ -152,12 +152,12 @@ char *gen_expr_c(Expr *expr) {
     }
 	case EXPR_CAST:
 		return strf("(%s)(%s)", 
-			gen_typespec_c(expr->cast.type, ""),
+			gen_typespec_c(expr->cast.typespec, ""),
 			gen_expr_c(expr->cast.expr));
 	case EXPR_SIZEOF_EXPR:
         return strf("sizeof(%s)", gen_expr_c(expr->sizeof_expr));
     case EXPR_SIZEOF_TYPE:
-        return strf("sizeof(%s)", gen_typespec_c(expr->sizeof_type, ""));
+        return strf("sizeof(%s)", gen_typespec_c(expr->sizeof_typespec, ""));
     default:
         printf("Error: Codegen: Unknown expr kind: %d\n", expr->kind);
         assert(0);
@@ -265,8 +265,8 @@ char *gen_stmt_c(Stmt *stmt) {
 	}
 
 	case STMT_INIT: {
-		char *type = stmt->init.type 
-			? gen_typespec_c(stmt->init.type, stmt->init.name)
+		char *type = stmt->init.typespec 
+			? gen_typespec_c(stmt->init.typespec, stmt->init.name)
 			: gen_type_c(stmt->init.expr->type, stmt->init.name);
 
 		if (stmt->init.expr) {
@@ -399,8 +399,8 @@ char *gen_sym_c(Sym *sym) {
 	}
 
 	case DECL_VAR: {
-		char *type = decl->var.type
-			? gen_typespec_c(decl->var.type, decl->name)
+		char *type = decl->var.typespec
+			? gen_typespec_c(decl->var.typespec, decl->name)
 			: gen_type_c(sym->type, decl->name);
 
 		if (decl->var.expr) {
@@ -411,7 +411,7 @@ char *gen_sym_c(Sym *sym) {
 	}
 
 	case DECL_TYPEDEF: {
-		return strf("typedef %s;", gen_typespec_c(decl->typedef_decl.type, decl->name));
+		return strf("typedef %s;", gen_typespec_c(decl->typedef_decl.typespec, decl->name));
 	}
 
 	case DECL_UNION:
@@ -424,7 +424,7 @@ char *gen_sym_c(Sym *sym) {
 		int num_fields = decl->aggregate.num_fields;
 		for (int i=0; i<num_fields; ++i) {
 			AggregateField field = decl->aggregate.fields[i];
-			da_printf(str, "%s;", gen_typespec_c(field.type, field.name));
+			da_printf(str, "%s;", gen_typespec_c(field.typespec, field.name));
 			if (i < num_fields - 1) 
 				gen_newline(str);
 		}
@@ -460,8 +460,8 @@ char *gen_sym_c(Sym *sym) {
 	case DECL_FUNC: {
 		BUF(char *str) = NULL; // @LEAK
 
-		if (decl->func.ret_type) {
-			da_printf(str, "%s ", gen_typespec_c(decl->func.ret_type, ""));
+		if (decl->func.ret_typespec) {
+			da_printf(str, "%s ", gen_typespec_c(decl->func.ret_typespec, ""));
 		} else {
 			da_printf(str, "void ");
 		}
@@ -474,7 +474,7 @@ char *gen_sym_c(Sym *sym) {
 		}
 		for (int i=0; i<num_params; ++i) {
 			FuncParam param = decl->func.params[i];
-			da_printf(str, "%s%s", gen_typespec_c(param.type, param.name), i == num_params-1 ? "" : ", ");
+			da_printf(str, "%s%s", gen_typespec_c(param.typespec, param.name), i == num_params-1 ? "" : ", ");
 		}
 		if (decl->func.is_variadic) {
 			da_printf(str, ", ...");
@@ -522,7 +522,7 @@ void codegen_test(void) {
 	assert(0 == strcmp(str, "(int)(x)"));
     str = gen_expr_c(expr_sizeof_expr(pos, expr_name(pos, "x")));
 	assert(0 == strcmp(str, "sizeof(x)"));
-    str = gen_expr_c(expr_sizeof_type(pos, typespec_name(pos, "int")));
+    str = gen_expr_c(expr_sizeof_typespec(pos, typespec_name(pos, "int")));
 	assert(0 == strcmp(str, "sizeof(int)"));
      
 	// types

@@ -96,7 +96,7 @@ struct Expr {
 		char char_val;
         char *name;
         Expr *sizeof_expr;
-        Typespec *sizeof_type;
+        Typespec *sizeof_typespec;
         struct {
             TokenKind op;
             Expr *expr;
@@ -116,7 +116,7 @@ struct Expr {
             int num_args;
         } call;
         struct {
-            Typespec *type;
+            Typespec *typespec;
             Expr *expr;
         } cast;
         struct {
@@ -128,7 +128,7 @@ struct Expr {
             char *name;
         } field;
         struct {
-            Typespec *type;
+            Typespec *typespec;
             Expr **args;
             int num_args;
         } compound;
@@ -137,7 +137,7 @@ struct Expr {
 
 typedef struct {
     char *name;
-    Typespec *type;
+    Typespec *typespec;
 } AggregateField;
 
 typedef enum {
@@ -216,7 +216,7 @@ struct Stmt {
         } assign;
         struct {
             char *name;
-			Typespec *type;
+			Typespec *typespec;
             Expr *expr;
         } init;
         struct {
@@ -276,7 +276,7 @@ typedef struct {
 
 typedef struct {
     char *name;
-    Typespec *type;
+    Typespec *typespec;
 } FuncParam;
 
 struct Decl {
@@ -297,18 +297,18 @@ struct Decl {
             FuncParam *params;
             int num_params;
 			bool is_variadic;
-            Typespec *ret_type;
+            Typespec *ret_typespec;
             StmtBlock block;
         } func;
         struct {
-            Typespec *type;
+            Typespec *typespec;
             Expr *expr;
         } var;
         struct {
             Expr *expr;
         } const_decl;
         struct {
-            Typespec *type;
+            Typespec *typespec;
         } typedef_decl;
     };
 };

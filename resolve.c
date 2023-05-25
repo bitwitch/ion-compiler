@@ -241,7 +241,7 @@ void complete_type(Type *type) {
 	
 	size_t align = 1;
 	for (int i=0; i<num_fields; ++i) {
-		Type *field_type = resolve_typespec(decl_fields[i].type);
+		Type *field_type = resolve_typespec(decl_fields[i].typespec);
 
 		if (field_type->kind != TYPE_PTR)
 			complete_type(field_type);
@@ -475,12 +475,12 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		break;
     }
     case EXPR_SIZEOF_TYPE: {
-        Type *type = resolve_typespec(expr->sizeof_type);
+        Type *type = resolve_typespec(expr->sizeof_typespec);
         result = resolved_const(type, (Val){.i=type->size});
 		break;
 	}
 	case EXPR_CAST: {
-		Type *type = resolve_typespec(expr->cast.type);
+		Type *type = resolve_typespec(expr->cast.typespec);
 		ResolvedExpr resolved_expr = resolve_expr(expr->cast.expr);
 		result = resolved_rvalue(type);
 		break;
@@ -590,7 +590,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 	}
 
 	case EXPR_COMPOUND: {
-		if (!expr->compound.type && !expected_type) {
+		if (!expr->compound.typespec && !expected_type) {
 			semantic_error(expr->pos, "Compound literal is missing a type specification in a context where its type cannot be inferred.");
 			break;
 		}
@@ -598,8 +598,8 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		Expr **args = expr->compound.args;
 		int num_args = expr->compound.num_args;
 		
-		Type *type = expr->compound.type 
-			? resolve_typespec(expr->compound.type) 
+		Type *type = expr->compound.typespec 
+			? resolve_typespec(expr->compound.typespec) 
 			: expected_type;
 
 		complete_type(type);
@@ -731,8 +731,8 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 
 		case STMT_INIT: {
 			Type *type = NULL;
-			if (stmt->init.type) 
-				type = resolve_typespec(stmt->init.type);
+			if (stmt->init.typespec) 
+				type = resolve_typespec(stmt->init.typespec);
 			if (stmt->init.expr) {
 				ResolvedExpr resolved = resolve_expr_expected(stmt->init.expr, type);
 				if (resolved.type->kind == TYPE_ARRAY) {
@@ -741,7 +741,7 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 				}
 				if (!type) type = resolved.type;
 			}
-			Decl *decl = decl_var(stmt->pos, stmt->init.name, stmt->init.type, stmt->init.expr);
+			Decl *decl = decl_var(stmt->pos, stmt->init.name, stmt->init.typespec, stmt->init.expr);
 			Sym *sym = sym_init(decl, type);
 			sym_push_scoped(sym);
 			break;
@@ -775,8 +775,8 @@ Type *resolve_decl_const(Decl *decl, Val *val) {
 Type *resolve_decl_var(Decl *decl) {
     assert(decl->kind == DECL_VAR);
 	Type *type = NULL;
-	if (decl->var.type)
-		type = resolve_typespec(decl->var.type);
+	if (decl->var.typespec)
+		type = resolve_typespec(decl->var.typespec);
     if (decl->var.expr) {
         ResolvedExpr resolved = resolve_expr_expected(decl->var.expr, type);
 		if (resolved.type->kind == TYPE_ARRAY) {
@@ -807,12 +807,12 @@ Type *resolve_decl_func(Decl *decl) {
 	int num_params = decl->func.num_params;
 	for (int i = 0; i < num_params; ++i) {
 		FuncParam param = decl->func.params[i];
-		da_push(params, (TypeField){ .name=param.name, .type=resolve_typespec(param.type) });
+		da_push(params, (TypeField){ .name=param.name, .type=resolve_typespec(param.typespec) });
 	}
 
 	Type *ret_type = type_void;
-	if (decl->func.ret_type)
-		ret_type = resolve_typespec(decl->func.ret_type);
+	if (decl->func.ret_typespec)
+		ret_type = resolve_typespec(decl->func.ret_typespec);
 
 	// TODO(shaw): should resolving the function body happen here?
 	// or lazily only when we really need to know the function body
@@ -820,7 +820,7 @@ Type *resolve_decl_func(Decl *decl) {
 	Sym **scope_start = sym_enter_scope();
 	for (int i = 0; i < num_params; ++i) {
 		FuncParam param = decl->func.params[i];
-		Decl *param_decl = decl_var(decl->pos, param.name, param.type, NULL);
+		Decl *param_decl = decl_var(decl->pos, param.name, param.typespec, NULL);
 		Sym *sym = sym_init(param_decl, params[i].type);
 		sym_push_scoped(sym);
 	}
@@ -849,7 +849,7 @@ Type *resolve_decl_type(Decl *decl) {
 		}
 		return type_enum();
 	} else if (decl->kind == DECL_TYPEDEF) {
-		return resolve_typespec(decl->typedef_decl.type);
+		return resolve_typespec(decl->typedef_decl.typespec);
 	} else {
 		assert(0);
 		return NULL;

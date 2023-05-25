@@ -1,5 +1,5 @@
 void print_expr(Expr *expr);
-void print_type(Typespec *type);
+void print_typespec(Typespec *typespec);
 void print_stmt(Stmt *stmt);
 
 #define INDENT_WIDTH 4
@@ -86,7 +86,7 @@ void print_expr(Expr *expr) {
         break;
     case EXPR_COMPOUND: 
         printf("(");
-        print_type(expr->compound.type);
+        print_typespec(expr->compound.typespec);
         ++print_indent;
         for (int i=0; i<expr->compound.num_args; ++i) {
             print_newline();
@@ -97,7 +97,7 @@ void print_expr(Expr *expr) {
         break;
     case EXPR_CAST:
         printf("(cast ");
-        print_type(expr->cast.type);
+        print_typespec(expr->cast.typespec);
         printf(" ");
         print_expr(expr->cast.expr);
         printf(")");
@@ -109,7 +109,7 @@ void print_expr(Expr *expr) {
         break;
     case EXPR_SIZEOF_TYPE:
         printf("(sizeof ");
-        print_type(expr->sizeof_type);
+        print_typespec(expr->sizeof_typespec);
         printf(")");
         break;
     default:
@@ -182,7 +182,7 @@ void print_stmt(Stmt *stmt) {
         break;
     case STMT_INIT:
         printf("(init %s ", stmt->init.name);
-		print_type(stmt->init.type);
+		print_typespec(stmt->init.typespec);
 		printf(" ");
         print_expr(stmt->init.expr);
         printf(")");
@@ -251,38 +251,38 @@ void print_stmt(Stmt *stmt) {
     }
 }
 
-void print_type(Typespec *type) {
-    if (type == NULL) {
+void print_typespec(Typespec *typespec) {
+    if (typespec == NULL) {
         printf("NULL");
         return;
     }
 
-    switch (type->kind) {
+    switch (typespec->kind) {
     case TYPESPEC_NAME:
-        printf("%s", type->name);
+        printf("%s", typespec->name);
         break;
     case TYPESPEC_POINTER:
         printf("(ptr ");
-        print_type(type->ptr.base);
+        print_typespec(typespec->ptr.base);
         printf(")");
         break;
     case TYPESPEC_ARRAY:
         printf("(array ");
-        print_expr(type->array.num_items);
+        print_expr(typespec->array.num_items);
         printf(" ");
-        print_type(type->array.base);
+        print_typespec(typespec->array.base);
         printf(")");
         break;
 	case TYPESPEC_FUNC:
 		printf("(func (");
-		for (int i=0; i<type->func.num_params; ++i) {
+		for (int i=0; i<typespec->func.num_params; ++i) {
 			if (i > 0) printf(" ");
-			print_type(type->func.params[i]);
+			print_typespec(typespec->func.params[i]);
 		}
 		printf(")");
-		if (type->func.ret) {
+		if (typespec->func.ret) {
 			printf(" ");
-			print_type(type->func.ret);
+			print_typespec(typespec->func.ret);
 		}
 		break;
     default:
@@ -300,14 +300,14 @@ void print_decl(Decl *decl) {
         break;
     case DECL_VAR:
         printf("(var %s ", decl->name);
-        print_type(decl->var.type);
+        print_typespec(decl->var.typespec);
         printf(" ");
         print_expr(decl->var.expr);
         printf(")");
         break;
     case DECL_TYPEDEF:
         printf("(typedef %s ", decl->name);
-        print_type(decl->typedef_decl.type);
+        print_typespec(decl->typedef_decl.typespec);
         printf(")");
         break;
     case DECL_FUNC:
@@ -316,14 +316,14 @@ void print_decl(Decl *decl) {
             FuncParam p = decl->func.params[i];
             if (i > 0) printf(" ");
 			printf("%s ", p.name);
-			print_type(p.type);
+			print_typespec(p.typespec);
         }
 		if (decl->func.is_variadic)
 			printf(" ...");
         printf(")");
-        if (decl->func.ret_type) {
+        if (decl->func.ret_typespec) {
             printf(" ");
-            print_type(decl->func.ret_type);
+            print_typespec(decl->func.ret_typespec);
         }
         printf(" ");
         print_stmt_block(decl->func.block);
@@ -343,7 +343,7 @@ void print_decl(Decl *decl) {
             print_newline();
             AggregateField f = decl->aggregate.fields[i];
             printf("(%s ", f.name);
-            print_type(f.type);
+            print_typespec(f.typespec);
             printf(")");
         }
         --print_indent;

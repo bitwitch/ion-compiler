@@ -1,6 +1,6 @@
 Expr *parse_expr(void);
 Stmt *parse_stmt(void);
-Typespec *parse_type(void);
+Typespec *parse_typespec(void);
 FuncParam parse_decl_func_param(void);
 
 char *parse_name(void) {
@@ -15,11 +15,11 @@ char *parse_name(void) {
     }
 }
 
-Typespec *parse_type_func(void) {
+Typespec *parse_typespec_func(void) {
 	SourcePos pos = token.pos;
 	bool is_variadic = false;
 	expect_token('(');
-	BUF(Typespec **param_types) = NULL; // @LEAK
+	BUF(Typespec **param_typespecs) = NULL; // @LEAK
 
 	if (!is_token(')')) {
 		// parse first parameter
@@ -27,7 +27,7 @@ Typespec *parse_type_func(void) {
 			syntax_error("at least one parameter must precede '...' in a variadic function");
 			is_variadic = true;
 		} else { 
-			da_push(param_types, parse_type());
+			da_push(param_typespecs, parse_typespec());
 		}
 		// parse remaining parameters
 		while (match_token(',')) {
@@ -35,7 +35,7 @@ Typespec *parse_type_func(void) {
 				is_variadic = true;
 			} else {
 				if (is_variadic) syntax_error("no parameters can follow '...' in a variadic function");
-				da_push(param_types, parse_type());
+				da_push(param_typespecs, parse_typespec());
 			}
 		}
 
@@ -44,43 +44,43 @@ Typespec *parse_type_func(void) {
 
 	Typespec *ret_type = NULL;
 	if (match_token(':')) {
-		ret_type = parse_type();
+		ret_type = parse_typespec();
 	}
 
-	return typespec_func(pos, param_types, da_len(param_types), is_variadic, ret_type);
+	return typespec_func(pos, param_typespecs, da_len(param_typespecs), is_variadic, ret_type);
 }
 
-Typespec *parse_type_base(void) {
+Typespec *parse_typespec_base(void) {
 	if (is_token(TOKEN_NAME)) {
 		SourcePos pos = token.pos;
 		char *name = parse_name();
 		return typespec_name(pos, name);
 	} else if (match_keyword(keyword_func)) {
-		return parse_type_func();
+		return parse_typespec_func();
 	} else {
         syntax_error("Unexpected token in type: %s", token_info());
         return NULL;
     }
 }
 
-Typespec *parse_type(void) {
+Typespec *parse_typespec(void) {
 	SourcePos pos = token.pos;
-    Typespec *type = parse_type_base();
+    Typespec *typespec = parse_typespec_base();
     while (is_token('[') || is_token('*')) {
         if (match_token('[')) {
             Expr *size = parse_expr();
             expect_token(']');
-            type = typespec_array(pos, type, size);
+            typespec = typespec_array(pos, typespec, size);
         } else {
             assert(is_token('*'));
             next_token();
-            type = typespec_ptr(pos, type);
+            typespec = typespec_ptr(pos, typespec);
         }
     }
-    return type;
+    return typespec;
 }
 
-Expr *parse_expr_compound(Typespec *type) {
+Expr *parse_expr_compound(Typespec *typespec) {
 	SourcePos pos = token.pos;
     expect_token('{');
     BUF(Expr **exprs) = NULL; // @LEAK
@@ -88,7 +88,7 @@ Expr *parse_expr_compound(Typespec *type) {
         da_push(exprs, parse_expr());
     } while (match_token(','));
     expect_token('}');
-    return expr_compound(pos, type, exprs, da_len(exprs));
+    return expr_compound(pos, typespec, exprs, da_len(exprs));
 }
 
 Expr *parse_expr_base(void) {
@@ -110,31 +110,31 @@ Expr *parse_expr_base(void) {
 		char *name = token.name;
 		next_token();
 		if (is_token('{')) {
-			Typespec *type = typespec_name(pos, name);
-			expr = parse_expr_compound(type);
+			Typespec *typespec = typespec_name(pos, name);
+			expr = parse_expr_compound(typespec);
 		} else {
 			expr = expr_name(pos, name);
 		}
     } else if (match_keyword(keyword_cast)) {
         expect_token('(');
-        Typespec *type = parse_type();
+        Typespec *typespec = parse_typespec();
         expect_token(',');
         Expr *sub_expr = parse_expr();
         expect_token(')');
-		expr = expr_cast(pos, type, sub_expr);
+		expr = expr_cast(pos, typespec, sub_expr);
     } else if (match_keyword(keyword_sizeof)) {
         expect_token('(');
         if (match_token(':'))
-			expr = expr_sizeof_type(pos, parse_type());
+			expr = expr_sizeof_typespec(pos, parse_typespec());
         else
 			expr = expr_sizeof_expr(pos, parse_expr());
         expect_token(')');
     } else if (match_token('(')) {
         // compound literal
         if (match_token(':')) {
-            Typespec *type = parse_type();
+            Typespec *typespec = parse_typespec();
             expect_token(')');
-            expr = parse_expr_compound(type);
+            expr = parse_expr_compound(typespec);
         } else {
             expr = parse_expr();
             expect_token(')');
@@ -351,11 +351,11 @@ Stmt *parse_simple_stmt(void) {
 			syntax_error("':' must be preceded by a name in a variable init statement");
 			return NULL;
 		}
-		Typespec *type = parse_type();
+		Typespec *typespec = parse_typespec();
 		Expr *rhs = NULL;
 		if (match_token('='))
 			rhs = parse_expr();
-		stmt = stmt_init(pos, expr->name, type, rhs);
+		stmt = stmt_init(pos, expr->name, typespec, rhs);
     } else if (is_assign_op()) {
         TokenKind op = token.kind;
         next_token();
@@ -513,34 +513,34 @@ Decl *parse_decl_const(void) {
 Decl *parse_decl_var(void) {
 	SourcePos pos = token.pos;
     char *name = parse_name();
-    Typespec *type = NULL;
+    Typespec *typespec = NULL;
     Expr *expr = NULL;
     if (match_token(':')) {
-        type = parse_type();
+        typespec = parse_typespec();
     }
     if (match_token('=')) {
         expr = parse_expr();
     }
 	expect_token(';');
-	return decl_var(pos, name, type, expr);
+	return decl_var(pos, name, typespec, expr);
 }
 
 Decl *parse_decl_typedef(void) {
 	SourcePos pos = token.pos;
     char *name = parse_name();
     expect_token('=');
-    Typespec *type = parse_type();
+    Typespec *typespec = parse_typespec();
 	expect_token(';');
-	return decl_typedef(pos, name, type);
+	return decl_typedef(pos, name, typespec);
 }
 
 AggregateField parse_decl_aggregate_field(void) {
     char *name = parse_name();
     expect_token(':');
-    Typespec *type = parse_type();
+    Typespec *typespec = parse_typespec();
     return (AggregateField){
         .name = name,
-        .type = type,
+        .typespec = typespec,
     };
 }
 
@@ -561,10 +561,10 @@ Decl *parse_decl_aggregate(DeclKind kind) {
 FuncParam parse_decl_func_param(void) {
 	char *name = parse_name();
 	expect_token(':');
-	Typespec *type = parse_type();
+	Typespec *typespec = parse_typespec();
 	return (FuncParam){
 		.name = name,
-		.type = type,
+		.typespec = typespec,
 	};
 }
 
@@ -596,7 +596,7 @@ Decl *parse_decl_func(void) {
 
     Typespec *ret_type = NULL;
     if (match_token(':')) {
-        ret_type = parse_type();
+        ret_type = parse_typespec();
     }
 
     StmtBlock block = parse_stmt_block();
