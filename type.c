@@ -11,10 +11,19 @@ typedef enum {
     TYPE_INCOMPLETE,
     TYPE_COMPLETING,
 	TYPE_VOID,
+    TYPE_CHAR,
+    TYPE_SCHAR,
+    TYPE_UCHAR,
+    TYPE_SHORT,
+    TYPE_USHORT,
     TYPE_INT,
     TYPE_UINT,
-    TYPE_CHAR,
+    TYPE_LONG,
+    TYPE_ULONG,
+    TYPE_LONGLONG,
+    TYPE_ULONGLONG,
     TYPE_FLOAT,
+    TYPE_DOUBLE,
 	TYPE_BOOL,
     TYPE_PTR,
     TYPE_ARRAY,
@@ -61,12 +70,19 @@ BUF(Type **cached_array_types);
 BUF(Type **cached_func_types);
 
 // primative types
-Type *type_void   = &(Type){ .kind = TYPE_VOID };
-Type *type_int    = &(Type){ .kind = TYPE_INT,   .size = INT_SIZE,   .align = INT_SIZE };
-Type *type_uint   = &(Type){ .kind = TYPE_UINT,  .size = INT_SIZE,   .align = INT_SIZE };
-Type *type_char   = &(Type){ .kind = TYPE_CHAR,  .size = CHAR_SIZE,  .align = CHAR_SIZE };
-Type *type_float  = &(Type){ .kind = TYPE_FLOAT, .size = FLOAT_SIZE, .align = FLOAT_SIZE };
-Type *type_bool   = &(Type){ .kind = TYPE_BOOL,  .size = INT_SIZE,   .align = INT_SIZE };
+Type *type_void        = &(Type){ .kind = TYPE_VOID };
+Type *type_char        = &(Type){ .kind = TYPE_CHAR,      .size = 1, .align = 1 };
+Type *type_schar       = &(Type){ .kind = TYPE_SCHAR,     .size = 1, .align = 1 };
+Type *type_uchar       = &(Type){ .kind = TYPE_UCHAR,     .size = 1, .align = 1 };
+Type *type_int         = &(Type){ .kind = TYPE_INT,       .size = 4, .align = 4 };
+Type *type_uint        = &(Type){ .kind = TYPE_UINT,      .size = 4, .align = 4 };
+Type *type_long        = &(Type){ .kind = TYPE_LONG,      .size = 4, .align = 4 };
+Type *type_ulong       = &(Type){ .kind = TYPE_ULONG,     .size = 4, .align = 4 };
+Type *type_longlong    = &(Type){ .kind = TYPE_LONGLONG,  .size = 8, .align = 8 };
+Type *type_ulonglong   = &(Type){ .kind = TYPE_ULONGLONG, .size = 8, .align = 8 };
+Type *type_float       = &(Type){ .kind = TYPE_FLOAT,     .size = 4, .align = 4 };
+Type *type_double      = &(Type){ .kind = TYPE_DOUBLE,    .size = 8, .align = 8 };
+Type *type_bool        = &(Type){ .kind = TYPE_BOOL,      .size = 4, .align = 4 };
 
 
 bool is_integer_type(Type *type) {

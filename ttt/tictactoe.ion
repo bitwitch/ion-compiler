@@ -5,8 +5,6 @@
 // @foreign func srand(seed: uint) {}
 @foreign func srand(seed: int) {}
 
-var null_ptr: int* = NULL;
-
 var board: char[3][3] = {0};
 
 func draw_board() {

@@ -1,8 +1,5 @@
 TODO:
 
-[ ] in ast nodes, be consistent about calling things typespec always when they
-    are of Typespec to differentiate from Type
-
 [ ] implement the different integer types (uint, etc.)
 
 [ ] integer promotions and implicit conversions for binary expressions
@@ -24,13 +21,10 @@ TODO:
 	[X] single line
 	[ ] multi line  
 	
-[ ] character literals
-
 [ ] string escape chars
 
 [ ] declarations in functions (statement declarations)
-	- like a var, enum, or struct declared inside a function
-
+	- like an enum, or struct declared inside a function
 
 [ ] implicit break for switch cases
 	[ ] support commas in switch cases for multiple case expressions to use the
@@ -49,11 +43,14 @@ TODO:
 [ ] improve error messages
 
 
+[X] in ast nodes, be consistent about calling things typespec always when they
+    are Typespec to differentiate from Type
 [X] array pointer decay
 [X] move true and false to symbol table instead of keywords
 [X] built in NULL 
 [X] creating bindings to c functions like printf
 [X] the backpointer from type to its symbol not being set correctly
+[X] character literals
 [\] var args (...)
 	[X] enforce at least one param must precede ... 
 	[X] enforce ... must be last argument

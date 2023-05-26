@@ -19,10 +19,7 @@ int compile_file(char *path) {
 	fclose(fp);
 
 	init_keywords();
-
-	// insert primative types into the symbol table at startup 
 	sym_init_table();
-
 	init_stream(path, file_data);
 
 	// parse decls until you reach end of file
