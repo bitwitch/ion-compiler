@@ -21,22 +21,27 @@ char *gen_type_c(Type *type, char *inner) {
 	assert(type);
 	char *sep = *inner ? " " : "";
 	switch(type->kind) {
-	case TYPE_VOID:
-		return strf("void%s%s", sep, inner);
-	case TYPE_INT:
-		return strf("int%s%s", sep, inner);
-	case TYPE_UINT:
-		return strf("unsigned int%s%s", sep, inner);
-	case TYPE_CHAR:
-		return strf("char%s%s", sep, inner);
-	case TYPE_FLOAT:
-		return strf("float%s%s", sep, inner);
-	case TYPE_BOOL:
-		return strf("bool%s%s", sep, inner);
+	case TYPE_VOID:       return strf("void%s%s", sep, inner);
+	case TYPE_CHAR:       return strf("char%s%s", sep, inner);
+	case TYPE_SCHAR:      return strf("schar%s%s", sep, inner);
+	case TYPE_UCHAR:      return strf("uchar%s%s", sep, inner);
+	case TYPE_SHORT:      return strf("short%s%s", sep, inner);
+	case TYPE_USHORT:     return strf("ushort%s%s", sep, inner);
+	case TYPE_INT:        return strf("int%s%s", sep, inner);
+	case TYPE_UINT:       return strf("uint%s%s", sep, inner);
+	case TYPE_LONG:       return strf("long%s%s", sep, inner);
+	case TYPE_ULONG:      return strf("ulong%s%s", sep, inner);
+	case TYPE_LONGLONG:   return strf("longlong%s%s", sep, inner);
+	case TYPE_ULONGLONG:  return strf("ulonglong%s%s", sep, inner);
+	case TYPE_FLOAT:      return strf("float%s%s", sep, inner);
+	case TYPE_DOUBLE:     return strf("double%s%s", sep, inner);
+	case TYPE_BOOL:       return strf("bool%s%s", sep, inner);
+
 	case TYPE_STRUCT:
 	case TYPE_UNION:
-	case TYPE_ENUM:
+	case TYPE_ENUM: {
 		return strf("%s%s%s", type->sym->name, sep, inner);
+	}
 
 	case TYPE_PTR: {
 		// int *(x)
@@ -165,20 +170,13 @@ char *gen_expr_c(Expr *expr) {
     }
 }
 
-char *gen_typespec_name_c(char *name) {
-	if (name == str_intern("uint"))
-		return "unsigned int";
-	else 
-		return name;
-}
-
 char *gen_typespec_c(Typespec *typespec, char *inner) {
 	assert(typespec);
 	char *sep = *inner ? " " : "";
 
 	switch (typespec->kind) {
 	case TYPESPEC_NAME:
-        return strf("%s%s%s", gen_typespec_name_c(typespec->name), sep, inner);
+        return strf("%s%s%s", typespec->name, sep, inner);
 
 	case TYPESPEC_ARRAY: {
 		char *str = gen_parens(strf("%s[%s]", inner, gen_expr_c(typespec->array.num_items)), *inner);
@@ -491,7 +489,18 @@ char *gen_sym_c(Sym *sym) {
 }
 
 char *gen_preamble_c(void) {
-	return "#include <stdio.h>\n#include <stdbool.h>\n#include <stdlib.h>\n#include <time.h>";
+	BUF(char *preamble) = NULL;
+	// c lib includes
+	da_printf(preamble, "%s\n", "#include <stdio.h>\n#include <stdbool.h>\n#include <stdlib.h>\n#include <time.h>\n");
+	// typedefs for primative types
+	da_printf(preamble, "%s\n", "typedef signed char schar;");
+	da_printf(preamble, "%s\n", "typedef unsigned char uchar;");
+	da_printf(preamble, "%s\n", "typedef unsigned short ushort;");
+	da_printf(preamble, "%s\n", "typedef unsigned int uint;");
+	da_printf(preamble, "%s\n", "typedef unsigned long ulong;");
+	da_printf(preamble, "%s\n", "typedef long long longlong;");
+	da_printf(preamble, "%s\n", "typedef unsigned long long ulonglong;");
+	return preamble;
 }
 
 

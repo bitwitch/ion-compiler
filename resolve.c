@@ -47,6 +47,21 @@ Sym **local_syms_end = local_syms;
 Arena resolve_arena;
 ResolvedExpr resolved_null = {0};
 
+int integer_conversion_ranks[] = {
+	[TYPE_BOOL]      = 1,
+	[TYPE_CHAR]      = 2,
+	[TYPE_SCHAR]     = 2,
+	[TYPE_UCHAR]     = 2,
+	[TYPE_SHORT]     = 3,
+	[TYPE_USHORT]    = 3,
+	[TYPE_INT]       = 4,
+	[TYPE_UINT]      = 4,
+	[TYPE_LONG]      = 5,
+	[TYPE_ULONG]     = 5,
+	[TYPE_LONGLONG]  = 6,
+	[TYPE_ULONGLONG] = 6,
+};
+
 Sym *sym_alloc(char *name, SymKind kind) {
     Sym *sym = arena_alloc_zeroed(&resolve_arena, sizeof(Sym));
     sym->name = name;
@@ -156,17 +171,26 @@ void sym_put_const(char *name, Type *type, Val val) {
 // initializes primative types and built-in constants
 void sym_init_table(void) {
 	// primative types
-	if (!sym_get(str_intern("void")))  sym_put_type(str_intern("void"),  type_void);
-	if (!sym_get(str_intern("int")))   sym_put_type(str_intern("int"),   type_int);
-	if (!sym_get(str_intern("uint")))  sym_put_type(str_intern("uint"),  type_uint);
-	if (!sym_get(str_intern("float"))) sym_put_type(str_intern("float"), type_float);
-	if (!sym_get(str_intern("char")))  sym_put_type(str_intern("char"),  type_char);
-	if (!sym_get(str_intern("bool")))  sym_put_type(str_intern("bool"),  type_bool);
+	if (!sym_get(str_intern("void")))       sym_put_type(str_intern("void"),       type_void);
+	if (!sym_get(str_intern("char")))       sym_put_type(str_intern("char"),       type_char);
+	if (!sym_get(str_intern("schar")))      sym_put_type(str_intern("schar"),      type_schar);
+	if (!sym_get(str_intern("uchar")))      sym_put_type(str_intern("uchar"),      type_uchar);
+	if (!sym_get(str_intern("short")))      sym_put_type(str_intern("short"),      type_short);
+	if (!sym_get(str_intern("ushort")))     sym_put_type(str_intern("ushort"),     type_ushort);
+	if (!sym_get(str_intern("int")))        sym_put_type(str_intern("int"),        type_int);
+	if (!sym_get(str_intern("uint")))       sym_put_type(str_intern("uint"),       type_uint);
+	if (!sym_get(str_intern("long")))       sym_put_type(str_intern("long"),       type_long);
+	if (!sym_get(str_intern("ulong")))      sym_put_type(str_intern("ulong"),      type_ulong);
+	if (!sym_get(str_intern("longlong")))   sym_put_type(str_intern("longlong"),   type_longlong);
+	if (!sym_get(str_intern("ulonglong")))  sym_put_type(str_intern("ulonglong"),  type_ulonglong);
+	if (!sym_get(str_intern("float")))      sym_put_type(str_intern("float"),      type_float);
+	if (!sym_get(str_intern("double")))     sym_put_type(str_intern("double"),     type_double);
+	if (!sym_get(str_intern("bool")))       sym_put_type(str_intern("bool"),       type_bool);
 
 	// built-in constants
-	if (!sym_get(str_intern("true")))  sym_put_const(str_intern("true"),  type_bool, (Val){.i=1});
-	if (!sym_get(str_intern("false"))) sym_put_const(str_intern("false"), type_bool, (Val){.i=0});
-	if (!sym_get(str_intern("NULL")))  sym_put_const(str_intern("NULL"),  type_ptr(type_void),  (Val){.p=0});
+	if (!sym_get(str_intern("true")))  sym_put_const(str_intern("true"),  type_bool,           (Val){.i=1});
+	if (!sym_get(str_intern("false"))) sym_put_const(str_intern("false"), type_bool,           (Val){.i=0});
+	if (!sym_get(str_intern("NULL")))  sym_put_const(str_intern("NULL"),  type_ptr(type_void), (Val){.p=0});
 }
 
 Sym **sym_enter_scope(void) {
@@ -205,6 +229,10 @@ char *type_to_str(Type *type) {
 			return NULL;
 	}
 }
+
+
+
+
 
 
 Sym *resolve_name(char *name);
@@ -348,7 +376,7 @@ ResolvedExpr resolved_lvalue(Type *type) {
 
 ResolvedExpr resolved_const(Type *type, Val val) {
 	assert(type);
-	assert(is_integer_type(type) || type == type_bool || type->kind == TYPE_PTR);
+	assert(is_integer_type(type) || type->kind == TYPE_PTR);
     return (ResolvedExpr){ 
         .type = type,
         .is_const = true,
@@ -373,6 +401,7 @@ ResolvedExpr resolve_expr_unary(Expr *expr) {
         }
         return resolved_rvalue(type_ptr(operand.type));
 	case '!':
+		// TODO(shaw): convert to boolean 
 		assert(operand.type->kind == TYPE_INT || operand.type->kind == TYPE_BOOL);
 		return resolved_rvalue(operand.type);
 	case '+':
@@ -422,6 +451,8 @@ void pointer_decay(ResolvedExpr *resolved) {
 
 // based on the C standard, see https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1548.pdf
 bool is_convertible(Type *from, Type *to) {
+
+	// pointer conversions
 	if (from->kind == TYPE_PTR) {
 		Type *base = from->ptr.base;
 		if (to->kind == TYPE_PTR) {
@@ -434,12 +465,119 @@ bool is_convertible(Type *from, Type *to) {
 		} else {
 			// from is ptr but to is not
 		}
-	} 
+	}
 
 	// TODO(shaw): implement the rest of conversions
 	
 	return false;
 }
+
+bool floating_conversion(ResolvedExpr *operand_left, ResolvedExpr *operand_right) {
+	Type *left  = operand_left->type;
+	Type *right = operand_right->type;
+
+	// conversion to double
+	if (left->kind == TYPE_DOUBLE && right->kind != TYPE_DOUBLE) {
+		if (is_convertible(right, type_double)) {
+			operand_right->type = type_double;
+			return true;
+		} else {
+			return false;	
+		}
+	} else if (right->kind == TYPE_DOUBLE && left->kind != TYPE_DOUBLE) {
+		if (is_convertible(left, type_double)) {
+			operand_left->type = type_double;
+			return true;
+		} else {
+			return false;	
+		}
+
+	// conversion to float
+	} else if (left->kind == TYPE_FLOAT && right->kind != TYPE_FLOAT) {
+		if (is_convertible(right, type_float)) {
+			operand_right->type = type_float;
+			return true;
+		} else {
+			return false;
+		}
+
+	} else if (right->kind == TYPE_FLOAT && left->kind != TYPE_FLOAT) {
+		if (is_convertible(left, type_float)) {
+			operand_left->type = type_float;
+			return true;
+		} else {
+			return false;	
+		}
+	}
+
+	assert(0);
+	return false;
+}
+
+void integer_promotion(ResolvedExpr *operand) {
+	if (integer_min_values[TYPE_INT] <= integer_min_values[operand->type->kind] &&
+	    integer_max_values[TYPE_INT] <= integer_max_values[operand->type->kind]) 
+	{
+		operand->type = type_int;
+	} else {
+		operand->type = type_uint;
+	}
+}
+
+// returns true if types are compatible and conversion is successful, else false
+// see usual arithmetic conversions in the C standard, section 6.3.1.8
+bool arithmetic_conversion(ResolvedExpr *left, ResolvedExpr *right) {
+	assert(is_arithmetic_type(left->type) && is_arithmetic_type(right->type));
+
+	if (is_floating_type(left->type) || is_floating_type(right->type)) {
+		return floating_conversion(left, right);
+	}
+
+	integer_promotion(left);
+	integer_promotion(right);
+
+	if (left->type == right->type) {
+		return true;
+	} else if ((is_signed_integer_type(left->type) && is_signed_integer_type(right->type)) || 
+	           (is_unsigned_integer_type(left->type) && is_unsigned_integer_type(right->type))) {
+		// the type with lower rank is converted to the type with higher rank
+		return true;
+	} else {
+		ResolvedExpr *signed_operand, *unsigned_operand;
+		if (is_signed_integer_type(left->type)) {
+			signed_operand = left;
+			unsigned_operand = right;
+		} else {
+			signed_operand = right;
+			unsigned_operand = left;
+		}
+
+		if (integer_conversion_ranks[unsigned_operand->type->kind] >= integer_conversion_ranks[signed_operand->type->kind]) {
+			signed_operand->type = unsigned_operand->type;
+			return true;
+
+		// if the operand with signed type can represent all of the values of the operand with unsigned type
+		} else if (integer_min_values[signed_operand->type->kind] <= integer_min_values[unsigned_operand->type->kind] &&
+				   integer_max_values[signed_operand->type->kind] <= integer_max_values[unsigned_operand->type->kind]) {
+			unsigned_operand->type = signed_operand->type;
+			return true;
+
+		} else {
+			Type *corresponding_unsigned_type[] = {
+				[TYPE_SCHAR]     = type_uchar,
+				[TYPE_SHORT]     = type_ushort,
+				[TYPE_INT]       = type_uint,
+				[TYPE_LONG]      = type_ulong,
+				[TYPE_LONGLONG]  = type_ulonglong,
+			};
+			Type *type = corresponding_unsigned_type[signed_operand->type->kind];
+			signed_operand->type = type;
+			unsigned_operand->type = type;
+			return true;
+		}
+	}
+}
+
 
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
     ResolvedExpr result = resolved_null;
@@ -488,8 +626,9 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 	case EXPR_BINARY: {
 		ResolvedExpr left  = resolve_expr(expr->binary.left);
 		ResolvedExpr right = resolve_expr(expr->binary.right);
-		if (left.type != right.type) {
-			semantic_error(expr->pos, "Type mismatch for left and right side of binary expression, left is %s right is %s",
+		if (!arithmetic_conversion(&left, &right)) {
+			semantic_error(expr->pos, 
+				"Incompatible types for left and right side of binary expression, left is %s right is %s",
 				type_to_str(left.type), type_to_str(right.type));
 		}
 		result = resolved_rvalue(left.type);
@@ -1029,7 +1168,4 @@ void resolve_test(void) {
 	da_free(global_syms);
 	da_free(ordered_syms);
 }
-
-
-
 

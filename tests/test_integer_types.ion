@@ -1,0 +1,32 @@
+var gc1: char = 1;
+var gc2: schar;
+var gc3: uchar;
+var gs1: schar;
+var gs2: uchar;
+var gi1: int;
+var gi2: uint;
+var gl1: long;
+var gl2: ulong;
+var gll1: longlong;
+var gll2: ulonglong;
+var gf: float;
+var gd: double;
+
+func main(): int {
+
+	c1 := gc1;
+	c2 := gc2;
+	c3 := gc3;
+	s1 := gs1;
+	s2 := gs2;
+	i1 := gi1;
+	i2 := gi2;
+	l1 := gl1;
+	l2 := gl2;
+	ll1 := gll1;
+	ll2 := gll2;
+	f := gf;
+	d := gd; 
+
+	return 0;
+}

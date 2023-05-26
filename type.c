@@ -1,7 +1,5 @@
 #define PTR_SIZE   8
 #define INT_SIZE   4
-#define FLOAT_SIZE 4
-#define CHAR_SIZE  1
 
 typedef struct Type Type;
 typedef struct Sym Sym;
@@ -69,11 +67,47 @@ BUF(Type **cached_ptr_types);
 BUF(Type **cached_array_types);
 BUF(Type **cached_func_types);
 
+// TODO(shaw): using c's macros for min and max values of integer types for
+// now. furthermore it will be the values ONLY for the system the compiler is
+// compiled on. this version for now is just to get things going.
+int64_t integer_min_values[] = {
+	[TYPE_BOOL]      = 0,
+	[TYPE_CHAR]      = 0,
+	[TYPE_SCHAR]     = SCHAR_MIN,
+	[TYPE_UCHAR]     = 0,
+	[TYPE_SHORT]     = SHRT_MIN,
+	[TYPE_USHORT]    = 0,
+	[TYPE_INT]       = INT_MIN,
+	[TYPE_UINT]      = 0,
+	[TYPE_LONG]      = LONG_MIN,
+	[TYPE_ULONG]     = 0,
+	[TYPE_LONGLONG]  = LLONG_MIN,
+	[TYPE_ULONGLONG] = 0,
+};
+
+uint64_t integer_max_values[] = {
+	[TYPE_BOOL]      = 1,
+	[TYPE_CHAR]      = UCHAR_MAX,
+	[TYPE_SCHAR]     = SCHAR_MAX,
+	[TYPE_UCHAR]     = UCHAR_MAX,
+	[TYPE_SHORT]     = SHRT_MAX,
+	[TYPE_USHORT]    = USHRT_MAX,
+	[TYPE_INT]       = INT_MAX,
+	[TYPE_UINT]      = UINT_MAX,
+	[TYPE_LONG]      = LONG_MAX,
+	[TYPE_ULONG]     = ULONG_MAX,
+	[TYPE_LONGLONG]  = LLONG_MAX,
+	[TYPE_ULONGLONG] = ULLONG_MAX,
+};
+
+
 // primative types
 Type *type_void        = &(Type){ .kind = TYPE_VOID };
 Type *type_char        = &(Type){ .kind = TYPE_CHAR,      .size = 1, .align = 1 };
 Type *type_schar       = &(Type){ .kind = TYPE_SCHAR,     .size = 1, .align = 1 };
 Type *type_uchar       = &(Type){ .kind = TYPE_UCHAR,     .size = 1, .align = 1 };
+Type *type_short       = &(Type){ .kind = TYPE_SHORT,     .size = 2, .align = 2 };
+Type *type_ushort      = &(Type){ .kind = TYPE_USHORT,    .size = 2, .align = 2 };
 Type *type_int         = &(Type){ .kind = TYPE_INT,       .size = 4, .align = 4 };
 Type *type_uint        = &(Type){ .kind = TYPE_UINT,      .size = 4, .align = 4 };
 Type *type_long        = &(Type){ .kind = TYPE_LONG,      .size = 4, .align = 4 };
@@ -85,8 +119,38 @@ Type *type_double      = &(Type){ .kind = TYPE_DOUBLE,    .size = 8, .align = 8 
 Type *type_bool        = &(Type){ .kind = TYPE_BOOL,      .size = 4, .align = 4 };
 
 
+bool is_floating_type(Type *type) {
+	return type == type_float || type == type_double;
+}
+
 bool is_integer_type(Type *type) {
-	return type == type_int || type == type_uint || type == type_char;
+	return type == type_bool     ||
+	       type == type_char     || type == type_schar  || type == type_uchar ||
+	       type == type_short    || type == type_ushort ||
+	       type == type_int      || type == type_uint   || 
+	       type == type_long     || type == type_ulong  || 
+	       type == type_longlong || type == type_ulonglong;
+}
+
+bool is_arithmetic_type(Type *type) {
+	return is_integer_type(type) || is_floating_type(type);
+}
+
+bool is_signed_integer_type(Type *type) {
+	return type == type_schar    || 
+	       type == type_short    || 
+	       type == type_int      || 
+	       type == type_long     || 
+	       type == type_longlong;
+}
+
+bool is_unsigned_integer_type(Type *type) {
+	return type == type_char     || 
+	       type == type_uchar    || 
+	       type == type_ushort    || 
+	       type == type_uint      || 
+	       type == type_ulong     || 
+	       type == type_ulonglong;
 }
 
 void complete_type(Type *type);
