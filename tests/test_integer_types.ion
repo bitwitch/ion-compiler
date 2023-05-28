@@ -13,7 +13,7 @@ var gf: float;
 var gd: double;
 
 func main(): int {
-
+	c0: char = 1;
 	c1 := gc1;
 	c2 := gc2;
 	c3 := gc3;
@@ -25,8 +25,14 @@ func main(): int {
 	l2 := gl2;
 	ll1 := gll1;
 	ll2 := gll2;
-	f := gf;
-	d := gd; 
+	f1 := gf;
+	d1 := gd; 
+
+	a := c0 + s1;
+	b := c1 + i1;
+	c := i1 - i2;
+	d := l1 * f1;
+	e := s2 + d1;
 
 	return 0;
 }

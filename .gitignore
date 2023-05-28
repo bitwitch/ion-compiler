@@ -1,6 +1,11 @@
 ion
 *.dSYM/
+tests/*.c
 activity_log.txt
 build/
+*.exe
+*.pdb
+*.ilk
+*.obj
 tags
 editor_workspace.10x

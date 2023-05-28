@@ -1,5 +1,10 @@
 TODO:
 
+[ ] resolving constants
+	[ ] integer (see c standard section 6.4.4.1)
+	[ ] floating 
+	[ ] character
+
 [ ] implement the different integer types (uint, etc.)
 
 [ ] integer promotions and implicit conversions for binary expressions

@@ -26,6 +26,23 @@ void semantic_error(SourcePos pos, char *fmt, ...) {
 
 	// TODO(shaw): DELETE ME! JUST FOR DEVELOPMENT!
 	assert(0);
-
 	exit(1);
+}
+
+void print_note(SourcePos pos, char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	printf("%s:%d: note: ", pos.filepath, pos.line);
+	vprintf(fmt, args);
+	printf("\n");
+	va_end(args);
+}
+
+void warning(SourcePos pos, char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	printf("%s:%d: warning: ", pos.filepath, pos.line);
+	vprintf(fmt, args);
+	printf("\n");
+	va_end(args);
 }

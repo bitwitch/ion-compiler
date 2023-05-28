@@ -91,7 +91,7 @@ struct Expr {
     union {
         int32_t int_val;
         double float_val;
-		int32_t bool_val;
+		bool bool_val;
         char *str_val;
 		char char_val;
         char *name;

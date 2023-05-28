@@ -33,7 +33,7 @@ func make_random_move(side: char) {
 }
 
 func make_move(row: int, col: int, side: char): bool {
-	if (row < 0 || row > 2 || col < 0 || col > 2 || cast(int, board[row][col])) {
+	if (row < 0 || row > 2 || col < 0 || col > 2 || board[row][col]) {
 		return false;
 	} else {
 		board[row][col] = side;
@@ -44,7 +44,7 @@ func make_move(row: int, col: int, side: char): bool {
 func no_moves(): bool {
 	for (row := 0; row < 3; row++) {
 		for (col := 0; col < 3; col++) {
-			if (cast(int, board[row][col]) == 0) {
+			if (board[row][col] == 0) {
 				return false;
 			}	
 		}

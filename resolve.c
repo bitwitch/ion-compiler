@@ -62,6 +62,10 @@ int integer_conversion_ranks[] = {
 	[TYPE_ULONGLONG] = 6,
 };
 
+bool is_null_ptr(ResolvedExpr operand) {
+	return operand.type->kind == TYPE_PTR && operand.is_const && operand.val.p == 0;
+}
+
 Sym *sym_alloc(char *name, SymKind kind) {
     Sym *sym = arena_alloc_zeroed(&resolve_arena, sizeof(Sym));
     sym->name = name;
@@ -136,6 +140,14 @@ Sym *sym_get(char *name) {
         if (sym->name == name) return sym;
     }
     return NULL;
+}
+
+bool name_in_local_scope(char *name, Sym **scope_start) {
+	for (Sym **it = local_syms_end; it > scope_start; --it) {
+		Sym *sym = it[-1];
+		if (sym->name == name) return true;
+	}
+	return false;
 }
 
 void sym_put_decl(Decl *decl) {
@@ -376,7 +388,8 @@ ResolvedExpr resolved_lvalue(Type *type) {
 
 ResolvedExpr resolved_const(Type *type, Val val) {
 	assert(type);
-	assert(is_integer_type(type) || type->kind == TYPE_PTR);
+	assert(is_arithmetic_type(type) || type->kind == TYPE_PTR);
+
     return (ResolvedExpr){ 
         .type = type,
         .is_const = true,
@@ -449,26 +462,34 @@ void pointer_decay(ResolvedExpr *resolved) {
 	resolved->is_lvalue = false;
 }
 
+void cast_operand(ResolvedExpr *operand, Type *type) {
+	operand->type = type;
+	if (operand->is_const) {
+		// TODO(shaw): convert constants to new type, ideally warning or maybe even error if truncation would occur
+	}
+}
+
 // based on the C standard, see https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1548.pdf
 bool is_convertible(Type *from, Type *to) {
-
-	// pointer conversions
-	if (from->kind == TYPE_PTR) {
-		Type *base = from->ptr.base;
-		if (to->kind == TYPE_PTR) {
-			// from void* to any pointer type
-			if (base->kind == TYPE_VOID)
-				return true;
-			// from any pointer type to void*
-			if (to->ptr.base->kind == TYPE_VOID)
-				return true;
-		} else {
-			// from is ptr but to is not
-		}
+	if (from == to) {
+		return true;
+	} else if (from->kind == TYPE_PTR || to->kind == TYPE_PTR) {
+		return (from->ptr.base->kind == TYPE_VOID || to->ptr.base->kind == TYPE_VOID);
+	} else if (is_integer_type(from) && is_integer_type(to)) {
+		return true;
+	} else if (is_floating_type(from) && is_floating_type(to)) {
+		return true;
+	} else if (is_integer_type(from) && is_floating_type(to)) {
+		return true;
 	}
+	return false;
+}
 
-	// TODO(shaw): implement the rest of conversions
-	
+bool convert_operand(ResolvedExpr *operand, Type *type) {
+	if (is_convertible(operand->type, type)) {
+		cast_operand(operand, type);
+		return true;
+	}	
 	return false;
 }
 
@@ -476,17 +497,19 @@ bool floating_conversion(ResolvedExpr *operand_left, ResolvedExpr *operand_right
 	Type *left  = operand_left->type;
 	Type *right = operand_right->type;
 
+	if (left == right) return true;
+
 	// conversion to double
 	if (left->kind == TYPE_DOUBLE && right->kind != TYPE_DOUBLE) {
 		if (is_convertible(right, type_double)) {
-			operand_right->type = type_double;
+			cast_operand(operand_right, type_double);
 			return true;
 		} else {
 			return false;	
 		}
 	} else if (right->kind == TYPE_DOUBLE && left->kind != TYPE_DOUBLE) {
 		if (is_convertible(left, type_double)) {
-			operand_left->type = type_double;
+			cast_operand(operand_left, type_double);
 			return true;
 		} else {
 			return false;	
@@ -495,7 +518,7 @@ bool floating_conversion(ResolvedExpr *operand_left, ResolvedExpr *operand_right
 	// conversion to float
 	} else if (left->kind == TYPE_FLOAT && right->kind != TYPE_FLOAT) {
 		if (is_convertible(right, type_float)) {
-			operand_right->type = type_float;
+			cast_operand(operand_right, type_float);
 			return true;
 		} else {
 			return false;
@@ -503,7 +526,7 @@ bool floating_conversion(ResolvedExpr *operand_left, ResolvedExpr *operand_right
 
 	} else if (right->kind == TYPE_FLOAT && left->kind != TYPE_FLOAT) {
 		if (is_convertible(left, type_float)) {
-			operand_left->type = type_float;
+			cast_operand(operand_left, type_float);
 			return true;
 		} else {
 			return false;	
@@ -514,13 +537,49 @@ bool floating_conversion(ResolvedExpr *operand_left, ResolvedExpr *operand_right
 	return false;
 }
 
+// TODO(shaw): using c's macros for min and max values of integer types for
+// now. furthermore it will be the values ONLY for the system the compiler is
+// compiled on. this version for now is just to get things going.
+int64_t integer_min_values[] = {
+	[TYPE_BOOL]      = 0,
+	[TYPE_CHAR]      = 0,
+	[TYPE_SCHAR]     = SCHAR_MIN,
+	[TYPE_UCHAR]     = 0,
+	[TYPE_SHORT]     = SHRT_MIN,
+	[TYPE_USHORT]    = 0,
+	[TYPE_INT]       = INT_MIN,
+	[TYPE_UINT]      = 0,
+	[TYPE_LONG]      = LONG_MIN,
+	[TYPE_ULONG]     = 0,
+	[TYPE_LONGLONG]  = LLONG_MIN,
+	[TYPE_ULONGLONG] = 0,
+};
+
+uint64_t integer_max_values[] = {
+	[TYPE_BOOL]      = 1,
+	[TYPE_CHAR]      = UCHAR_MAX,
+	[TYPE_SCHAR]     = SCHAR_MAX,
+	[TYPE_UCHAR]     = UCHAR_MAX,
+	[TYPE_SHORT]     = SHRT_MAX,
+	[TYPE_USHORT]    = USHRT_MAX,
+	[TYPE_INT]       = INT_MAX,
+	[TYPE_UINT]      = UINT_MAX,
+	[TYPE_LONG]      = LONG_MAX,
+	[TYPE_ULONG]     = ULONG_MAX,
+	[TYPE_LONGLONG]  = LLONG_MAX,
+	[TYPE_ULONGLONG] = ULLONG_MAX,
+};
+
 void integer_promotion(ResolvedExpr *operand) {
+	if (integer_conversion_ranks[operand->type->kind] > integer_conversion_ranks[TYPE_INT])
+		return;
+
 	if (integer_min_values[TYPE_INT] <= integer_min_values[operand->type->kind] &&
-	    integer_max_values[TYPE_INT] <= integer_max_values[operand->type->kind]) 
+		integer_max_values[TYPE_INT] >= integer_max_values[operand->type->kind]) 
 	{
-		operand->type = type_int;
+		cast_operand(operand, type_int);
 	} else {
-		operand->type = type_uint;
+		cast_operand(operand, type_uint);
 	}
 }
 
@@ -541,6 +600,11 @@ bool arithmetic_conversion(ResolvedExpr *left, ResolvedExpr *right) {
 	} else if ((is_signed_integer_type(left->type) && is_signed_integer_type(right->type)) || 
 	           (is_unsigned_integer_type(left->type) && is_unsigned_integer_type(right->type))) {
 		// the type with lower rank is converted to the type with higher rank
+		if (integer_conversion_ranks[left->type->kind] < integer_conversion_ranks[right->type->kind]) {
+			cast_operand(left, right->type);
+		} else {
+			cast_operand(right, left->type);
+		}
 		return true;
 	} else {
 		ResolvedExpr *signed_operand, *unsigned_operand;
@@ -553,13 +617,13 @@ bool arithmetic_conversion(ResolvedExpr *left, ResolvedExpr *right) {
 		}
 
 		if (integer_conversion_ranks[unsigned_operand->type->kind] >= integer_conversion_ranks[signed_operand->type->kind]) {
-			signed_operand->type = unsigned_operand->type;
+			cast_operand(signed_operand, unsigned_operand->type);
 			return true;
 
 		// if the operand with signed type can represent all of the values of the operand with unsigned type
 		} else if (integer_min_values[signed_operand->type->kind] <= integer_min_values[unsigned_operand->type->kind] &&
-				   integer_max_values[signed_operand->type->kind] <= integer_max_values[unsigned_operand->type->kind]) {
-			unsigned_operand->type = signed_operand->type;
+				   integer_max_values[signed_operand->type->kind] >= integer_max_values[unsigned_operand->type->kind]) {
+			cast_operand(unsigned_operand, signed_operand->type);
 			return true;
 
 		} else {
@@ -571,8 +635,8 @@ bool arithmetic_conversion(ResolvedExpr *left, ResolvedExpr *right) {
 				[TYPE_LONGLONG]  = type_ulonglong,
 			};
 			Type *type = corresponding_unsigned_type[signed_operand->type->kind];
-			signed_operand->type = type;
-			unsigned_operand->type = type;
+			cast_operand(signed_operand, type);
+			cast_operand(unsigned_operand, type);
 			return true;
 		}
 	}
@@ -636,13 +700,54 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 	}
 
 	case EXPR_TERNARY: {
-		resolve_expr_cond(expr->ternary.cond);
+		ResolvedExpr cond      = resolve_expr_cond(expr->ternary.cond);
 		ResolvedExpr then_expr = resolve_expr(expr->ternary.then_expr);
 		ResolvedExpr else_expr = resolve_expr(expr->ternary.else_expr);
-		if (then_expr.type != else_expr.type) {
-			semantic_error(expr->pos, "Type mismatch in ternary expression, else expr does not match then expr");
+
+		if (!is_arithmetic_type(cond.type) && cond.type->kind != TYPE_PTR) {
+			semantic_error(expr->pos,
+				"Condition of ternary expression must have arithmetic or pointer type, got %s",
+				type_to_str(cond.type));
 		}
-		result = resolved_rvalue(then_expr.type);
+
+		if (is_arithmetic_type(then_expr.type) && is_arithmetic_type(else_expr.type)) {
+			ResolvedExpr dummy_left  = then_expr;
+			ResolvedExpr dummy_right = else_expr;
+			if (arithmetic_conversion(&dummy_left, &dummy_right)) {
+				result = resolved_rvalue(dummy_left.type);
+			} else {
+				semantic_error(expr->pos,
+					"Incompatible types for branches in ternary expression, left is %s right is %s",
+					type_to_str(then_expr.type), type_to_str(else_expr.type));
+			}
+		} else if (is_aggregate_type(then_expr.type) && is_aggregate_type(else_expr.type)) {
+			if (then_expr.type == else_expr.type) {
+				result = resolved_rvalue(then_expr.type);
+			} else {
+				semantic_error(expr->pos,
+					"Incompatible types for branches in ternary expression, left is %s right is %s",
+					type_to_str(then_expr.type), type_to_str(else_expr.type));
+			}
+		} else if (then_expr.type == type_void && else_expr.type == type_void) {
+			result = resolved_rvalue(type_void);
+		} else if (then_expr.type->kind == TYPE_PTR && else_expr.type->kind == TYPE_PTR && 
+				   then_expr.type == else_expr.type) {
+			// TODO(shaw): the standard says "both operands are pointers to
+			// qualified or unqualified versions of compatible types"
+			result = resolved_rvalue(then_expr.type);
+		} else if (then_expr.type->kind == TYPE_PTR && is_null_ptr(else_expr)) {
+			result = resolved_rvalue(then_expr.type);
+		} else if (is_null_ptr(then_expr) && else_expr.type->kind == TYPE_PTR) {
+			result = resolved_rvalue(else_expr.type);
+		} else if (then_expr.type->kind == TYPE_PTR && else_expr.type == type_ptr(type_void)) {
+			result = resolved_rvalue(else_expr.type);
+		} else if (then_expr.type == type_ptr(type_void) && else_expr.type->kind == TYPE_PTR) {
+			result = resolved_rvalue(then_expr.type);
+		} else {
+			semantic_error(expr->pos,
+				"Invalid types for branches in ternary expression, left is %s right is %s",
+				type_to_str(then_expr.type), type_to_str(else_expr.type));
+		}
 		break;
 	}
 
@@ -783,7 +888,7 @@ void resolve_stmt_block(StmtBlock block, Type *expected_ret_type);
 
 // TODO(shaw): eventually, resolve_stmt can return a struct that contains some 
 // ancillary data like control flow info
-void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
+void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 	assert(stmt);
 	switch (stmt->kind) {
 		case STMT_CONTINUE:
@@ -825,12 +930,12 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 		}
 
 		case STMT_FOR: {
-			Sym **scope_start = sym_enter_scope();
-			if (stmt->for_stmt.init) resolve_stmt(stmt->for_stmt.init, expected_ret_type);
+			Sym **for_scope_start = sym_enter_scope();
+			if (stmt->for_stmt.init) resolve_stmt(for_scope_start, stmt->for_stmt.init, expected_ret_type);
 			if (stmt->for_stmt.cond) resolve_expr(stmt->for_stmt.cond);
-			if (stmt->for_stmt.next) resolve_stmt(stmt->for_stmt.next, expected_ret_type);
+			if (stmt->for_stmt.next) resolve_stmt(for_scope_start, stmt->for_stmt.next, expected_ret_type);
 			resolve_stmt_block(stmt->for_stmt.block, expected_ret_type);
-			sym_leave_scope(scope_start);
+			sym_leave_scope(for_scope_start);
 			break;
 		}
 
@@ -869,6 +974,20 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 		}
 
 		case STMT_INIT: {
+			// redeclaration in the current scope is an error
+			if (name_in_local_scope(stmt->init.name, scope_start)) {
+				semantic_error(stmt->pos, "Redeclaration of variable '%s'", stmt->init.name);
+				Sym *sym = sym_get(stmt->init.name);
+				assert(sym->name && sym->type);
+				print_note(sym->decl->pos, "Previous declaration of '%s' with type '%s'",
+					sym->name, type_to_str(sym->type));
+				break;
+
+			// shadowing a variable name is a warning
+			} else if (sym_get(stmt->init.name)) {
+				warning(stmt->pos, "Shadowing variable name '%s'", stmt->init.name);
+			}
+
 			Type *type = NULL;
 			if (stmt->init.typespec) 
 				type = resolve_typespec(stmt->init.typespec);
@@ -876,10 +995,23 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 				ResolvedExpr resolved = resolve_expr_expected(stmt->init.expr, type);
 				if (resolved.type->kind == TYPE_ARRAY && stmt->init.expr->kind != EXPR_COMPOUND) {
 					pointer_decay(&resolved);
-					stmt->init.expr->type = resolved.type;
 				}
-				if (!type) type = resolved.type;
+
+				if (!type) {
+					type = resolved.type;
+				} else if (resolved.type != type) {
+					if (!convert_operand(&resolved, type)) {
+						semantic_error(stmt->pos, 
+							"Type mismatch in init statement: specified type is %s, expression type is %s",
+							type_to_str(type), type_to_str(resolved.type));
+						break;
+					}
+				}
+				stmt->init.expr->type = type;
 			}
+			// NOTE(shaw): the decl_var used here seems a bit hacky, however the declaration allows us 
+			// to get a SourcePos from the symbol table which is used for error messages about variable 
+			// redeclaration to point out where in the file the previous declaration occured.
 			Decl *decl = decl_var(stmt->pos, stmt->init.name, stmt->init.typespec, stmt->init.expr);
 			Sym *sym = sym_init(decl, type);
 			sym_push_scoped(sym);
@@ -895,7 +1027,7 @@ void resolve_stmt(Stmt *stmt, Type *expected_ret_type) {
 void resolve_stmt_block(StmtBlock block, Type *expected_ret_type) {
 	Sym **scope_start = sym_enter_scope();
 	for (int i = 0; i < block.num_stmts; ++i) {
-		resolve_stmt(block.stmts[i], expected_ret_type);
+		resolve_stmt(scope_start, block.stmts[i], expected_ret_type);
 	}
 	sym_leave_scope(scope_start);
 }
@@ -920,20 +1052,18 @@ Type *resolve_decl_var(Decl *decl) {
         ResolvedExpr resolved = resolve_expr_expected(decl->var.expr, type);
 		if (resolved.type->kind == TYPE_ARRAY && decl->var.expr->kind != EXPR_COMPOUND) {
 			pointer_decay(&resolved);
-			decl->var.expr->type = resolved.type;
 		}
 
 		if (!type) {
 			type = resolved.type;
 		} else if (resolved.type != type) {
-			// check if expression can be implicitly converted to specified type
-			if (!is_convertible(resolved.type, type)) {
+			if (!convert_operand(&resolved, type)) {
 				semantic_error(decl->pos, 
 					"Type mismatch in var declaration: specified type is %s, expression type is %s",
 					type_to_str(type), type_to_str(resolved.type));
-				return NULL;
 			}
         }
+		decl->var.expr->type = type;
     }
 
     return type;

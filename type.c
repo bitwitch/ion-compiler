@@ -67,39 +67,6 @@ BUF(Type **cached_ptr_types);
 BUF(Type **cached_array_types);
 BUF(Type **cached_func_types);
 
-// TODO(shaw): using c's macros for min and max values of integer types for
-// now. furthermore it will be the values ONLY for the system the compiler is
-// compiled on. this version for now is just to get things going.
-int64_t integer_min_values[] = {
-	[TYPE_BOOL]      = 0,
-	[TYPE_CHAR]      = 0,
-	[TYPE_SCHAR]     = SCHAR_MIN,
-	[TYPE_UCHAR]     = 0,
-	[TYPE_SHORT]     = SHRT_MIN,
-	[TYPE_USHORT]    = 0,
-	[TYPE_INT]       = INT_MIN,
-	[TYPE_UINT]      = 0,
-	[TYPE_LONG]      = LONG_MIN,
-	[TYPE_ULONG]     = 0,
-	[TYPE_LONGLONG]  = LLONG_MIN,
-	[TYPE_ULONGLONG] = 0,
-};
-
-uint64_t integer_max_values[] = {
-	[TYPE_BOOL]      = 1,
-	[TYPE_CHAR]      = UCHAR_MAX,
-	[TYPE_SCHAR]     = SCHAR_MAX,
-	[TYPE_UCHAR]     = UCHAR_MAX,
-	[TYPE_SHORT]     = SHRT_MAX,
-	[TYPE_USHORT]    = USHRT_MAX,
-	[TYPE_INT]       = INT_MAX,
-	[TYPE_UINT]      = UINT_MAX,
-	[TYPE_LONG]      = LONG_MAX,
-	[TYPE_ULONG]     = ULONG_MAX,
-	[TYPE_LONGLONG]  = LLONG_MAX,
-	[TYPE_ULONGLONG] = ULLONG_MAX,
-};
-
 
 // primative types
 Type *type_void        = &(Type){ .kind = TYPE_VOID };
@@ -119,7 +86,11 @@ Type *type_double      = &(Type){ .kind = TYPE_DOUBLE,    .size = 8, .align = 8 
 Type *type_bool        = &(Type){ .kind = TYPE_BOOL,      .size = 4, .align = 4 };
 
 
-bool is_floating_type(Type *type) {
+inline bool is_aggregate_type(Type *type) {
+	return type->kind == TYPE_STRUCT || type->kind == TYPE_UNION;
+}
+
+inline bool is_floating_type(Type *type) {
 	return type == type_float || type == type_double;
 }
 
@@ -145,8 +116,8 @@ bool is_signed_integer_type(Type *type) {
 }
 
 bool is_unsigned_integer_type(Type *type) {
-	return type == type_char     || 
-	       type == type_uchar    || 
+	return type == type_char      || 
+	       type == type_uchar     || 
 	       type == type_ushort    || 
 	       type == type_uint      || 
 	       type == type_ulong     || 
