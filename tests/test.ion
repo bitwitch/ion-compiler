@@ -87,6 +87,15 @@ func test1(): void {
 		default: i = 0; break;
 	}
 
+	c := 'v';
+	switch (c) {
+		case 'a': break;
+		case 'b': break;
+		case 'c': break;
+		case 'd': break;
+		default:  break;
+	}
+
 	func_ptr: func(int): int;
 
 	func_ptr = fib;

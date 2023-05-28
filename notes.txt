@@ -5,9 +5,22 @@ TODO:
 	[ ] floating 
 	[ ] character
 
-[ ] implement the different integer types (uint, etc.)
+[X] implement the different integer types (uint, etc.)
 
-[ ] integer promotions and implicit conversions for binary expressions
+[X] integer promotions and implicit conversions 
+	[X] binary expressions
+	[X] ternary exprs
+	[X] var decls
+	[X] init stmts
+	[X] assignment stmts
+	[X] compound exprs
+	[X] function calls
+	[X] switch expr
+	[X] switch case exprs
+	[X] condition exprs (if, for, do/while, ternary)
+
+[ ] issue warnings for conversions that could potentially lose information
+    (truncations)
   
 [ ] allow implicitly sized arrays
 	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)

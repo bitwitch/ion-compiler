@@ -256,7 +256,7 @@ Type *resolve_typespec(Typespec *type);
 void complete_type(Type *type) {
     if (type->kind == TYPE_COMPLETING) {
 		assert(type->sym && type->sym->decl);
-        semantic_error(type->sym->decl->pos, "Cyclic type dependency");
+        semantic_error(type->sym->decl->pos, "cyclic type dependency");
         return;
     } else if (type->kind != TYPE_INCOMPLETE) {
         return;
@@ -271,7 +271,7 @@ void complete_type(Type *type) {
 	if (decl->kind != DECL_STRUCT && decl->kind != DECL_UNION) {
 		// NOTE(shaw): not sure if this should be a semantic error (for the user)
 		// but regardless having the source position is useful
-		semantic_error(decl->pos, "Cannot complete a type that is not a struct or union");
+		semantic_error(decl->pos, "cannot complete a type that is not a struct or union");
 		return;
 	}
 
@@ -337,7 +337,7 @@ Type *resolve_typespec(Typespec *typespec) {
     case TYPESPEC_NAME: {
         Sym *sym = resolve_name(typespec->name);
 		if (!sym) {
-			semantic_error(typespec->pos, "Unknown type %s", typespec->name);
+			semantic_error(typespec->pos, "unknown type %s", typespec->name);
 		}
 		if (sym->kind != SYM_TYPE) {
 			semantic_error(typespec->pos, "%s must denote a type", typespec->name);
@@ -359,7 +359,7 @@ Type *resolve_typespec(Typespec *typespec) {
 		Type *elem_type = resolve_typespec(typespec->array.base);
 		ResolvedExpr size = resolve_expr(typespec->array.num_items);
 		if (!size.is_const) {
-			semantic_error(typespec->pos, "Array size must be a constant");
+			semantic_error(typespec->pos, "array size must be a constant");
 			return NULL;
 		}
 		return type_array(elem_type, size.val.i);
@@ -388,7 +388,7 @@ ResolvedExpr resolved_lvalue(Type *type) {
 
 ResolvedExpr resolved_const(Type *type, Val val) {
 	assert(type);
-	assert(is_arithmetic_type(type) || type->kind == TYPE_PTR);
+	assert(is_scalar_type(type));
 
     return (ResolvedExpr){ 
         .type = type,
@@ -405,12 +405,12 @@ ResolvedExpr resolve_expr_unary(Expr *expr) {
     switch (expr->unary.op) {
     case '*':
         if (operand.type->kind != TYPE_PTR) {
-            semantic_error(expr->pos, "Cannot dereference a non-pointer type");
+            semantic_error(expr->pos, "cannot dereference a non-pointer type");
         }
         return resolved_lvalue(operand.type->ptr.base);
     case '&':
         if (!operand.is_lvalue) {
-			semantic_error(expr->pos, "Cannot take the address of a non-lvalue");
+			semantic_error(expr->pos, "cannot take the address of a non-lvalue");
         }
         return resolved_rvalue(type_ptr(operand.type));
 	case '!':
@@ -431,7 +431,7 @@ ResolvedExpr resolve_expr_name(Expr *expr) {
     assert(expr->kind == EXPR_NAME);
     Sym *sym = resolve_name(expr->name);
 	if (!sym) {
-		semantic_error(expr->pos, "Unknown symbol %s", expr->name);
+		semantic_error(expr->pos, "unknown symbol %s", expr->name);
 	}
 
     if (sym->kind == SYM_VAR) 
@@ -442,7 +442,7 @@ ResolvedExpr resolve_expr_name(Expr *expr) {
 		return resolved_const(sym->type, sym->val);
     else {
 		assert(sym->kind == SYM_TYPE);
-		semantic_error(expr->pos, "Expected variable, constant, or function but got type (%s)", expr->name);
+		semantic_error(expr->pos, "expected variable, constant, or function but got type (%s)", expr->name);
         return resolved_null;
     }
 }
@@ -450,9 +450,11 @@ ResolvedExpr resolve_expr(Expr *expr);
 
 ResolvedExpr resolve_expr_cond(Expr *cond) {
 	ResolvedExpr resolved = resolve_expr(cond);
-	// TODO(shaw): We need to do some kind of checking here, for
-	// example what would we do if a compound expression is used as a condition?
-	// seems wrong, but not totally sure what the rules should be
+	if (!is_scalar_type(resolved.type)) {
+		semantic_error(cond->pos,
+			"condition expression must have integer, floating, or pointer type; got %s",
+			type_to_str(resolved.type));
+	}
 	return resolved;
 }
 
@@ -692,7 +694,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		ResolvedExpr right = resolve_expr(expr->binary.right);
 		if (!arithmetic_conversion(&left, &right)) {
 			semantic_error(expr->pos, 
-				"Incompatible types for left and right side of binary expression, left is %s right is %s",
+				"incompatible types for left and right side of binary expression, left is %s right is %s",
 				type_to_str(left.type), type_to_str(right.type));
 		}
 		result = resolved_rvalue(left.type);
@@ -704,12 +706,6 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		ResolvedExpr then_expr = resolve_expr(expr->ternary.then_expr);
 		ResolvedExpr else_expr = resolve_expr(expr->ternary.else_expr);
 
-		if (!is_arithmetic_type(cond.type) && cond.type->kind != TYPE_PTR) {
-			semantic_error(expr->pos,
-				"Condition of ternary expression must have arithmetic or pointer type, got %s",
-				type_to_str(cond.type));
-		}
-
 		if (is_arithmetic_type(then_expr.type) && is_arithmetic_type(else_expr.type)) {
 			ResolvedExpr dummy_left  = then_expr;
 			ResolvedExpr dummy_right = else_expr;
@@ -717,7 +713,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 				result = resolved_rvalue(dummy_left.type);
 			} else {
 				semantic_error(expr->pos,
-					"Incompatible types for branches in ternary expression, left is %s right is %s",
+					"incompatible types for branches in ternary expression, left is %s right is %s",
 					type_to_str(then_expr.type), type_to_str(else_expr.type));
 			}
 		} else if (is_aggregate_type(then_expr.type) && is_aggregate_type(else_expr.type)) {
@@ -725,7 +721,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 				result = resolved_rvalue(then_expr.type);
 			} else {
 				semantic_error(expr->pos,
-					"Incompatible types for branches in ternary expression, left is %s right is %s",
+					"incompatible types for branches in ternary expression, left is %s right is %s",
 					type_to_str(then_expr.type), type_to_str(else_expr.type));
 			}
 		} else if (then_expr.type == type_void && else_expr.type == type_void) {
@@ -745,7 +741,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 			result = resolved_rvalue(then_expr.type);
 		} else {
 			semantic_error(expr->pos,
-				"Invalid types for branches in ternary expression, left is %s right is %s",
+				"invalid types for branches in ternary expression, left is %s right is %s",
 				type_to_str(then_expr.type), type_to_str(else_expr.type));
 		}
 		break;
@@ -754,7 +750,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 	case EXPR_CALL: {
 		ResolvedExpr resolved = resolve_expr(expr->call.expr);
 		if (resolved.type->kind != TYPE_FUNC) {
-			semantic_error(expr->pos, "Attempting to call %s which is not a function", expr->call.expr->name);
+			semantic_error(expr->pos, "attempting to call %s which is not a function", expr->call.expr->name);
 			result = resolved_null;
 			break;
 		}
@@ -781,11 +777,15 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 				pointer_decay(&arg);
 			}
 			if (i < type->func.num_params) {
-				if (arg.type != param.type && !is_convertible(arg.type, param.type)) {
-					semantic_error(expr->pos, 
-						"Type mismatch in function call. Expected %s for parameter %s, got %s", 
-						type_to_str(param.type), param.name, type_to_str(arg.type));
+				if (arg.type != param.type) { 
+					if (!convert_operand(&arg, param.type)) {
+						semantic_error(expr->pos, 
+							"type mismatch in function call: expected %s for parameter %s, got %s", 
+							type_to_str(param.type), param.name, type_to_str(arg.type));
+						continue;
+					}
 				}
+				expr->call.args[i]->type = param.type;
 			} else {
 				assert(type->func.is_variadic);
 				// cannot typecheck var args, so do nothing
@@ -799,13 +799,21 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 	case EXPR_INDEX: {
 		ResolvedExpr resolved_expr  = resolve_expr(expr->index.expr);
 		ResolvedExpr index = resolve_expr(expr->index.index);
+
+		if (!is_integer_type(index.type)) {
+			semantic_error(expr->pos, "index expression must have integer type, got %s",
+				type_to_str(index.type));
+			result = resolved_null;
+			break;
+		}
+
 		Type *type = resolved_expr.type;
 		if (type->kind == TYPE_ARRAY) {
 			result = resolved_lvalue(type->array.base);
 		} else if (type->kind == TYPE_PTR) {
 			result = resolved_lvalue(type->ptr.base);
 		} else {
-			semantic_error(expr->pos, "Attempting to index a non array or pointer type");
+			semantic_error(expr->pos, "attempting to index a non array or pointer type");
 			result = resolved_null;
 		}
 		break;
@@ -815,7 +823,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		ResolvedExpr base = resolve_expr(expr->field.expr);
 		complete_type(base.type);
 		if (base.type->kind != TYPE_STRUCT && base.type->kind != TYPE_UNION) {
-			semantic_error(expr->pos, "Attempting to access a field of a non struct or union");
+			semantic_error(expr->pos, "attempting to access a field of a non struct or union");
 		}
 		TypeField *fields = base.type->aggregate.fields;
 		int num_fields =  base.type->aggregate.num_fields;
@@ -835,7 +843,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 
 	case EXPR_COMPOUND: {
 		if (!expr->compound.typespec && !expected_type) {
-			semantic_error(expr->pos, "Compound literal is missing a type specification in a context where its type cannot be inferred.");
+			semantic_error(expr->pos, "compound literal is missing a type specification in a context where its type cannot be inferred");
 			break;
 		}
 
@@ -856,8 +864,22 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		} else {
 			assert(type->kind == TYPE_STRUCT || type->kind == TYPE_UNION);
 			for (int i = 0; i < num_args; ++i) {
-				ResolvedExpr arg = resolve_expr_expected(args[i], type->aggregate.fields[i].type);
-				(void)arg;
+				Type *field_type = type->aggregate.fields[i].type;
+				ResolvedExpr arg = resolve_expr_expected(args[i], field_type);
+
+				if (arg.type->kind == TYPE_ARRAY && field_type->kind == TYPE_PTR) {
+					pointer_decay(&arg);
+				}
+
+				if (arg.type != field_type) {
+					if (!convert_operand(&arg, field_type)) {
+						semantic_error(expr->pos,
+							"invalid argument type in compound expression: expected %s for field '%s' in %s, got %s",
+							type_to_str(field_type), type->aggregate.fields[i].name, type_to_str(type), type_to_str(arg.type)); 
+						continue;
+					}	
+				}
+				args[i]->type = field_type;
 			}
 		}
 		// TODO(shaw): need to think more about this, it seems like a compound
@@ -911,7 +933,7 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 			if (!stmt->return_stmt.expr) break;
 			ResolvedExpr resolved = resolve_expr(stmt->return_stmt.expr);
 			if (resolved.type != expected_ret_type) {
-				semantic_error(stmt->pos, "Expected return type %s, got %s", 
+				semantic_error(stmt->pos, "expected return type %s, got %s", 
 					type_to_str(expected_ret_type), type_to_str(resolved.type));
 			}
 			break;
@@ -932,7 +954,9 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 		case STMT_FOR: {
 			Sym **for_scope_start = sym_enter_scope();
 			if (stmt->for_stmt.init) resolve_stmt(for_scope_start, stmt->for_stmt.init, expected_ret_type);
-			if (stmt->for_stmt.cond) resolve_expr(stmt->for_stmt.cond);
+			if (stmt->for_stmt.cond) {
+				resolve_expr_cond(stmt->for_stmt.cond);
+			}
 			if (stmt->for_stmt.next) resolve_stmt(for_scope_start, stmt->for_stmt.next, expected_ret_type);
 			resolve_stmt_block(stmt->for_stmt.block, expected_ret_type);
 			sym_leave_scope(for_scope_start);
@@ -941,8 +965,9 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 
 		case STMT_SWITCH: {
 			ResolvedExpr expr = resolve_expr(stmt->switch_stmt.expr);
-			if (expr.type->kind != TYPE_INT) {
-				semantic_error(stmt->pos, "switch expression must have type int");
+			if (!is_integer_type(expr.type)) {
+				semantic_error(stmt->pos, "switch expression must have integer type, got %s", 
+					type_to_str(expr.type));
 			}
 			int num_cases = stmt->switch_stmt.num_cases;
 			SwitchCase *cases = stmt->switch_stmt.cases;
@@ -952,8 +977,9 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 					for (int j = 0; j < c.num_exprs; ++j) {
 						Expr *case_expr = c.exprs[j];
 						ResolvedExpr resolved = resolve_expr(case_expr);
-						if (resolved.type->kind != TYPE_INT) {
-							semantic_error(case_expr->pos, "case expression must have type int");
+						if (!is_integer_type(resolved.type)) {
+							semantic_error(case_expr->pos, "case expression must have integer type, got %s", 
+								type_to_str(resolved.type));
 						}
 					}
 				}
@@ -966,17 +992,28 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 			ResolvedExpr left = resolve_expr(stmt->assign.left);
 			if (stmt->assign.right) {
 				ResolvedExpr right = resolve_expr(stmt->assign.right);
-				if (left.type != right.type) {
-					semantic_error(stmt->pos, "Type mismatch for left and right side of assignment statement");
+
+				if (right.type->kind == TYPE_ARRAY && stmt->assign.right->kind != EXPR_COMPOUND) {
+					pointer_decay(&right);
 				}
-			}
+				if (left.type != right.type) {
+					if (!convert_operand(&right, left.type)) {
+						semantic_error(stmt->pos,
+							"type mismatch in assignment statement: left type is %s, right type is %s",
+							type_to_str(left.type), type_to_str(right.type));
+						break;
+					}
+				}
+				// update the expression type to account for pointer decay and conversion
+				stmt->assign.right->type = right.type;
+			} 
 			break;
 		}
 
 		case STMT_INIT: {
 			// redeclaration in the current scope is an error
 			if (name_in_local_scope(stmt->init.name, scope_start)) {
-				semantic_error(stmt->pos, "Redeclaration of variable '%s'", stmt->init.name);
+				semantic_error(stmt->pos, "redeclaration of variable '%s'", stmt->init.name);
 				Sym *sym = sym_get(stmt->init.name);
 				assert(sym->name && sym->type);
 				print_note(sym->decl->pos, "Previous declaration of '%s' with type '%s'",
@@ -1002,11 +1039,12 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 				} else if (resolved.type != type) {
 					if (!convert_operand(&resolved, type)) {
 						semantic_error(stmt->pos, 
-							"Type mismatch in init statement: specified type is %s, expression type is %s",
+							"type mismatch in init statement: specified type is %s, expression type is %s",
 							type_to_str(type), type_to_str(resolved.type));
 						break;
 					}
 				}
+				// update the expression type to account for pointer decay and conversion
 				stmt->init.expr->type = type;
 			}
 			// NOTE(shaw): the decl_var used here seems a bit hacky, however the declaration allows us 
@@ -1036,7 +1074,7 @@ Type *resolve_decl_const(Decl *decl, Val *val) {
     assert(decl->kind == DECL_CONST);
     ResolvedExpr resolved = resolve_expr(decl->const_decl.expr);
     if (!resolved.is_const) {
-        semantic_error(decl->pos, "Right hand side of const declaration is not a constant");
+        semantic_error(decl->pos, "right hand side of const declaration is not a constant");
         return NULL;
     }
     *val = resolved.val;
@@ -1059,7 +1097,7 @@ Type *resolve_decl_var(Decl *decl) {
 		} else if (resolved.type != type) {
 			if (!convert_operand(&resolved, type)) {
 				semantic_error(decl->pos, 
-					"Type mismatch in var declaration: specified type is %s, expression type is %s",
+					"type mismatch in var declaration: specified type is %s, expression type is %s",
 					type_to_str(type), type_to_str(resolved.type));
 			}
         }
@@ -1129,7 +1167,7 @@ void resolve_sym(Sym *sym) {
     if (sym->state == SYM_RESOLVED) {
         return;
     } else if (sym->state == SYM_RESOLVING) {
-		semantic_error(sym->decl->pos, "Cyclic dependency");
+		semantic_error(sym->decl->pos, "cyclic dependency");
         return;
     } 
     assert(sym->state == SYM_UNRESOLVED);

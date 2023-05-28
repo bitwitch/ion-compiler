@@ -107,6 +107,10 @@ bool is_arithmetic_type(Type *type) {
 	return is_integer_type(type) || is_floating_type(type);
 }
 
+bool is_scalar_type(Type *type) {
+	return is_arithmetic_type(type) || type->kind == TYPE_PTR;
+}
+
 bool is_signed_integer_type(Type *type) {
 	return type == type_schar    || 
 	       type == type_short    || 
