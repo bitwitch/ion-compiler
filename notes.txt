@@ -7,9 +7,12 @@ TODO:
     think) to allow debugging ion source code
 
 [ ] resolving constants
-	[ ] integer (see c standard section 6.4.4.1)
-	[ ] floating 
-	[ ] character
+	[X] integer (see c standard section 6.4.4.1)
+	[x] floats
+	[ ] doubles with d suffix
+	[X] character
+  [ ] octal constants
+  [ ] hex constants
 
 [ ] issue warnings for conversions that could potentially lose information
     (truncations)
@@ -29,6 +32,10 @@ TODO:
 	[ ] multi line  
 	
 [ ] string escape chars
+    [X] \n, \t, \\, \', \"
+    [ ] \a, \b, \e, \f, \v, \?
+    [ ] \xhh, \nnn (hex and octal)
+    [ ] \uhh... (unicode or universal character names)
 
 [ ] declarations in functions (statement declarations)
 	- like an enum, or struct declared inside a function

@@ -89,7 +89,7 @@ struct Expr {
 	SourcePos pos;
 	struct Type *type;
     union {
-        int32_t int_val;
+        int64_t int_val;
         double float_val;
 		bool bool_val;
         char *str_val;

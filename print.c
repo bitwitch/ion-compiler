@@ -20,7 +20,7 @@ void print_expr(Expr *expr) {
 
     switch (expr->kind) {
     case EXPR_INT: 
-        printf("%d", expr->int_val);    
+        printf("%lld", expr->int_val);    
         break;
     case EXPR_FLOAT: 
         printf("%f", expr->float_val); 

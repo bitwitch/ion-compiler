@@ -85,7 +85,7 @@ char *gen_expr_c(Expr *expr) {
     assert(expr);
     switch (expr->kind) {
     case EXPR_INT: 
-        return strf("%d", expr->int_val);
+        return strf("%lld", expr->int_val);
     case EXPR_FLOAT: 
         return strf("%g", expr->float_val);
 	case EXPR_BOOL:

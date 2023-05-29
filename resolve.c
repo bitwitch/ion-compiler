@@ -1,8 +1,12 @@
 #define MAX_LOCAL_SYMS 2048
 
 typedef union {
-	int64_t i;
 	char c;
+	int32_t i;
+	int32_t l;
+	int64_t ll;
+	float f;
+	double d;
 	void *p;
 } Val;
 
@@ -653,20 +657,34 @@ bool arithmetic_conversion(ResolvedExpr *left, ResolvedExpr *right) {
 	}
 }
 
+ResolvedExpr resolve_expr_int(Expr *expr) {
+	int64_t int_val = expr->int_val;
+	if (int_val >= integer_min_values[TYPE_INT] && int_val <= integer_max_values[TYPE_INT]) {
+        return resolved_const(type_int, (Val){.i = (int)int_val});
+	} else if (int_val >= integer_min_values[TYPE_LONG] && int_val <= integer_max_values[TYPE_LONG]) {
+        return resolved_const(type_long, (Val){.l = (long)int_val});
+	} else if (int_val >= integer_min_values[TYPE_LONGLONG] && int_val <= integer_max_values[TYPE_LONGLONG]) {
+        return resolved_const(type_longlong, (Val){.ll = (long long)int_val});
+	}
+
+	// TODO(shaw): handle octal and hex constants
+	assert(0);
+	return resolved_null;
+}
 
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
     ResolvedExpr result = resolved_null;
 
     switch (expr->kind) {
-    case EXPR_INT: 
-        result = resolved_const(type_int, (Val){.i=expr->int_val});
+    case EXPR_INT:
+		result = resolve_expr_int(expr);
 		break;
     case EXPR_CHAR: 
         result = resolved_const(type_char, (Val){.c=expr->char_val});
 		break;
     case EXPR_FLOAT:
-		// TODO(shaw): float consts
-		result = resolved_rvalue(type_float);
+		// TODO(shaw): double consts with d suffix
+		result = resolved_const(type_float, (Val){.f=(float)expr->float_val});
 		break;
 	case EXPR_BOOL:
 		// TODO(shaw): bool consts
