@@ -1,29 +1,18 @@
 TODO:
 
+[X] allow implicitly sized arrays
+	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
+
+[ ] output line directives to the c compiler (preprocessor technically, i
+    think) to allow debugging ion source code
+
 [ ] resolving constants
 	[ ] integer (see c standard section 6.4.4.1)
 	[ ] floating 
 	[ ] character
 
-[X] implement the different integer types (uint, etc.)
-
-[X] integer promotions and implicit conversions 
-	[X] binary expressions
-	[X] ternary exprs
-	[X] var decls
-	[X] init stmts
-	[X] assignment stmts
-	[X] compound exprs
-	[X] function calls
-	[X] switch expr
-	[X] switch case exprs
-	[X] condition exprs (if, for, do/while, ternary)
-
 [ ] issue warnings for conversions that could potentially lose information
     (truncations)
-  
-[ ] allow implicitly sized arrays
-	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
 
 [ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
@@ -61,6 +50,19 @@ TODO:
 [ ] improve error messages
 
 
+
+[X] implement the different integer types (uint, etc.)
+[X] integer promotions and implicit conversions 
+	[X] binary expressions
+	[X] ternary exprs
+	[X] var decls
+	[X] init stmts
+	[X] assignment stmts
+	[X] compound exprs
+	[X] function calls
+	[X] switch expr
+	[X] switch case exprs
+	[X] condition exprs (if, for, do/while, ternary)
 [X] in ast nodes, be consistent about calling things typespec always when they
     are Typespec to differentiate from Type
 [X] array pointer decay
@@ -110,6 +112,87 @@ TODO:
 [X] order independent declarations
 [X] type resolution, type checking
 [X] replace instances of fatal() with syntax_error() where appropriate. fatal is useful now in early development 
+
+
+2023-05-29
+--------------------------------------------------------------------------------
+Implicit Sized Arrays
+
+Today I implemented implicit sized arrays in var declarationss and init
+statements. After trying a couple of approaches, I settled on the following:
+- in parse_typespec(), if you encounter [], allow the size expression to be NULL
+- in resolve_typespec() for TYPESPEC_ARRAY, if the size expresssion is NULL,
+  then construct an array type with size zero
+- in resolve_expr_expected() for EXPR_COMPOUND, check if the typespec or
+  expected type have an array size of 0, and if so create a new array type,
+  whose size is determined by the number of args in the compound expression
+
+In the other approaches I was trying, I was handling implicit sized arrays in
+resolve_decl_var() and resolve_stmt() for STMT_INIT, and not resolving typespecs
+with no array size. This had issues when trying to resolve the compound
+expression (array initializer) and potentially pass an expected type. The reason
+I ultimately went with the approach I outlined above is so that implicit sized
+arrays can be used in any typespec context using the same codepath, for example: 
+- var arr: int[] = { 1, 2, 3 };
+- var arr := (:int[]){ 1, 2, 3 };
+
+
+One thing I don't like about this, is that creating an array type with size 0
+caches that type that will ultimately not be used and will take up space in the
+cache. I was thinking I could do some kind of incomplete type for arrays or
+maybe a separate type constructor that doesn't cache it and acts like a dummy
+type just to allow compound expressions to have an expected type to use,
+essentially just to get the array element type. I am not sure. However, the
+extra cached array types should only potentially be a problem if many implicitly
+sized arrays of different types are used in the program. Note that at the
+moment cached types are just using dynamic arrays, so the impact of useless
+cached types is worse, since a cache lookup is a linear search. However, this is
+intended to be replaced by a hashmap in the future anyway so I am not
+necessarily worried about that.
+
+
+For posterity, one of the previous implementation attempts was like this:
+
+Type *resolve_decl_var(Decl *decl) {
+	assert(decl->kind == DECL_VAR);
+	Typespec *typespec = decl->var.typespec;
+	Expr *init_expr = decl->var.expr;
+	Type *type = NULL;
+	if (typespec) {
+		// allow implicit sized array typespec
+		if (typespec->kind == TYPESPEC_ARRAY && typespec->array.num_items == NULL) {
+			if (!init_expr || init_expr->kind != EXPR_COMPOUND) {
+				semantic_error(decl->pos, "implicit sized array must have an initializer expression");
+			} else {
+				Type *elem_type = resolve_typespec(typespec->array.base);
+				type = type_array(elem_type, init_expr->compound.num_args);
+			}
+		} else {
+			type = resolve_typespec(typespec);
+		}
+	}
+
+	if (init_expr) {
+		ResolvedExpr resolved = resolve_expr_expected(init_expr, type);
+		if (resolved.type->kind == TYPE_ARRAY && init_expr->kind != EXPR_COMPOUND) {
+			pointer_decay(&resolved);
+		}
+
+		if (!type) {
+			type = resolved.type;
+		} else if (resolved.type != type) {
+			if (!convert_operand(&resolved, type)) {
+				semantic_error(decl->pos, 
+					"type mismatch in var declaration: specified type is %s, expression type is %s",
+					type_to_str(type), type_to_str(resolved.type));
+			}
+		}
+		init_expr->type = type;
+	}
+
+	return type;
+}
+
 
 
 

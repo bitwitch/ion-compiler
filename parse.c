@@ -68,7 +68,7 @@ Typespec *parse_typespec(void) {
     Typespec *typespec = parse_typespec_base();
     while (is_token('[') || is_token('*')) {
         if (match_token('[')) {
-            Expr *size = parse_expr();
+            Expr *size = is_token(']') ? NULL : parse_expr();
             expect_token(']');
             typespec = typespec_array(pos, typespec, size);
         } else {
@@ -164,7 +164,7 @@ Expr *parse_expr_call(void) {
             expect_token(')');
 			expr = expr_call(pos, expr, args, da_len(args));
         } else if (match_token('[')) {
-            Expr *index = parse_expr();
+			Expr *index = parse_expr();
             expect_token(']');
 			expr = expr_index(pos, expr, index);
         } else {

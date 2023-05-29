@@ -179,7 +179,12 @@ char *gen_typespec_c(Typespec *typespec, char *inner) {
         return strf("%s%s%s", typespec->name, sep, inner);
 
 	case TYPESPEC_ARRAY: {
-		char *str = gen_parens(strf("%s[%s]", inner, gen_expr_c(typespec->array.num_items)), *inner);
+		char *str;
+		if (typespec->array.num_items) {
+			str = gen_parens(strf("%s[%s]", inner, gen_expr_c(typespec->array.num_items)), *inner);
+		} else {
+			str = gen_parens(strf("%s[]", inner), *inner);
+		}
 		return gen_typespec_c(typespec->array.base, str);
 	}
 

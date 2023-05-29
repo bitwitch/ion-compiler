@@ -1,3 +1,11 @@
+var imp_arr: int[] = {1,2,3,4,5};
+var imp_arr2 = (:int[]){1,2,3,4,5,6};
+
+func test_arrays() {
+	nums: int[] = {1,2,3};
+	nums2 := (:int[]){ 2, 4, 6, 8 };
+}
+
 var global_nums: int[69];
 var global_nums2: int* = global_nums;
 var global_nums3: int[6] = {0};

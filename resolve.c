@@ -357,12 +357,21 @@ Type *resolve_typespec(Typespec *typespec) {
 
 	case TYPESPEC_ARRAY: {
 		Type *elem_type = resolve_typespec(typespec->array.base);
-		ResolvedExpr size = resolve_expr(typespec->array.num_items);
-		if (!size.is_const) {
-			semantic_error(typespec->pos, "array size must be a constant");
-			return NULL;
+		if (typespec->array.num_items) {
+			ResolvedExpr size = resolve_expr(typespec->array.num_items);
+			if (!size.is_const) {
+				semantic_error(typespec->pos, "array size must be a constant");
+				return NULL;
+			}
+			return type_array(elem_type, size.val.i);
+		} else {
+			// TODO(shaw): i don't like that this call caches an array type with size 0 that will ultimately 
+			// not be used and will take up space in the cache. could think about some kind of incomplete
+			// type for arrays or maybe a separate type constructor that doesn't cache it and acts like a 
+			// dummy type just to allow compound expressions to have an expected type to use, essentially 
+			// just to get the array element type
+			return type_array(elem_type, 0);
 		}
-		return type_array(elem_type, size.val.i);
 	}
 
     case TYPESPEC_POINTER: {
@@ -842,17 +851,29 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 	}
 
 	case EXPR_COMPOUND: {
-		if (!expr->compound.typespec && !expected_type) {
+		Typespec *typespec = expr->compound.typespec;
+		if (!typespec && !expected_type) {
 			semantic_error(expr->pos, "compound literal is missing a type specification in a context where its type cannot be inferred");
 			break;
 		}
 
 		Expr **args = expr->compound.args;
 		int num_args = expr->compound.num_args;
-		
-		Type *type = expr->compound.typespec 
-			? resolve_typespec(expr->compound.typespec) 
-			: expected_type;
+		Type *type = NULL;
+
+		bool is_implicit_sized_array = 
+			(typespec && typespec->kind == TYPESPEC_ARRAY && !typespec->array.num_items) ||
+			(expected_type && expected_type->kind == TYPE_ARRAY && !expected_type->array.num_items);
+		if (is_implicit_sized_array) {
+			Type *elem_type = typespec 
+				? resolve_typespec(typespec->array.base) 
+				: expected_type->array.base;
+			type = type_array(elem_type, num_args);
+			// TODO(shaw): handle initializers with explicit indices
+			// i.e. this case: {1,2,3,4, [10]=69}  size is 11 here
+		} else {
+			type = typespec ? resolve_typespec(typespec) : expected_type;
+		}
 
 		complete_type(type);
 
@@ -1036,6 +1057,9 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 
 				if (!type) {
 					type = resolved.type;
+				} else if (type->kind == TYPE_ARRAY && type->array.num_items == 0) {
+					assert(resolved.type->kind == TYPE_ARRAY && resolved.type->array.num_items > 0);
+					type = resolved.type;
 				} else if (resolved.type != type) {
 					if (!convert_operand(&resolved, type)) {
 						semantic_error(stmt->pos, 
@@ -1093,6 +1117,9 @@ Type *resolve_decl_var(Decl *decl) {
 		}
 
 		if (!type) {
+			type = resolved.type;
+		} else if (type->kind == TYPE_ARRAY && type->array.num_items == 0) {
+			assert(resolved.type->kind == TYPE_ARRAY && resolved.type->array.num_items > 0);
 			type = resolved.type;
 		} else if (resolved.type != type) {
 			if (!convert_operand(&resolved, type)) {
