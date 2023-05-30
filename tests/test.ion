@@ -1,3 +1,8 @@
+func test_escapes() {
+	s := "farts";
+	s1 := "\x1b[2A";
+}
+
 func test_constants() {
 	i1 := -69;
 	i2 :=  69;

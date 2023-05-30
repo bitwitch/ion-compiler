@@ -160,26 +160,8 @@ uint8_t char_to_digit[256] = {
     ['f'] = 15, ['F'] = 15,
 };
 
-void scan_int(void) {
+uint64_t scan_int_val(uint64_t base) {
     uint64_t val = 0;
-    uint64_t base = 10;
-
-    if (*stream == '0') {
-        ++stream;
-        if (tolower(*stream) == 'x') {
-            ++stream;
-            token.mod = TOKENMOD_HEX;
-            base = 16;
-        } else if (tolower(*stream) == 'b') {
-            ++stream;
-            token.mod = TOKENMOD_BIN;
-            base = 2;
-        } else if (isdigit(*stream)) {
-            token.mod = TOKENMOD_OCT;
-            base = 8;
-        }
-    }
-
     for (;;) {
         uint64_t digit = char_to_digit[(int)*stream];
         if (digit == 0 && *stream != '0') {
@@ -199,6 +181,29 @@ void scan_int(void) {
         val = val * base + digit;
         ++stream;
     }
+	return val;
+}
+
+void scan_int(void) {
+    uint64_t base = 10;
+
+    if (*stream == '0') {
+        ++stream;
+        if (tolower(*stream) == 'x') {
+            ++stream;
+            token.mod = TOKENMOD_HEX;
+            base = 16;
+        } else if (tolower(*stream) == 'b') {
+            ++stream;
+            token.mod = TOKENMOD_BIN;
+            base = 2;
+        } else if (isdigit(*stream)) {
+            token.mod = TOKENMOD_OCT;
+            base = 8;
+        }
+    }
+
+	uint64_t val = scan_int_val(base);
 
     token.kind = TOKEN_INT;
     token.int_val = val;
@@ -228,25 +233,44 @@ void scan_float(void) {
     token.float_val = val;
 }
 
+// simple escape sequence
 bool check_escape_char(char c) {
-	return c == 'n' || c == 't' || c == '\\' || c == '\'' || c == '"';
+	return c == 'n' || c == 't' || c == 'a'  || c == 'b' || c == 'f'  || 
+	       c == 'r' || c == 'v' || c == '\\' || c == '\'' || c == '"' ||
+		   c == '?';
 }
 
-// TODO(shaw): handle escape sequences in strings
+void scan_escape_sequence(void) {
+    ++stream; // skip opening backslash
+	if (check_escape_char(*stream)) {
+		++stream;
+	} else if (*stream == 'x') {
+		++stream;
+		token.mod = TOKENMOD_HEX;
+		uint64_t base = 16;
+		token.int_val = scan_int_val(base);
+
+	} else if (*stream == 'u' || *stream == 'U') {
+		// TODO(shaw): universal character names
+		assert(0);
+	} else {
+		syntax_error("Invalid escape sequence found in character literal, '\\%c'", *stream);
+		++stream;
+	}
+}
+
 void scan_str(void) {
     ++stream; // skip opening quote
     char *str_start = stream;
     while (*stream != '"') {
 		if (*stream == '\\') {
+			scan_escape_sequence();
+		} else {
+			if (!isprint(*stream)) {
+				syntax_error("Invalid character found in string literal, '%c'", *stream);
+			} 
 			++stream;
-			if (!check_escape_char(*stream)) {
-				syntax_error("Invalid escape sequence found in string literal, '\\%c'", *stream);
-			}
 		}
-        if (!isprint(*stream)) {
-            syntax_error("Invalid character found in string literal, '%c'", *stream);
-        }
-        ++stream;
     }
     token.kind = TOKEN_STR;
     token.str_val = str_intern_range(str_start, stream);
@@ -256,8 +280,13 @@ void scan_str(void) {
 void scan_chr(void) {
     ++stream; // skip opening quote
     token.kind = TOKEN_CHAR;
-    token.int_val = *stream;
-	++stream;
+
+	if (*stream == '\\') {
+		scan_escape_sequence();
+	} else {
+		token.int_val = *stream;
+		++stream;
+	}
     if (*stream != '\'') {
         syntax_error("Expected closing single quote for character literal, but got '%c'", *stream);
     }

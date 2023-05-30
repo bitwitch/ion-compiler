@@ -1,5 +1,8 @@
 TODO:
 
+[ ] should string literals in var decls and init statements decay to pointer
+    types or nah?? (s := "farts"; --> char *s = "farts";)
+
 [X] allow implicitly sized arrays
 	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
 
@@ -33,8 +36,9 @@ TODO:
 	
 [ ] string escape chars
     [X] \n, \t, \\, \', \"
-    [ ] \a, \b, \e, \f, \v, \?
-    [ ] \xhh, \nnn (hex and octal)
+    [X] \a, \b, \e, \f, \v, \?
+    [X] \xhh (hex)
+    [ ] \nnn (octal)
     [ ] \uhh... (unicode or universal character names)
 
 [ ] declarations in functions (statement declarations)
