@@ -420,13 +420,15 @@ SwitchCase parse_stmt_switch_case(void) {
             assert(is_keyword(keyword_default));
             next_token();
         }
-        expect_token(':');
+		if (!match_token(',')) {
+			expect_token(':');
+		}
     }
 
     BUF(Stmt **stmts) = NULL; // @LEAK
     while (!is_token(TOKEN_EOF) && !is_token('}') && !is_keyword(keyword_case) && !is_keyword(keyword_default))
         da_push(stmts, parse_stmt());
- 
+	da_push(stmts, stmt_alloc(STMT_BREAK, token.pos)); // implicit break
 	return switch_case(exprs, da_len(exprs), is_default, stmt_block(stmts, da_len(stmts)));
 }
 

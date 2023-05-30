@@ -26,9 +26,9 @@ func test1(): void {
 	dot_product := vec3_dot({1,2,3}, {4,5,6});
 	i := 2;
 	switch (v.y) {
-		case 1: i += 1; break;
-		case 2: i += 2; break;
-		default: i = 0; break;
+		case 1: i += 1;
+		case 2: i += 2;
+		default: i = 0;
 	}
 	func_ptr: func(int): int;
 	func_ptr = fib;

@@ -36,10 +36,6 @@ TODO:
 [ ] declarations in functions (statement declarations)
 	- like an enum, or struct declared inside a function
 
-[ ] implicit break for switch cases
-	[ ] support commas in switch cases for multiple case expressions to use the
-			same block, this alleviates need for fallthrough
-
 [ ] reformat for stupid tabs vs spaces
 
 [ ] local_syms should probably be a stretchy buffer
@@ -53,6 +49,10 @@ TODO:
 [ ] improve error messages
 
 
+
+[X] implicit break for switch cases
+	[X] support commas in switch cases for multiple case expressions to use the
+			same block, this alleviates need for fallthrough
 [X] resolving constants
 	[X] integer (see c standard section 6.4.4.1)
 	[x] floats
