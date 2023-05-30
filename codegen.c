@@ -84,8 +84,6 @@ char *gen_typespec_c(Typespec *typespec, char *inner);
 char *gen_expr_c(Expr *expr) {
     assert(expr);
     switch (expr->kind) {
-    case EXPR_INT: 
-        return strf("%lld", expr->int_val);
     case EXPR_FLOAT: 
         return strf("%g", expr->float_val);
 	case EXPR_BOOL:
@@ -98,6 +96,15 @@ char *gen_expr_c(Expr *expr) {
         return strf("%s", expr->name); 
     case EXPR_UNARY: 
 		return strf("%c(%s)", expr->unary.op, gen_expr_c(expr->unary.expr));
+    case EXPR_INT: {
+		char *fmt = "%lld";
+		if (expr->mod == TOKENMOD_HEX || expr->mod == TOKENMOD_BIN) {
+			fmt = "%#x";
+		} else if (expr->mod == TOKENMOD_OCT) {
+			fmt = "%#o";
+		}
+        return strf(fmt, expr->int_val);
+	}
     case EXPR_BINARY: {
 		char *op = strf("%s", token_kind_to_str(expr->binary.op));
         return strf("(%s) %s (%s)", 
@@ -516,9 +523,9 @@ void codegen_test(void) {
 	char *str;
 
 	// exprs
-    str = gen_expr_c(expr_int(pos, 69));
+    str = gen_expr_c(expr_int(pos, 69, TOKENMOD_NONE));
 	assert(0 == strcmp(str, "69"));
-    str = gen_expr_c(expr_float(pos, 6.66));
+    str = gen_expr_c(expr_float(pos, 6.66, TOKENMOD_NONE));
 	assert(0 == strcmp(str, "6.66"));
     str = gen_expr_c(expr_bool(pos, true));
 	assert(0 == strcmp(str, "true"));
@@ -528,9 +535,9 @@ void codegen_test(void) {
 	assert(0 == strcmp(str, "\"well hello friends\""));
     str = gen_expr_c(expr_name(pos, "Vector3"));
 	assert(0 == strcmp(str, "Vector3"));
-    str = gen_expr_c(expr_unary(pos, '~', expr_int(pos, 42)));
+    str = gen_expr_c(expr_unary(pos, '~', expr_int(pos, 42, TOKENMOD_NONE)));
 	assert(0 == strcmp(str, "~(42)"));
-    str = gen_expr_c(expr_binary(pos, '+', expr_int(pos, 33), expr_int(pos, 36)));
+    str = gen_expr_c(expr_binary(pos, '+', expr_int(pos, 33, TOKENMOD_NONE), expr_int(pos, 36, TOKENMOD_NONE)));
 	assert(0 == strcmp(str, "(33) + (36)"));
     str = gen_expr_c(expr_cast(pos, typespec_name(pos, "int"), expr_name(pos, "x")));
 	assert(0 == strcmp(str, "(int)(x)"));

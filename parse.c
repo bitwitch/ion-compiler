@@ -95,10 +95,10 @@ Expr *parse_expr_base(void) {
 	SourcePos pos = token.pos;
     Expr *expr = NULL;
     if (is_token(TOKEN_INT)) {
-        expr = expr_int(pos, token.int_val);
+        expr = expr_int(pos, token.int_val, token.mod);
         next_token();
     } else if (is_token(TOKEN_FLOAT)) {
-		expr = expr_float(pos, token.float_val);
+		expr = expr_float(pos, token.float_val, token.mod);
         next_token();
     } else if (is_token(TOKEN_STR)) {
 		expr = expr_str(pos, token.str_val);

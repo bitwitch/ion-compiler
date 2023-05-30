@@ -19,9 +19,13 @@ void print_expr(Expr *expr) {
     }
 
     switch (expr->kind) {
-    case EXPR_INT: 
-        printf("%lld", expr->int_val);    
+    case EXPR_INT: {
+		char *fmt = "%lld";
+		if (expr->mod == TOKENMOD_HEX)
+			fmt = "%#x";
+        printf(fmt, expr->int_val);
         break;
+	}
     case EXPR_FLOAT: 
         printf("%f", expr->float_val); 
         break;

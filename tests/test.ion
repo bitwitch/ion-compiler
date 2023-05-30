@@ -1,9 +1,11 @@
-func test_escapes() {
-	s := "farts";
-	s1 := "\x1b[2A";
-}
-
 func test_constants() {
+
+	b1 := 0b11110111;
+
+	o1 := 0666;
+
+	h1 := 0x45;
+
 	i1 := -69;
 	i2 :=  69;
 
@@ -11,7 +13,14 @@ func test_constants() {
 	ll2 :=  3000000000;
 
 	f := 3.14;
+	d := 3.14d;
 }
+
+func test_escapes() {
+	s := "farts";
+	s1 := "\x1b[2A";
+}
+
 
 var imp_arr: int[] = {1,2,3,4,5};
 var imp_arr2 = (:int[]){1,2,3,4,5,6};

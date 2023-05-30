@@ -683,8 +683,10 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
         result = resolved_const(type_char, (Val){.c=expr->char_val});
 		break;
     case EXPR_FLOAT:
-		// TODO(shaw): double consts with d suffix
-		result = resolved_const(type_float, (Val){.f=(float)expr->float_val});
+		if (expr->mod == TOKENMOD_DOUBLE)
+			result = resolved_const(type_double, (Val){.d=(double)expr->float_val});
+		else
+			result = resolved_const(type_float, (Val){.f=(float)expr->float_val});
 		break;
 	case EXPR_BOOL:
 		// TODO(shaw): bool consts

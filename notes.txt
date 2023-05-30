@@ -9,14 +9,6 @@ TODO:
 [ ] output line directives to the c compiler (preprocessor technically, i
     think) to allow debugging ion source code
 
-[ ] resolving constants
-	[X] integer (see c standard section 6.4.4.1)
-	[x] floats
-	[ ] doubles with d suffix
-	[X] character
-  [ ] octal constants
-  [ ] hex constants
-
 [ ] issue warnings for conversions that could potentially lose information
     (truncations)
 
@@ -61,7 +53,14 @@ TODO:
 [ ] improve error messages
 
 
-
+[X] resolving constants
+	[X] integer (see c standard section 6.4.4.1)
+	[x] floats
+	[X] doubles with d suffix
+	[X] character
+  [X] octal constants
+  [X] binary constants
+  [X] hex constants
 [X] implement the different integer types (uint, etc.)
 [X] integer promotions and implicit conversions 
 	[X] binary expressions

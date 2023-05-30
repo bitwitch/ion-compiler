@@ -43,6 +43,7 @@ typedef enum {
 	TOKENMOD_HEX,
 	TOKENMOD_BIN,
 	TOKENMOD_OCT,
+	TOKENMOD_DOUBLE,
 } TokenMod;
 
 typedef struct {
@@ -229,6 +230,10 @@ void scan_float(void) {
     double val = strtod(start, NULL);
     if (val == HUGE_VAL || val == -HUGE_VAL)
         syntax_error("Float literal overflow");
+	if (*stream == 'd') {
+		++stream;
+		token.mod = TOKENMOD_DOUBLE;
+	}
     token.kind = TOKEN_FLOAT;
     token.float_val = val;
 }
@@ -246,7 +251,6 @@ void scan_escape_sequence(void) {
 		++stream;
 	} else if (*stream == 'x') {
 		++stream;
-		token.mod = TOKENMOD_HEX;
 		uint64_t base = 16;
 		token.int_val = scan_int_val(base);
 
@@ -325,6 +329,7 @@ void scan_chr(void) {
 void next_token(void) {
 repeat:
     token.start = stream;
+	token.mod = TOKENMOD_NONE;
 	switch (*stream) {
         case ' ': case '\r': case '\t': case '\v': {
 			while (isspace(*stream)) {

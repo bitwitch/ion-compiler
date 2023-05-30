@@ -88,8 +88,9 @@ struct Expr {
     ExprKind kind;
 	SourcePos pos;
 	struct Type *type;
+	TokenMod mod;
     union {
-        int64_t int_val;
+		int64_t int_val;
         double float_val;
 		bool bool_val;
         char *str_val;
