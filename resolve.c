@@ -3,8 +3,11 @@
 typedef union {
 	char c;
 	int32_t i;
+	uint32_t ui;
 	int32_t l;
+	uint32_t ul;
 	int64_t ll;
+	uint64_t ull;
 	float f;
 	double d;
 	void *p;
@@ -672,6 +675,100 @@ ResolvedExpr resolve_expr_int(Expr *expr) {
 	return resolved_null;
 }
 
+
+int64_t eval_binary_op_ll(TokenKind op, int64_t left, int64_t right) {
+	switch(op) {
+	case '+': return left + right;
+	case '-': return left - right;
+	case '*': return left * right;
+	case '&': return left & right;
+	case '|': return left | right;
+	case '^': return left ^ right;
+	case '<': return left < right;
+	case '>': return left > right;
+	case '/': return right == 0 ? 0 : left / right;
+	case '%': return right == 0 ? 0 : left % right;
+    case TOKEN_LSHIFT: return left << right;
+    case TOKEN_RSHIFT: return left >> right;
+    case TOKEN_EQ_EQ:  return left == right;
+    case TOKEN_NOT_EQ: return left != right;
+    case TOKEN_LT_EQ:  return left <= right;
+    case TOKEN_GT_EQ:  return left >= right;
+	default:
+		assert(0);
+		return 0;
+	}
+}
+
+uint64_t eval_binary_op_ull(TokenKind op, uint64_t left, uint64_t right) {
+	switch(op) {
+	case '+': return left + right;
+	case '-': return left - right;
+	case '*': return left * right;
+	case '&': return left & right;
+	case '|': return left | right;
+	case '^': return left ^ right;
+	case '<': return left < right;
+	case '>': return left > right;
+	case '/': return right == 0 ? 0 : left / right;
+	case '%': return right == 0 ? 0 : left % right;
+    case TOKEN_LSHIFT: return left << right;
+    case TOKEN_RSHIFT: return left >> right;
+    case TOKEN_EQ_EQ:  return left == right;
+    case TOKEN_NOT_EQ: return left != right;
+    case TOKEN_LT_EQ:  return left <= right;
+    case TOKEN_GT_EQ:  return left >= right;
+	default:
+		assert(0);
+		return 0;
+	}
+}
+
+double eval_binary_op_double(TokenKind op, double left, double right) {
+	switch(op) {
+	case '+': return left + right;
+	case '-': return left - right;
+	case '*': return left * right;
+	case '<': return left < right;
+	case '>': return left > right;
+	case '/': return right == 0 ? 0 : left / right;
+    case TOKEN_EQ_EQ:  return left == right;
+    case TOKEN_NOT_EQ: return left != right;
+    case TOKEN_LT_EQ:  return left <= right;
+    case TOKEN_GT_EQ:  return left >= right;
+	default:
+		assert(0);
+		return 0;
+	}
+}
+
+Val calculate_constant_binary_expr(TokenKind op, ResolvedExpr *operand_left, ResolvedExpr *operand_right) {
+	assert(operand_left->type == operand_right->type);
+	Type *type = operand_left->type;
+	ResolvedExpr left = *operand_left, right = *operand_right;
+	ResolvedExpr result = resolved_const(type, (Val){0});
+
+	if (is_signed_integer_type(type)) {
+		cast_operand(&left,  type_longlong);
+		cast_operand(&right, type_longlong);
+		result.val.ll = eval_binary_op_ll(op, left.val.ll, right.val.ll);
+	} else if (is_unsigned_integer_type(type)) {
+		cast_operand(&left,  type_ulonglong);
+		cast_operand(&right, type_ulonglong);
+		result.val.ull = eval_binary_op_ull(op, left.val.ull, right.val.ull);
+	} else if (is_floating_type(type)) {
+		cast_operand(&left,  type_double);
+		cast_operand(&right, type_double);
+		result.val.d = eval_binary_op_double(op, left.val.d, right.val.d);
+	} else {
+		assert(0);
+	}
+
+	cast_operand(&result, type);
+
+	return result.val;
+}
+
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
     ResolvedExpr result = resolved_null;
 
@@ -704,12 +801,12 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		break;
     case EXPR_SIZEOF_EXPR: {
         ResolvedExpr sizeof_expr = resolve_expr(expr->sizeof_expr);
-        result = resolved_const(sizeof_expr.type, (Val){.i=sizeof_expr.type->size});
+        result = resolved_const(type_int, (Val){.i=sizeof_expr.type->size});
 		break;
     }
     case EXPR_SIZEOF_TYPE: {
         Type *type = resolve_typespec(expr->sizeof_typespec);
-        result = resolved_const(type, (Val){.i=type->size});
+        result = resolved_const(type_int, (Val){.i=type->size});
 		break;
 	}
 	case EXPR_CAST: {
@@ -726,7 +823,12 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 				"incompatible types for left and right side of binary expression, left is %s right is %s",
 				type_to_str(left.type), type_to_str(right.type));
 		}
-		result = resolved_rvalue(left.type);
+		if (left.is_const && right.is_const) {
+			Val val = calculate_constant_binary_expr(expr->binary.op, &left, &right);
+			result = resolved_const(left.type, val);
+		} else {
+			result = resolved_rvalue(left.type);
+		}
 		break;
 	}
 
@@ -1154,6 +1256,20 @@ Type *resolve_decl_var(Decl *decl) {
     return type;
 }
 
+void resolve_func_body(Decl *decl, Type *type) {
+	assert(decl->kind == DECL_FUNC);
+
+	Sym **scope_start = sym_enter_scope();
+	for (int i = 0; i < decl->func.num_params; ++i) {
+		FuncParam param = decl->func.params[i];
+		Decl *param_decl = decl_var(decl->pos, param.name, param.typespec, NULL);
+		Sym *sym = sym_init(param_decl, type->func.params[i].type);
+		sym_push_scoped(sym);
+	}
+	resolve_stmt_block(decl->func.block, type->func.ret);
+	sym_leave_scope(scope_start);
+}
+
 Type *resolve_decl_func(Decl *decl) {
 	assert(decl->kind == DECL_FUNC);
 
@@ -1171,16 +1287,6 @@ Type *resolve_decl_func(Decl *decl) {
 	// TODO(shaw): should resolving the function body happen here?
 	// or lazily only when we really need to know the function body
 	// similar to complete_type()
-	Sym **scope_start = sym_enter_scope();
-	for (int i = 0; i < num_params; ++i) {
-		FuncParam param = decl->func.params[i];
-		Decl *param_decl = decl_var(decl->pos, param.name, param.typespec, NULL);
-		Sym *sym = sym_init(param_decl, params[i].type);
-		sym_push_scoped(sym);
-	}
-	resolve_stmt_block(decl->func.block, ret_type);
-	sym_leave_scope(scope_start);
-
 	return type_func(params, num_params, decl->func.is_variadic, ret_type);
 }
 
@@ -1249,8 +1355,12 @@ void resolve_sym(Sym *sym) {
 
 void complete_sym(Sym *sym) {
     resolve_sym(sym);
-    if (sym->kind == SYM_TYPE)
+	if (sym->kind == SYM_FUNC) {
+		resolve_func_body(sym->decl, sym->type);
+	} else if (sym->kind == SYM_TYPE) {
         complete_type(sym->type);
+	}
+
 }
 
 Sym *resolve_name(char *name) {

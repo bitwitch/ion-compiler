@@ -1,5 +1,14 @@
 TODO:
 
+[ ] when casting, if type is const, need to do type conversion of the constant
+    value (possible truncation)
+
+[ ] evaluate constants that are binary or unary expressions
+    e.g.  const n0 = 1 + sizeof(p0);
+
+[ ] types for hex and oct literals need to grow to unsigned if necessary, see c
+    spec section 6.4.4.1
+
 [ ] should string literals in var decls and init statements decay to pointer
     types or nah?? (s := "farts"; --> char *s = "farts";)
 
