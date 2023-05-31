@@ -90,7 +90,7 @@ struct Expr {
 	struct Type *type;
 	TokenMod mod;
     union {
-		int64_t int_val;
+		uint64_t int_val;
         double float_val;
 		bool bool_val;
         char *str_val;

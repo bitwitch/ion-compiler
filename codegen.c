@@ -99,9 +99,9 @@ char *gen_expr_c(Expr *expr) {
     case EXPR_INT: {
 		char *fmt = "%lld";
 		if (expr->mod == TOKENMOD_HEX || expr->mod == TOKENMOD_BIN) {
-			fmt = "%#x";
+			fmt = "%#llx";
 		} else if (expr->mod == TOKENMOD_OCT) {
-			fmt = "%#o";
+			fmt = "%#llo";
 		}
         return strf(fmt, expr->int_val);
 	}

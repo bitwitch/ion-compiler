@@ -31,7 +31,7 @@ Expr *expr_alloc(ExprKind kind, SourcePos pos) {
     return expr;
 }
 
-Expr *expr_int(SourcePos pos, int64_t val, TokenMod mod) {
+Expr *expr_int(SourcePos pos, uint64_t val, TokenMod mod) {
     Expr *expr = expr_alloc(EXPR_INT, pos);
     expr->int_val = val;
 	expr->mod = mod;

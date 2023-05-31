@@ -1,7 +1,5 @@
 TODO:
 
-[ ] when casting, if type is const, need to do type conversion of the constant
-    value (possible truncation)
 
 [ ] evaluate constants that are binary or unary expressions
     e.g.  const n0 = 1 + sizeof(p0);
@@ -58,7 +56,8 @@ TODO:
 [ ] improve error messages
 
 
-
+[X] when casting, if type is const, need to do type conversion of the constant
+    value (possible truncation)
 [X] implicit break for switch cases
 	[X] support commas in switch cases for multiple case expressions to use the
 			same block, this alleviates need for fallthrough

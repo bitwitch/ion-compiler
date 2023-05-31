@@ -1,7 +1,12 @@
 #define MAX_LOCAL_SYMS 2048
 
 typedef union {
+	bool b;
 	char c;
+	int8_t sc;
+	uint8_t uc;
+	int16_t s;
+	uint16_t us;
 	int32_t i;
 	uint32_t ui;
 	int32_t l;
@@ -480,12 +485,51 @@ void pointer_decay(ResolvedExpr *resolved) {
 	resolved->is_lvalue = false;
 }
 
-void cast_operand(ResolvedExpr *operand, Type *type) {
-	operand->type = type;
-	if (operand->is_const) {
-		// TODO(shaw): convert constants to new type, ideally warning or maybe even error if truncation would occur
+#define CASE(_x, _type) \
+	switch (operand->type->kind) { \
+	case TYPE_CHAR:      operand->val._x = (_type)operand->val.c;   break; \
+	case TYPE_SCHAR:     operand->val._x = (_type)operand->val.sc;  break; \
+	case TYPE_UCHAR:     operand->val._x = (_type)operand->val.uc;  break; \
+	case TYPE_SHORT:     operand->val._x = (_type)operand->val.s;   break; \
+	case TYPE_USHORT:    operand->val._x = (_type)operand->val.us;  break; \
+	case TYPE_INT:       operand->val._x = (_type)operand->val.i;   break; \
+	case TYPE_UINT:      operand->val._x = (_type)operand->val.ui;  break; \
+	case TYPE_LONG:      operand->val._x = (_type)operand->val.l;   break; \
+	case TYPE_ULONG:     operand->val._x = (_type)operand->val.ul;  break; \
+	case TYPE_LONGLONG:  operand->val._x = (_type)operand->val.ll;  break; \
+	case TYPE_ULONGLONG: operand->val._x = (_type)operand->val.ull; break; \
+	case TYPE_FLOAT:     operand->val._x = (_type)operand->val.f;   break; \
+	case TYPE_DOUBLE:    operand->val._x = (_type)operand->val.d;   break; \
+	case TYPE_BOOL:      operand->val._x = (_type)operand->val.b;   break; \
+	default: assert(0); break; \
 	}
+
+void cast_operand(ResolvedExpr *operand, Type *type) {
+	if (operand->is_const) {
+		switch (type->kind) {
+		case TYPE_CHAR:      CASE(c,   char);     break;
+		case TYPE_SCHAR:     CASE(sc,  int8_t);   break;
+		case TYPE_UCHAR:     CASE(uc,  uint8_t);  break;
+		case TYPE_SHORT:     CASE(s,   int16_t);  break;
+		case TYPE_USHORT:    CASE(us,  uint16_t); break;
+		case TYPE_INT:       CASE(i,   int32_t);  break;
+		case TYPE_UINT:      CASE(ui,  uint32_t); break;
+		case TYPE_LONG:      CASE(l,   int32_t);  break;
+		case TYPE_ULONG:     CASE(ul,  uint32_t); break;
+		case TYPE_LONGLONG:  CASE(ll,  int64_t);  break;
+		case TYPE_ULONGLONG: CASE(ull, uint64_t); break;
+		case TYPE_FLOAT:     CASE(f,   float);    break;
+		case TYPE_DOUBLE:    CASE(d,   double);   break;
+		case TYPE_BOOL:      CASE(b,   bool);     break;
+		default: 
+			assert(0); 
+			break;
+		}
+	}
+	operand->type = type;
 }
+
+#undef CASE
 
 // based on the C standard, see https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1548.pdf
 bool is_convertible(Type *from, Type *to) {
@@ -661,22 +705,46 @@ bool arithmetic_conversion(ResolvedExpr *left, ResolvedExpr *right) {
 }
 
 ResolvedExpr resolve_expr_int(Expr *expr) {
-	int64_t int_val = expr->int_val;
-	if (int_val >= integer_min_values[TYPE_INT] && int_val <= integer_max_values[TYPE_INT]) {
-        return resolved_const(type_int, (Val){.i = (int)int_val});
-	} else if (int_val >= integer_min_values[TYPE_LONG] && int_val <= integer_max_values[TYPE_LONG]) {
-        return resolved_const(type_long, (Val){.l = (long)int_val});
-	} else if (int_val >= integer_min_values[TYPE_LONGLONG] && int_val <= integer_max_values[TYPE_LONGLONG]) {
-        return resolved_const(type_longlong, (Val){.ll = (long long)int_val});
+	assert(expr->kind == EXPR_INT);
+	uint64_t int_val = expr->int_val;
+	ResolvedExpr result = resolved_const(type_ulonglong, (Val){.ull = int_val});
+	Type *type;
+
+	if (expr->mod == TOKENMOD_HEX || expr->mod == TOKENMOD_BIN || expr->mod == TOKENMOD_OCT) {
+		type = type_int;
+		if (int_val > integer_max_values[TYPE_INT]) {
+			type = type_uint;
+			if (int_val > integer_max_values[TYPE_UINT]) {
+				type = type_long;
+				if (int_val > integer_max_values[TYPE_LONG]) {
+					type = type_ulong;
+					if (int_val > integer_max_values[TYPE_ULONG]) {
+						type = type_longlong;
+						if (int_val > integer_max_values[TYPE_LONGLONG]) {
+							type = type_ulonglong;
+						}
+					}
+				}
+			}
+		}
+	} else {
+		assert(expr->mod == TOKENMOD_NONE);
+		type = type_int;
+		if (int_val > integer_max_values[TYPE_INT]) {
+			type = type_long;
+			if (int_val > integer_max_values[TYPE_LONG]) {
+				type = type_longlong;
+			}
+		}
 	}
 
-	// TODO(shaw): handle octal and hex constants
-	assert(0);
-	return resolved_null;
+	cast_operand(&result, type);
+
+	return result;
 }
 
 
-int64_t eval_binary_op_ll(TokenKind op, int64_t left, int64_t right) {
+int64_t eval_binary_op_signed(TokenKind op, int64_t left, int64_t right) {
 	switch(op) {
 	case '+': return left + right;
 	case '-': return left - right;
@@ -700,7 +768,7 @@ int64_t eval_binary_op_ll(TokenKind op, int64_t left, int64_t right) {
 	}
 }
 
-uint64_t eval_binary_op_ull(TokenKind op, uint64_t left, uint64_t right) {
+uint64_t eval_binary_op_unsigned(TokenKind op, uint64_t left, uint64_t right) {
 	switch(op) {
 	case '+': return left + right;
 	case '-': return left - right;
@@ -724,7 +792,7 @@ uint64_t eval_binary_op_ull(TokenKind op, uint64_t left, uint64_t right) {
 	}
 }
 
-double eval_binary_op_double(TokenKind op, double left, double right) {
+double eval_binary_op_floating(TokenKind op, double left, double right) {
 	switch(op) {
 	case '+': return left + right;
 	case '-': return left - right;
@@ -742,24 +810,27 @@ double eval_binary_op_double(TokenKind op, double left, double right) {
 	}
 }
 
-Val calculate_constant_binary_expr(TokenKind op, ResolvedExpr *operand_left, ResolvedExpr *operand_right) {
+Val eval_constant_binary_expr(TokenKind op, ResolvedExpr *operand_left, ResolvedExpr *operand_right) {
 	assert(operand_left->type == operand_right->type);
 	Type *type = operand_left->type;
 	ResolvedExpr left = *operand_left, right = *operand_right;
-	ResolvedExpr result = resolved_const(type, (Val){0});
+	ResolvedExpr result = {0}; 
 
 	if (is_signed_integer_type(type)) {
 		cast_operand(&left,  type_longlong);
 		cast_operand(&right, type_longlong);
-		result.val.ll = eval_binary_op_ll(op, left.val.ll, right.val.ll);
+		int64_t val = eval_binary_op_signed(op, left.val.ll, right.val.ll);
+		result = resolved_const(type_longlong, (Val){.ll=val});
 	} else if (is_unsigned_integer_type(type)) {
 		cast_operand(&left,  type_ulonglong);
 		cast_operand(&right, type_ulonglong);
-		result.val.ull = eval_binary_op_ull(op, left.val.ull, right.val.ull);
+		uint64_t val = eval_binary_op_unsigned(op, left.val.ull, right.val.ull);
+		result = resolved_const(type_ulonglong, (Val){.ull=val});
 	} else if (is_floating_type(type)) {
 		cast_operand(&left,  type_double);
 		cast_operand(&right, type_double);
-		result.val.d = eval_binary_op_double(op, left.val.d, right.val.d);
+		double val = eval_binary_op_floating(op, left.val.d, right.val.d);
+		result = resolved_const(type_double, (Val){.d=val});
 	} else {
 		assert(0);
 	}
@@ -786,8 +857,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 			result = resolved_const(type_float, (Val){.f=(float)expr->float_val});
 		break;
 	case EXPR_BOOL:
-		// TODO(shaw): bool consts
-		result = resolved_rvalue(type_bool);
+		result = resolved_const(type_bool, (Val){.b=expr->bool_val});
 		break;
 	case EXPR_STR:
 		//result = resolved_rvalue(type_array(type_char, strlen(expr->str_val) + 1));
@@ -824,7 +894,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 				type_to_str(left.type), type_to_str(right.type));
 		}
 		if (left.is_const && right.is_const) {
-			Val val = calculate_constant_binary_expr(expr->binary.op, &left, &right);
+			Val val = eval_constant_binary_expr(expr->binary.op, &left, &right);
 			result = resolved_const(left.type, val);
 		} else {
 			result = resolved_rvalue(left.type);

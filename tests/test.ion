@@ -1,10 +1,13 @@
 func test_constants() {
+	h1 := 0x45;
+	h2 := 0xffffffff;
+	h3 := 0xffffffff0;
+	h4 := 0xffffffffffffffff;
 
 	b1 := 0b11110111;
 
 	o1 := 0666;
 
-	h1 := 0x45;
 
 	i1 := -69;
 	i2 :=  69;
