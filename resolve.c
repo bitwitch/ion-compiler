@@ -396,94 +396,6 @@ Type *resolve_typespec(Typespec *typespec) {
     }
 }
 
-ResolvedExpr resolved_rvalue(Type *type) {
-    return (ResolvedExpr){ .type = type };
-}
-
-ResolvedExpr resolved_lvalue(Type *type) {
-    return (ResolvedExpr){ 
-        .type = type,
-        .is_lvalue = true,
-    };
-}
-
-ResolvedExpr resolved_const(Type *type, Val val) {
-	assert(type);
-	assert(is_scalar_type(type));
-
-    return (ResolvedExpr){ 
-        .type = type,
-        .is_const = true,
-        .val = val,
-    };
-}
-
-ResolvedExpr resolve_expr_unary(Expr *expr) {
-    assert(expr->kind == EXPR_UNARY);
-
-    ResolvedExpr operand = resolve_expr(expr->unary.expr);
-
-    switch (expr->unary.op) {
-    case '*':
-        if (operand.type->kind != TYPE_PTR) {
-            semantic_error(expr->pos, "cannot dereference a non-pointer type");
-        }
-        return resolved_lvalue(operand.type->ptr.base);
-    case '&':
-        if (!operand.is_lvalue) {
-			semantic_error(expr->pos, "cannot take the address of a non-lvalue");
-        }
-        return resolved_rvalue(type_ptr(operand.type));
-	case '!':
-		// TODO(shaw): convert to boolean 
-		assert(operand.type->kind == TYPE_INT || operand.type->kind == TYPE_BOOL);
-		return resolved_rvalue(operand.type);
-	case '+':
-	case '-':
-	case '~':
-		return resolved_rvalue(operand.type);
-    default:
-        assert(0);
-        return resolved_null;
-    }
-}
-
-ResolvedExpr resolve_expr_name(Expr *expr) {
-    assert(expr->kind == EXPR_NAME);
-    Sym *sym = resolve_name(expr->name);
-	if (!sym) {
-		semantic_error(expr->pos, "unknown symbol %s", expr->name);
-	}
-
-    if (sym->kind == SYM_VAR) 
-        return resolved_lvalue(sym->type); 
-    else if (sym->kind == SYM_FUNC) 
-        return resolved_rvalue(sym->type);
-	else if (sym->kind == SYM_CONST || sym->kind == SYM_ENUM_CONST) 
-		return resolved_const(sym->type, sym->val);
-    else {
-		assert(sym->kind == SYM_TYPE);
-		semantic_error(expr->pos, "expected variable, constant, or function but got type (%s)", expr->name);
-        return resolved_null;
-    }
-}
-ResolvedExpr resolve_expr(Expr *expr);
-
-ResolvedExpr resolve_expr_cond(Expr *cond) {
-	ResolvedExpr resolved = resolve_expr(cond);
-	if (!is_scalar_type(resolved.type)) {
-		semantic_error(cond->pos,
-			"condition expression must have integer, floating, or pointer type; got %s",
-			type_to_str(resolved.type));
-	}
-	return resolved;
-}
-
-void pointer_decay(ResolvedExpr *resolved) {
-	assert(resolved->type->kind == TYPE_ARRAY);
-	resolved->type = type_ptr(resolved->type->array.base);
-	resolved->is_lvalue = false;
-}
 
 #define CASE(_x, _type) \
 	switch (operand->type->kind) { \
@@ -530,6 +442,244 @@ void cast_operand(ResolvedExpr *operand, Type *type) {
 }
 
 #undef CASE
+
+// TODO(shaw): using c's macros for min and max values of integer types for
+// now. furthermore it will be the values ONLY for the system the compiler is
+// compiled on. this version for now is just to get things going.
+int64_t integer_min_values[] = {
+	[TYPE_BOOL]      = 0,
+	[TYPE_CHAR]      = 0,
+	[TYPE_SCHAR]     = SCHAR_MIN,
+	[TYPE_UCHAR]     = 0,
+	[TYPE_SHORT]     = SHRT_MIN,
+	[TYPE_USHORT]    = 0,
+	[TYPE_INT]       = INT_MIN,
+	[TYPE_UINT]      = 0,
+	[TYPE_LONG]      = LONG_MIN,
+	[TYPE_ULONG]     = 0,
+	[TYPE_LONGLONG]  = LLONG_MIN,
+	[TYPE_ULONGLONG] = 0,
+};
+
+uint64_t integer_max_values[] = {
+	[TYPE_BOOL]      = 1,
+	[TYPE_CHAR]      = UCHAR_MAX,
+	[TYPE_SCHAR]     = SCHAR_MAX,
+	[TYPE_UCHAR]     = UCHAR_MAX,
+	[TYPE_SHORT]     = SHRT_MAX,
+	[TYPE_USHORT]    = USHRT_MAX,
+	[TYPE_INT]       = INT_MAX,
+	[TYPE_UINT]      = UINT_MAX,
+	[TYPE_LONG]      = LONG_MAX,
+	[TYPE_ULONG]     = ULONG_MAX,
+	[TYPE_LONGLONG]  = LLONG_MAX,
+	[TYPE_ULONGLONG] = ULLONG_MAX,
+};
+
+void integer_promotion(ResolvedExpr *operand) {
+	if (!is_integer_type(operand->type)) 
+		return;
+	if (integer_conversion_ranks[operand->type->kind] > integer_conversion_ranks[TYPE_INT])
+		return;
+	if (integer_min_values[TYPE_INT] <= integer_min_values[operand->type->kind] &&
+		integer_max_values[TYPE_INT] >= integer_max_values[operand->type->kind]) 
+	{
+		cast_operand(operand, type_int);
+	} else {
+		cast_operand(operand, type_uint);
+	}
+}
+
+
+ResolvedExpr resolved_rvalue(Type *type) {
+    return (ResolvedExpr){ .type = type };
+}
+
+ResolvedExpr resolved_lvalue(Type *type) {
+    return (ResolvedExpr){ 
+        .type = type,
+        .is_lvalue = true,
+    };
+}
+
+ResolvedExpr resolved_const(Type *type, Val val) {
+	assert(type);
+	assert(is_scalar_type(type));
+
+    return (ResolvedExpr){ 
+        .type = type,
+        .is_const = true,
+        .val = val,
+    };
+}
+
+int64_t eval_unary_op_signed(TokenKind op, int64_t val) {
+	switch(op) {
+	case '+': return +val;
+	case '-': return -val;
+	case '~': return ~val;
+	default:
+		assert(0);
+		return 0;
+	}
+}
+
+uint64_t eval_unary_op_unsigned(TokenKind op, uint64_t val) {
+	switch(op) {
+	case '+': return +val;
+	case '-': return 0ull - val;
+	case '~': return ~val;
+	default:
+		assert(0);
+		return 0;
+	}
+}
+
+double eval_unary_op_floating(TokenKind op, double val) {
+	switch(op) {
+	case '+': return +val;
+	case '-': return -val;
+	default:
+		assert(0);
+		return 0;
+	}
+}
+
+Val eval_constant_unary_expr(TokenKind op, ResolvedExpr *operand) {
+	Type *type = operand->type;
+	ResolvedExpr dummy = *operand;
+	ResolvedExpr result = {0}; 
+
+	if (is_signed_integer_type(type)) {
+		cast_operand(&dummy,  type_longlong);
+		int64_t val = eval_unary_op_signed(op, dummy.val.ll);
+		result = resolved_const(type_longlong, (Val){.ll=val});
+	} else if (is_unsigned_integer_type(type)) {
+		cast_operand(&dummy,  type_ulonglong);
+		uint64_t val = eval_unary_op_unsigned(op, dummy.val.ull);
+		result = resolved_const(type_ulonglong, (Val){.ull=val});
+	} else if (is_floating_type(type)) {
+		cast_operand(&dummy,  type_double);
+		double val = eval_unary_op_floating(op, dummy.val.d);
+		result = resolved_const(type_double, (Val){.d=val});
+	} else {
+		assert(0);
+	}
+
+	cast_operand(&result, type);
+
+	return result.val;
+}
+
+ResolvedExpr resolve_expr_unary(Expr *expr) {
+    assert(expr->kind == EXPR_UNARY);
+
+    ResolvedExpr operand = resolve_expr(expr->unary.expr);
+	ResolvedExpr result = resolved_null;
+
+    switch (expr->unary.op) {
+    case '*': {
+        if (operand.type->kind == TYPE_PTR) {
+			result = resolved_lvalue(operand.type->ptr.base);
+        } else {
+            semantic_error(expr->pos, "cannot dereference a non-pointer type");
+		}
+		break;
+	}
+    case '&': {
+        if (operand.is_lvalue) {
+			result = resolved_rvalue(type_ptr(operand.type));
+        } else {
+			semantic_error(expr->pos, "cannot take the address of a non-lvalue");
+		}
+		break;
+	}
+	case '!': {
+		if (is_scalar_type(operand.type)) {
+			cast_operand(&operand, type_bool);
+			result = operand.is_const 
+				? resolved_const(operand.type, (Val){.b = !operand.val.b}) 
+				: resolved_rvalue(operand.type);
+		} else {
+			semantic_error(expr->pos, "operand of '!' operator must have integer, floating, or pointer type, got %s", 
+				type_to_str(operand.type));
+		}
+		break;
+	}
+	case '~': {
+		if (is_integer_type(operand.type)) {
+			integer_promotion(&operand);
+			if (operand.is_const) {
+				Val val = eval_constant_unary_expr(expr->unary.op, &operand);
+				result = resolved_const(operand.type, val);
+			} else {
+				result = resolved_rvalue(operand.type);
+			}
+		} else {
+			semantic_error(expr->pos, "operand of '~' operator must have integer type, got %s", type_to_str(operand.type));
+		}
+		break;
+	}
+	case '+':
+	case '-': {
+		if (is_arithmetic_type(operand.type)) {
+			integer_promotion(&operand);
+			if (operand.is_const) {
+				Val val = eval_constant_unary_expr(expr->unary.op, &operand);
+				result = resolved_const(operand.type, val);
+			} else {
+				result = resolved_rvalue(operand.type);
+			}
+		} else {
+			semantic_error(expr->pos, "operand of '%s' operator must have integer or floating type, got %s", 
+				expr->unary.op, type_to_str(operand.type));
+		}
+		break;
+	}
+    default:
+        assert(0);
+		break;
+    }
+
+	return result;
+}
+
+ResolvedExpr resolve_expr_name(Expr *expr) {
+    assert(expr->kind == EXPR_NAME);
+    Sym *sym = resolve_name(expr->name);
+	if (!sym) {
+		semantic_error(expr->pos, "unknown symbol %s", expr->name);
+	}
+
+    if (sym->kind == SYM_VAR) 
+        return resolved_lvalue(sym->type); 
+    else if (sym->kind == SYM_FUNC) 
+        return resolved_rvalue(sym->type);
+	else if (sym->kind == SYM_CONST || sym->kind == SYM_ENUM_CONST) 
+		return resolved_const(sym->type, sym->val);
+    else {
+		assert(sym->kind == SYM_TYPE);
+		semantic_error(expr->pos, "expected variable, constant, or function but got type (%s)", expr->name);
+        return resolved_null;
+    }
+}
+ResolvedExpr resolve_expr(Expr *expr);
+
+ResolvedExpr resolve_expr_cond(Expr *cond) {
+	ResolvedExpr resolved = resolve_expr(cond);
+	if (!is_scalar_type(resolved.type)) {
+		semantic_error(cond->pos,
+			"condition expression must have integer, floating, or pointer type; got %s",
+			type_to_str(resolved.type));
+	}
+	return resolved;
+}
+
+void pointer_decay(ResolvedExpr *resolved) {
+	assert(resolved->type->kind == TYPE_ARRAY);
+	resolved->type = type_ptr(resolved->type->array.base);
+	resolved->is_lvalue = false;
+}
 
 // based on the C standard, see https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1548.pdf
 bool is_convertible(Type *from, Type *to) {
@@ -597,52 +747,6 @@ bool floating_conversion(ResolvedExpr *operand_left, ResolvedExpr *operand_right
 
 	assert(0);
 	return false;
-}
-
-// TODO(shaw): using c's macros for min and max values of integer types for
-// now. furthermore it will be the values ONLY for the system the compiler is
-// compiled on. this version for now is just to get things going.
-int64_t integer_min_values[] = {
-	[TYPE_BOOL]      = 0,
-	[TYPE_CHAR]      = 0,
-	[TYPE_SCHAR]     = SCHAR_MIN,
-	[TYPE_UCHAR]     = 0,
-	[TYPE_SHORT]     = SHRT_MIN,
-	[TYPE_USHORT]    = 0,
-	[TYPE_INT]       = INT_MIN,
-	[TYPE_UINT]      = 0,
-	[TYPE_LONG]      = LONG_MIN,
-	[TYPE_ULONG]     = 0,
-	[TYPE_LONGLONG]  = LLONG_MIN,
-	[TYPE_ULONGLONG] = 0,
-};
-
-uint64_t integer_max_values[] = {
-	[TYPE_BOOL]      = 1,
-	[TYPE_CHAR]      = UCHAR_MAX,
-	[TYPE_SCHAR]     = SCHAR_MAX,
-	[TYPE_UCHAR]     = UCHAR_MAX,
-	[TYPE_SHORT]     = SHRT_MAX,
-	[TYPE_USHORT]    = USHRT_MAX,
-	[TYPE_INT]       = INT_MAX,
-	[TYPE_UINT]      = UINT_MAX,
-	[TYPE_LONG]      = LONG_MAX,
-	[TYPE_ULONG]     = ULONG_MAX,
-	[TYPE_LONGLONG]  = LLONG_MAX,
-	[TYPE_ULONGLONG] = ULLONG_MAX,
-};
-
-void integer_promotion(ResolvedExpr *operand) {
-	if (integer_conversion_ranks[operand->type->kind] > integer_conversion_ranks[TYPE_INT])
-		return;
-
-	if (integer_min_values[TYPE_INT] <= integer_min_values[operand->type->kind] &&
-		integer_max_values[TYPE_INT] >= integer_max_values[operand->type->kind]) 
-	{
-		cast_operand(operand, type_int);
-	} else {
-		cast_operand(operand, type_uint);
-	}
 }
 
 // returns true if types are compatible and conversion is successful, else false

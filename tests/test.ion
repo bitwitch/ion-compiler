@@ -1,3 +1,19 @@
+const some_const = 420;
+func test_unary() {
+	a := 69;
+	b := +a;
+	c := -a;
+	d := ~a;
+	e := !a;
+	f := &a;
+	g := *f;
+
+	h := +some_const;
+	i := -some_const;
+	j := ~some_const;
+	k := !some_const;
+}
+
 func test_constants() {
 	h1 := 0x45;
 	h2 := 0xffffffff;
