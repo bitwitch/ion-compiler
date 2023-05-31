@@ -14,7 +14,7 @@ void syntax_error_at(SourcePos pos, char *fmt, ...) {
 	// TODO(shaw): DELETE ME! JUST FOR DEVELOPMENT!
 	assert(0);
 }
-#define syntax_error(fmt, ...) syntax_error_at(token.pos, fmt, __VA_ARGS__)
+#define syntax_error(...) syntax_error_at(token.pos, __VA_ARGS__)
 
 void semantic_error(SourcePos pos, char *fmt, ...) {
 	va_list args;

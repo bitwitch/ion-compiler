@@ -9,6 +9,8 @@
 #include <math.h>
 #include <ctype.h>
 #include <math.h>
+#include <errno.h>
+#include <limits.h>
 
 #include "common.c"
 #include "error.c"
