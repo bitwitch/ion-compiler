@@ -239,7 +239,112 @@ void da_test(void) {
 }
 
 
+// Hash Map
+// ---------------------------------------------------------------------------
 
+typedef struct {
+	void **keys;
+	void **vals;
+	size_t len;
+	size_t cap;
+} Map;
+
+uint64_t uint64_hash(uint64_t x) {
+	x ^= (x * 0xff51afd7ed558ccdull) >> 32;
+	return x;
+}
+
+uint64_t ptr_hash(void *ptr) {
+	return uint64_hash((uintptr_t)ptr);
+}
+
+uint64_t str_hash(char *str, int len) {
+	uint64_t fnv_init = 0xcbf29ce484222325ull;
+	uint64_t fnv_prime = 0x00000100000001B3ull;
+	uint64_t hash = fnv_init;
+	for (size_t i=0; i<len; ++i) {
+		hash ^= str[i];
+		hash *= fnv_prime;
+	}
+	return hash;
+}
+
+
+void *map_get(Map *map, void *key) {
+	if (map->len == 0) {
+		return NULL;
+	}
+	assert(map->len < map->cap);
+	uint64_t hash = ptr_hash(key);
+	size_t i = hash % map->cap;
+
+	for (;;) {
+		if (map->keys[i] == NULL) 
+			return NULL;
+		if (map->keys[i] == key)
+			return map->vals[i];
+		i = (i + 1) % map->cap;
+	}
+}
+
+void map_put(Map *map, void *key, void *val);
+
+void map_grow(Map *map, size_t new_cap) {
+	new_cap = MAX(16, new_cap);
+	void **mem = xcalloc(2 * new_cap, sizeof(void*));
+	Map new_map = {
+		.keys = mem,
+		.vals = mem + new_cap,
+		.cap = new_cap,
+	};
+
+	for (size_t i = 0; i < map->cap; ++i) {
+		if (map->keys[i]) {
+			map_put(&new_map, map->keys[i], map->vals[i]);
+		}
+	}
+
+	free(map->keys); // NOTE: this frees keys and vals
+	*map = new_map;
+}
+
+void map_put(Map *map, void *key, void *val) {
+	assert(key && val);
+	// TODO(shaw): currently enforcing less than 50% capacity, tweak this to be
+	// less extreme/conservative
+	if (2*map->len >= map->cap) {
+		map_grow(map, 2*map->cap);
+	}
+	assert(2*map->len < map->cap); 
+
+	uint64_t hash = ptr_hash(key);
+	size_t i = hash % map->cap;
+
+	for (;;) {
+		if (map->keys[i] == NULL) { 
+			map->keys[i] = key;
+			map->vals[i] = val;
+			++map->len;
+			return;
+		}
+		if (map->keys[i] == key) {
+			map->vals[i] = val;
+			return;
+		}
+		i = (i + 1) % map->cap;
+	}
+}
+
+void map_test(void) {
+	Map map = {0};
+	enum { N = 1024 * 1024 };
+	for (size_t i=0; i<N; ++i) {
+		map_put(&map, (void*)(i+1), (void*)(i+2));
+	}
+	for (size_t i=0; i<N; ++i) {
+		assert(map_get(&map, (void*)(i+1)) == (void*)(i+2));
+	}
+}
 
 
 // String Interning

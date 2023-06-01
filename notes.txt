@@ -1,13 +1,8 @@
 TODO:
 
-[ ] evaluate constants that are binary or unary expressions
-    e.g.  const n0 = 1 + sizeof(p0);
-
-[ ] types for hex and oct literals need to grow to unsigned if necessary, see c
-    spec section 6.4.4.1
-
-[ ] should string literals in var decls and init statements decay to pointer
-    types or nah?? (s := "farts"; --> char *s = "farts";)
+[ ] profiling (tried out superluminal, it is nice) confirms that
+    str_intern_range is the hottest function in the program. speed it up with a
+    hashmap
 
 [X] allow implicitly sized arrays
 	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
@@ -19,8 +14,6 @@ TODO:
     (truncations)
 
 [ ] designated initializers ( pos := Vec3{x=6, y=9} )
-
-[ ] initializing global var decls with non constant values should error
 
 [ ] think about removing var keyword, could just look ahead to see if the next
 		token is ':' to tell if it is a DECL_VAR
@@ -51,12 +44,24 @@ TODO:
   [ ] replace other naive linear searches
 
 [ ] constant expression evaluation
+    [X] binary exprs
+    [X] unary exprs
+    [ ] cast exprs ??
 
 [ ] improve error messages
+
+[ ] should string literals in var decls and init statements decay to pointer
+    types or nah?? (s := "farts"; --> char *s = "farts";)
+
+
 
 [X] issues with warnings being printed to stdout when redirecting output of
     compilation to a file. should probably separate errors/warnings to printing
     to stderr
+[X] types for hex and oct literals need to grow to unsigned if necessary, see c
+    spec section 6.4.4.1
+[X] evaluate constants that are binary or unary expressions
+    e.g.  const n0 = 1 + sizeof(p0);
 [X] when casting, if type is const, need to do type conversion of the constant
     value (possible truncation)
 [X] implicit break for switch cases
