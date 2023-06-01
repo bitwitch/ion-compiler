@@ -1333,13 +1333,13 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 				semantic_error(stmt->pos, "redeclaration of variable '%s'", stmt->init.name);
 				Sym *sym = sym_get(stmt->init.name);
 				assert(sym->name && sym->type);
-				print_note(sym->decl->pos, "Previous declaration of '%s' with type '%s'",
+				print_note(sym->decl->pos, "previous declaration of '%s' with type '%s'",
 					sym->name, type_to_str(sym->type));
 				break;
 
 			// shadowing a variable name is a warning
 			} else if (sym_get(stmt->init.name)) {
-				warning(stmt->pos, "Shadowing variable name '%s'", stmt->init.name);
+				warning(stmt->pos, "shadowing variable name '%s'", stmt->init.name);
 			}
 
 			Type *type = NULL;
@@ -1644,7 +1644,7 @@ void resolve_test(void) {
 		*/
     };
 
-    for (size_t i = 0; i<array_count(decls); ++i) {
+    for (size_t i = 0; i<ARRAY_COUNT(decls); ++i) {
         init_stream("", decls[i]);
         Decl *decl = parse_decl();
         sym_put_decl(decl);

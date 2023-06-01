@@ -560,7 +560,7 @@ void codegen_test(void) {
 		{ "param1", type_int },
 		{ "param2", type_int },
 	};
-	Type *func_int_int = type_func(params, array_count(params), false, type_int);
+	Type *func_int_int = type_func(params, ARRAY_COUNT(params), false, type_int);
 
 	str = gen_type_c(type_array(type_int, 16), "x");
 	assert(0 == strcmp(str, "int (x[16])"));

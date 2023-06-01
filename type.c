@@ -226,8 +226,8 @@ void type_intern_test(void) {
         {.name = str_intern("x"), .type = type_int }, 
         {.name = str_intern("y"), .type = int_ptr },
     };
-    Type *func_one = type_func(params_one, array_count(params_one), false, type_int);
-    Type *func_two = type_func(params_two, array_count(params_two), false, type_int);
+    Type *func_one = type_func(params_one, ARRAY_COUNT(params_one), false, type_int);
+    Type *func_two = type_func(params_two, ARRAY_COUNT(params_two), false, type_int);
     Type *func_three = type_func(NULL, 0, false, type_int);
     assert(func_one == func_two);
     assert(func_one != func_three);

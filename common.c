@@ -1,7 +1,8 @@
+#define ARRAY_COUNT(a) sizeof(a)/sizeof(*(a))
+#define MAX(x, y) ((x) >= (y) ? (x) : (y))
+#define IS_POW2(x) (((x) != 0) && ((x) & ((x)-1)) == 0)
+
 // Helper Utilities
-
-#define array_count(a) sizeof(a)/sizeof(*(a))
-
 void *xmalloc(size_t size) {
     void *ptr = malloc(size);
     if (ptr == NULL) {
@@ -153,7 +154,6 @@ typedef struct {
 	char buf[]; // flexible array member
 } DA_Header;
 
-#define MAX(x, y) ((x) >= (y) ? (x) : (y))
 
 // get the metadata of the array which is stored before the actual buffer in memory
 #define da__header(b) ((DA_Header*)((char*)b - offsetof(DA_Header, buf)))
@@ -239,164 +239,8 @@ void da_test(void) {
 }
 
 
-// Hash Map
-// ---------------------------------------------------------------------------
-
-typedef struct {
-	void **keys;
-	void **vals;
-	size_t len;
-	size_t cap;
-} Map;
-
-uint64_t uint64_hash(uint64_t x) {
-	x ^= (x * 0xff51afd7ed558ccdull) >> 32;
-	return x;
-}
-
-uint64_t ptr_hash(void *ptr) {
-	return uint64_hash((uintptr_t)ptr);
-}
-
-uint64_t str_hash(char *str, int len) {
-	uint64_t fnv_init = 0xcbf29ce484222325ull;
-	uint64_t fnv_prime = 0x00000100000001B3ull;
-	uint64_t hash = fnv_init;
-	for (size_t i=0; i<len; ++i) {
-		hash ^= str[i];
-		hash *= fnv_prime;
-	}
-	return hash;
-}
-
-
-void *map_get(Map *map, void *key) {
-	if (map->len == 0) {
-		return NULL;
-	}
-	assert(map->len < map->cap);
-	uint64_t hash = ptr_hash(key);
-	size_t i = hash % map->cap;
-
-	for (;;) {
-		if (map->keys[i] == NULL) 
-			return NULL;
-		if (map->keys[i] == key)
-			return map->vals[i];
-		i = (i + 1) % map->cap;
-	}
-}
-
-void map_put(Map *map, void *key, void *val);
-
-void map_grow(Map *map, size_t new_cap) {
-	new_cap = MAX(16, new_cap);
-	void **mem = xcalloc(2 * new_cap, sizeof(void*));
-	Map new_map = {
-		.keys = mem,
-		.vals = mem + new_cap,
-		.cap = new_cap,
-	};
-
-	for (size_t i = 0; i < map->cap; ++i) {
-		if (map->keys[i]) {
-			map_put(&new_map, map->keys[i], map->vals[i]);
-		}
-	}
-
-	free(map->keys); // NOTE: this frees keys and vals
-	*map = new_map;
-}
-
-void map_put(Map *map, void *key, void *val) {
-	assert(key && val);
-	// TODO(shaw): currently enforcing less than 50% capacity, tweak this to be
-	// less extreme/conservative
-	if (2*map->len >= map->cap) {
-		map_grow(map, 2*map->cap);
-	}
-	assert(2*map->len < map->cap); 
-
-	uint64_t hash = ptr_hash(key);
-	size_t i = hash % map->cap;
-
-	for (;;) {
-		if (map->keys[i] == NULL) { 
-			map->keys[i] = key;
-			map->vals[i] = val;
-			++map->len;
-			return;
-		}
-		if (map->keys[i] == key) {
-			map->vals[i] = val;
-			return;
-		}
-		i = (i + 1) % map->cap;
-	}
-}
-
-void map_test(void) {
-	Map map = {0};
-	enum { N = 1024 * 1024 };
-	for (size_t i=0; i<N; ++i) {
-		map_put(&map, (void*)(i+1), (void*)(i+2));
-	}
-	for (size_t i=0; i<N; ++i) {
-		assert(map_get(&map, (void*)(i+1)) == (void*)(i+2));
-	}
-}
-
-
-// String Interning
-// ---------------------------------------------------------------------------
-typedef struct {
-    size_t len;
-    char *str;
-} InternStr;
-
-static InternStr *interns;
-
-char *str_intern_range(char *start, char *end) {
-    size_t len = end - start;
-
-    // check if string is already interned
-    for (size_t i=0; i<da_lenu(interns); ++i) {
-        if (len == interns[i].len && strncmp(interns[i].str, start, len) == 0) {
-            return interns[i].str;
-        }
-    }
-
-    char *str = xmalloc(len + 1);
-    strncpy(str, start, len);
-    str[len] = 0;
-
-    da_push(interns, (InternStr){ len, str });
-
-    return str;
-}
-
-char *str_intern(char *str) {
-    // FIXME(shaw): just wrapping the range version for now with a wasteful
-    // call to strlen. can be smarter about this but its fine for now.
-    return str_intern_range(str, str + strlen(str));
-}
-
-void str_intern_test(void) {
-    char a[] = "boobies";
-    char b[] = "boobies";
-    char c[] = "boobies!";
-
-    char *start = a; 
-    char *end = a + strlen(a);
-
-    assert(a != b);
-    assert(str_intern(a) == str_intern(b));
-    assert(str_intern(a) != str_intern(c));
-    assert(str_intern(a) == str_intern_range(start, end));
-}
-
-
 // Arena Allocator
+// ---------------------------------------------------------------------------
 #define ARENA_BLOCK_SIZE 65536
 
 typedef struct {
@@ -439,6 +283,187 @@ void *arena_memdup(Arena *arena, void *src, size_t size) {
     void *new_mem = arena_alloc(arena, size);
     memcpy(new_mem, src, size);
     return new_mem;
+}
+
+
+// Hash Map
+// ---------------------------------------------------------------------------
+
+typedef struct {
+	void **keys;
+	void **vals;
+	size_t len;
+	size_t cap;
+} Map;
+
+uint64_t uint64_hash(uint64_t x) {
+	x ^= (x * 0xff51afd7ed558ccdull) >> 32;
+	return x;
+}
+
+uint64_t ptr_hash(void *ptr) {
+	return uint64_hash((uintptr_t)ptr);
+}
+
+uint64_t str_hash_range(char *start, char *end) {
+	uint64_t fnv_init = 0xcbf29ce484222325ull;
+	uint64_t fnv_prime = 0x00000100000001B3ull;
+	uint64_t hash = fnv_init;
+	while (start != end) {
+		hash ^= *start++;
+		hash *= fnv_prime;
+		hash ^= hash >> 32; // additional mixing
+	}
+	return hash;
+}
+
+void *map_get(Map *map, void *key) {
+	if (map->len == 0) {
+		return NULL;
+	}
+	assert(map->len < map->cap);
+	size_t i = (size_t)ptr_hash(key);
+
+	for (;;) {
+		i &= map->cap - 1; // power of two masking
+		if (map->keys[i] == NULL) 
+			return NULL;
+		if (map->keys[i] == key)
+			return map->vals[i];
+		++i;
+	}
+}
+
+void map_put(Map *map, void *key, void *val);
+
+void map_grow(Map *map, size_t new_cap) {
+	new_cap = MAX(16, new_cap);
+	assert(IS_POW2(new_cap));
+	Map new_map = {
+		.keys = xcalloc(new_cap, sizeof(void*)),
+		.vals = xmalloc(new_cap * sizeof(void*)),
+		.cap = new_cap,
+	};
+
+	for (size_t i = 0; i < map->cap; ++i) {
+		if (map->keys[i]) {
+			map_put(&new_map, map->keys[i], map->vals[i]);
+		}
+	}
+
+	free(map->keys);
+	free(map->vals);
+
+	*map = new_map;
+}
+
+void map_put(Map *map, void *key, void *val) {
+	assert(key && val);
+	// TODO(shaw): currently enforcing less than 50% capacity, tweak this to be
+	// less extreme/conservative
+	if (2*map->len >= map->cap) {
+		map_grow(map, 2*map->cap);
+	}
+	assert(2*map->len < map->cap); 
+
+	size_t i = (size_t)ptr_hash(key);
+
+	for (;;) {
+		i &= map->cap - 1;
+		if (map->keys[i] == NULL) { 
+			map->keys[i] = key;
+			map->vals[i] = val;
+			++map->len;
+			return;
+		}
+		if (map->keys[i] == key) {
+			map->vals[i] = val;
+			return;
+		}
+		++i;
+	}
+
+}
+
+void map_test(void) {
+	Map map = {0};
+	enum { N = 1024 * 1024 };
+	for (size_t i=0; i<N; ++i) {
+		map_put(&map, (void*)(i+1), (void*)(i+2));
+	}
+	for (size_t i=0; i<N; ++i) {
+		assert(map_get(&map, (void*)(i+1)) == (void*)(i+2));
+	}
+}
+
+
+// String Interning
+// ---------------------------------------------------------------------------
+typedef struct InternStr InternStr;
+struct InternStr {
+    size_t len;
+	InternStr *next;
+    char str[];
+};
+
+static Arena intern_arena;
+static Map interns;
+
+char *str_intern_range(char *start, char *end) {
+	size_t len = end - start;
+	uint64_t hash = str_hash_range(start, end);
+	void *key = (void*)(uintptr_t)(hash ? hash : 1);
+
+	// check if string is already interned
+	InternStr *intern = map_get(&interns, key);
+	// NOTE: in almost all cases this loop should only execute a single time
+	for (InternStr *it = intern; it; it = it->next) {
+		if (it->len == len && strncmp(it->str, start, len) == 0) {
+			return it->str;
+		} 
+	}
+
+	InternStr *new_intern = arena_alloc(&intern_arena, offsetof(InternStr, str) + len + 1);
+	new_intern->len = len;
+	new_intern->next = intern;
+	memcpy(new_intern->str, start, len);
+	new_intern->str[len] = 0;
+	map_put(&interns, key, new_intern);
+	return new_intern->str;
+}
+
+char *str_intern(char *str) {
+    // FIXME(shaw): just wrapping the range version for now with a wasteful
+    // call to strlen. can be smarter about this but its fine for now.
+    return str_intern_range(str, str + strlen(str));
+}
+
+void str_intern_test(void) {
+	char a[] = "hello";
+	assert(strcmp(a, str_intern(a)) == 0);
+	assert(str_intern(a) == str_intern(a));
+	assert(str_intern(str_intern(a)) == str_intern(a));
+	char b[] = "hello";
+	assert(a != b);
+	assert(str_intern(a) == str_intern(b));
+	char c[] = "hello!";
+	assert(str_intern(a) != str_intern(c));
+	char d[] = "hell";
+	assert(str_intern(a) != str_intern(d));
+
+    char e[] = "boobies";
+    char f[] = "boobies!";
+    char g[] = "boobies";
+
+    char *start = g; 
+    char *end = g + strlen(g);
+
+    assert(g != e);
+    assert(str_intern(g) == str_intern(e));
+    assert(str_intern(g) != str_intern(f));
+    assert(str_intern(g) == str_intern_range(start, end));
+
+
 }
 
 

@@ -29,6 +29,7 @@ void run_tests(void) {
 	sym_init_table();
 
 	da_test();
+	map_test();
 	str_intern_test();
 	lex_test();
 	parse_test();
