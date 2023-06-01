@@ -1,0 +1,41 @@
+4 * 1024 iterations used in generate_test.py
+command: powershell -Command "Measure-Command {build\ion tests\big_test.ion}"
+
+Run 1
+Days              : 0
+Hours             : 0
+Minutes           : 0
+Seconds           : 10
+Milliseconds      : 813
+Ticks             : 108130339
+TotalDays         : 0.000125150855324074
+TotalHours        : 0.00300362052777778
+TotalMinutes      : 0.180217231666667
+TotalSeconds      : 10.8130339
+TotalMilliseconds : 10813.0339
+
+Run 2
+Days              : 0
+Hours             : 0
+Minutes           : 0
+Seconds           : 10
+Milliseconds      : 801
+Ticks             : 108011185
+TotalDays         : 0.000125012945601852
+TotalHours        : 0.00300031069444444
+TotalMinutes      : 0.180018641666667
+TotalSeconds      : 10.8011185
+TotalMilliseconds : 10801.1185
+
+Run 3
+Days              : 0
+Hours             : 0
+Minutes           : 0
+Seconds           : 10
+Milliseconds      : 700
+Ticks             : 107001135
+TotalDays         : 0.00012384390625
+TotalHours        : 0.00297225375
+TotalMinutes      : 0.178335225
+TotalSeconds      : 10.7001135
+TotalMilliseconds : 10700.1135
