@@ -1,0 +1,22 @@
+
+func out_of_order() {
+	v := Vec2{6, 9};
+}
+
+struct Vec2 {
+	x: int;
+	y: int;
+}
+
+
+func recur(i: int): int {
+	if (i == 0) {
+		return 0;
+	}
+	return 1 + recur(i-1);
+}
+
+func main(argc: int, argv: char**): int {
+	i := recur(5);
+	return 0;
+}

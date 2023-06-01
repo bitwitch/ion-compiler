@@ -1458,9 +1458,6 @@ Type *resolve_decl_func(Decl *decl) {
 	if (decl->func.ret_typespec)
 		ret_type = resolve_typespec(decl->func.ret_typespec);
 
-	// TODO(shaw): should resolving the function body happen here?
-	// or lazily only when we really need to know the function body
-	// similar to complete_type()
 	return type_func(params, num_params, decl->func.is_variadic, ret_type);
 }
 
@@ -1509,6 +1506,8 @@ void resolve_sym(Sym *sym) {
         break;
     case SYM_FUNC:  
         sym->type = resolve_decl_func(sym->decl);  
+		sym->state = SYM_RESOLVED;
+		resolve_func_body(sym->decl, sym->type);
         break;
     case SYM_TYPE: 
         sym->type = resolve_decl_type(sym->decl);  
@@ -1529,12 +1528,9 @@ void resolve_sym(Sym *sym) {
 
 void complete_sym(Sym *sym) {
     resolve_sym(sym);
-	if (sym->kind == SYM_FUNC) {
-		resolve_func_body(sym->decl, sym->type);
-	} else if (sym->kind == SYM_TYPE) {
+	if (sym->kind == SYM_TYPE) {
         complete_type(sym->type);
 	}
-
 }
 
 Sym *resolve_name(char *name) {
