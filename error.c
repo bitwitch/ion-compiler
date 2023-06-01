@@ -6,9 +6,9 @@ typedef struct {
 void syntax_error_at(SourcePos pos, char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
-	printf("%s:%d: syntax error: ", pos.filepath, pos.line);
-	vprintf(fmt, args);
-	printf("\n");
+	fprintf(stderr, "%s:%d: syntax error: ", pos.filepath, pos.line);
+	vfprintf(stderr, fmt, args);
+	fprintf(stderr, "\n");
 	va_end(args);
 
 	// TODO(shaw): DELETE ME! JUST FOR DEVELOPMENT!
@@ -19,9 +19,9 @@ void syntax_error_at(SourcePos pos, char *fmt, ...) {
 void semantic_error(SourcePos pos, char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
-	printf("%s:%d: error: ", pos.filepath, pos.line);
-	vprintf(fmt, args);
-	printf("\n");
+	fprintf(stderr, "%s:%d: error: ", pos.filepath, pos.line);
+	vfprintf(stderr, fmt, args);
+	fprintf(stderr, "\n");
 	va_end(args);
 
 	// TODO(shaw): DELETE ME! JUST FOR DEVELOPMENT!
@@ -32,17 +32,17 @@ void semantic_error(SourcePos pos, char *fmt, ...) {
 void print_note(SourcePos pos, char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
-	printf("%s:%d: note: ", pos.filepath, pos.line);
-	vprintf(fmt, args);
-	printf("\n");
+	fprintf(stderr, "%s:%d: note: ", pos.filepath, pos.line);
+	vfprintf(stderr, fmt, args);
+	fprintf(stderr, "\n");
 	va_end(args);
 }
 
 void warning(SourcePos pos, char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
-	printf("%s:%d: warning: ", pos.filepath, pos.line);
-	vprintf(fmt, args);
-	printf("\n");
+	fprintf(stderr, "%s:%d: warning: ", pos.filepath, pos.line);
+	vfprintf(stderr, fmt, args);
+	fprintf(stderr, "\n");
 	va_end(args);
 }

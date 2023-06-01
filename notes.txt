@@ -1,6 +1,5 @@
 TODO:
 
-
 [ ] evaluate constants that are binary or unary expressions
     e.g.  const n0 = 1 + sizeof(p0);
 
@@ -55,7 +54,9 @@ TODO:
 
 [ ] improve error messages
 
-
+[X] issues with warnings being printed to stdout when redirecting output of
+    compilation to a file. should probably separate errors/warnings to printing
+    to stderr
 [X] when casting, if type is const, need to do type conversion of the constant
     value (possible truncation)
 [X] implicit break for switch cases
