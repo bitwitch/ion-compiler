@@ -51,7 +51,8 @@ struct Sym {
 };
 
 
-BUF(Sym **global_syms);
+Map global_syms_map;
+BUF(Sym **global_syms_buf);
 BUF(Sym **ordered_syms);
 Sym *local_syms[MAX_LOCAL_SYMS];
 Sym **local_syms_end = local_syms;
@@ -147,11 +148,7 @@ Sym *sym_get(char *name) {
 		if (sym->name == name) return sym;
 	}
 	// then check global symbols
-    for (int i=0; i<da_len(global_syms); ++i) {
-        Sym *sym = global_syms[i];
-        if (sym->name == name) return sym;
-    }
-    return NULL;
+	return map_get(&global_syms_map, name);
 }
 
 bool name_in_local_scope(char *name, Sym **scope_start) {
@@ -165,12 +162,16 @@ bool name_in_local_scope(char *name, Sym **scope_start) {
 void sym_put_decl(Decl *decl) {
     assert(sym_get(decl->name) == NULL);
 
-    da_push(global_syms, sym_decl(decl));
+	Sym *sym = sym_decl(decl);
+	map_put(&global_syms_map, decl->name, sym);
+	da_push(global_syms_buf, sym);
 
 	if (decl->kind == DECL_ENUM) {
 		EnumItem *items = decl->enum_decl.items;
 		for (int i = 0; i < decl->enum_decl.num_items; ++i) {
-			da_push(global_syms, sym_enum_const(items[i].name, decl));
+			Sym *s = sym_enum_const(items[i].name, decl);
+			map_put(&global_syms_map, items[i].name, s);
+			da_push(global_syms_buf, s);
 		}
 	}
 }
@@ -180,7 +181,8 @@ void sym_put_type(char *name, Type *type) {
     assert(sym_get(name) == NULL);
     Sym *sym = sym_type(name, type);
 	type->sym = sym;
-    da_push(global_syms, sym);
+	map_put(&global_syms_map, sym->name, sym);
+	da_push(global_syms_buf, sym);
 }
 
 void sym_put_const(char *name, Type *type, Val val) {
@@ -189,7 +191,8 @@ void sym_put_const(char *name, Type *type, Val val) {
 	sym->state = SYM_RESOLVED;
 	sym->type  = type;
 	sym->val   = val;
-    da_push(global_syms, sym);
+	map_put(&global_syms_map, sym->name, sym);
+	da_push(global_syms_buf, sym);
 }
 
 // initializes primative types and built-in constants
@@ -1650,9 +1653,10 @@ void resolve_test(void) {
         sym_put_decl(decl);
     }
 
-    for (int i = 0; i<da_len(global_syms); ++i) {
-        complete_sym(global_syms[i]);
-    }
+
+	for (int i = 0; i<da_len(global_syms_buf); ++i) {
+		complete_sym(global_syms_buf[i]);
+	}
 
     for (int i = 0; i<da_len(ordered_syms); ++i) {
         Sym *sym = ordered_syms[i];
@@ -1660,7 +1664,8 @@ void resolve_test(void) {
         printf("\n");
     }
 
-	da_free(global_syms);
+	map_clear(&global_syms_map);
+	da_free(global_syms_buf);
 	da_free(ordered_syms);
 }
 

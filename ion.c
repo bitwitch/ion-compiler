@@ -28,14 +28,14 @@ int compile_file(char *path) {
 		sym_put_decl(decl);
 	}
 	
-	for (int i = 0; i<da_len(global_syms); ++i) {
-		complete_sym(global_syms[i]);
+	for (int i = 0; i<da_len(global_syms_buf); ++i) {
+		complete_sym(global_syms_buf[i]);
 	}
 
 	char *preamble = gen_preamble_c();
 	if (preamble) printf("%s\n", preamble);
 
-	char *forward_decls = gen_forward_decls_c(global_syms);
+	char *forward_decls = gen_forward_decls_c(global_syms_buf);
 	if (forward_decls) printf("%s\n", forward_decls);
 
 	for (int i = 0; i<da_len(ordered_syms); ++i) {

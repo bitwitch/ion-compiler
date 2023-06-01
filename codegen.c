@@ -577,7 +577,8 @@ void codegen_test(void) {
 		return;
 	}
 
-	da_free(global_syms);
+	map_clear(&global_syms_map);
+	da_free(global_syms_buf);
 	da_free(ordered_syms);
 }
 #undef INDENT_WIDTH

@@ -8,7 +8,8 @@ func test_unary() {
 	f := &a;
 	g := *f;
 
-	h := +some_const;
+	// h warns for shadowed variable
+	l := +some_const;
 	i := -some_const;
 	j := ~some_const;
 	k := !some_const;

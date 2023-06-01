@@ -1,8 +1,5 @@
 TODO:
 
-[ ] profiling (tried out superluminal, it is nice) confirms that
-    str_intern_range is the hottest function in the program. speed it up with a
-    hashmap
 
 [X] allow implicitly sized arrays
 	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
@@ -55,6 +52,9 @@ TODO:
 
 
 
+[X] profiling (tried out superluminal, it is nice) confirms that
+    str_intern_range is the hottest function in the program. speed it up with a
+    hashmap
 [X] issues with warnings being printed to stdout when redirecting output of
     compilation to a file. should probably separate errors/warnings to printing
     to stderr

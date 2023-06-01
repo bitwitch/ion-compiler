@@ -385,6 +385,12 @@ void map_put(Map *map, void *key, void *val) {
 
 }
 
+void map_clear(Map *map) {
+	free(map->keys);
+	free(map->vals);
+	memset(map, 0, sizeof(*map));
+}
+
 void map_test(void) {
 	Map map = {0};
 	enum { N = 1024 * 1024 };
