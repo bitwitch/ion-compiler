@@ -1,5 +1,12 @@
 TODO:
 
+[ ] defer statements
+    - statements are typechecked in the context of the defer statement
+    - at scope exit, defer statements execute in stack order
+    - disallow returns and breaks in defer statements
+    - see https://youtu.be/Oeqeqw4OHPE?t=2595
+    - the sort of "macro expansion" (by analogy) kind of defer only works
+      if we explicitly disallow shadowed local variables
 
 [X] allow implicitly sized arrays
 	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
@@ -17,6 +24,13 @@ TODO:
 
 [ ] control flow analysis, like detecting if all branches of an if statement
     return a value if they should
+
+[ ] define multiple variables of the same type with commas:
+    a, b: int;
+    var j, k: int;
+    struct int2 {
+        x, y: int;        
+    }
 
 [ ] comments
 	[X] single line
