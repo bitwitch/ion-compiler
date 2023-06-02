@@ -36,10 +36,6 @@ TODO:
 
 [ ] local_syms should probably be a stretchy buffer
 
-[ ] hash table
-  [ ] replace the linear search in str_intern
-  [ ] replace other naive linear searches
-
 [ ] constant expression evaluation
     [X] binary exprs
     [X] unary exprs
@@ -52,6 +48,13 @@ TODO:
 
 
 
+[X] hash table
+  [X] replace the linear search in str_intern
+  [X] replace other naive linear searches
+[X] compound literals: generate explicit type "cast" in c-syntax only when
+    compound literal is used in a non initializer context
+[x] handle compound literal arrays in implicit contexts like a function call
+    right now it decays to a ptr and so type checking fails
 [X] profiling (tried out superluminal, it is nice) confirms that
     str_intern_range is the hottest function in the program. speed it up with a
     hashmap

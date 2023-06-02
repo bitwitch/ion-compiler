@@ -1080,8 +1080,9 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		// resolve call arguments and type check against function parameters
 		for (int i = 0; i < expr->call.num_args; ++i) {
 			TypeField param = type->func.params[i];
-			ResolvedExpr arg = resolve_expr_expected(expr->call.args[i], param.type);
-			if (arg.type->kind == TYPE_ARRAY) {
+			Expr *arg_expr = expr->call.args[i];
+			ResolvedExpr arg = resolve_expr_expected(arg_expr, param.type);
+			if (arg.type->kind == TYPE_ARRAY && arg_expr->kind != EXPR_COMPOUND) {
 				pointer_decay(&arg);
 			}
 			if (i < type->func.num_params) {
@@ -1202,9 +1203,8 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 				args[i]->type = field_type;
 			}
 		}
-		// TODO(shaw): need to think more about this, it seems like a compound
-		// literal should be r-value, but not totally sure
-		result = resolved_rvalue(type);
+
+		result = resolved_lvalue(type);
 		break;
 	}
 

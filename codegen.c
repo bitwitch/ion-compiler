@@ -80,6 +80,32 @@ char *gen_type_c(Type *type, char *inner) {
 }
 
 char *gen_typespec_c(Typespec *typespec, char *inner);
+char *gen_expr_c(Expr *expr);
+
+char *gen_expr_compound_c(Expr *expr, bool is_init) {
+	// TODO(shaw): get the decl for the type here so that we can have named fields (designated initializer)
+	// (Vec2){ .x = 69, .y = 420 }
+
+	BUF(char *str) = NULL; // @LEAK
+
+	if (!is_init) {
+		if (expr->compound.typespec) {
+			da_printf(str, "(%s)", gen_typespec_c(expr->compound.typespec, ""));
+		} else {
+			da_printf(str, "(%s)", gen_type_c(expr->type, ""));
+		}
+	}
+	da_printf(str, "{");
+
+	int num_args = expr->compound.num_args;
+	for (int i=0; i<num_args; ++i) {
+		da_printf(str, "%s%s", 
+				gen_expr_c(expr->compound.args[i]),
+				i == num_args - 1 ? "" : ", ");
+	}
+	da_printf(str, "}");
+	return str;
+}
 
 char *gen_expr_c(Expr *expr) {
     assert(expr);
@@ -96,6 +122,8 @@ char *gen_expr_c(Expr *expr) {
         return strf("%s", expr->name); 
     case EXPR_UNARY: 
 		return strf("%c(%s)", expr->unary.op, gen_expr_c(expr->unary.expr));
+    case EXPR_COMPOUND:
+		return gen_expr_compound_c(expr, false);
     case EXPR_INT: {
 		char *fmt = "%lld";
 		if (expr->mod == TOKENMOD_HEX || expr->mod == TOKENMOD_BIN) {
@@ -138,30 +166,6 @@ char *gen_expr_c(Expr *expr) {
         return strf("%s.%s",
             gen_expr_c(expr->field.expr),
             expr->field.name);
-    case EXPR_COMPOUND: {
-        // TODO(shaw): get the decl for the type here so that we can have named fields (designated initializer)
-        // (Vec2){ .x = 69, .y = 420 }
-
-		BUF(char *str) = NULL; // @LEAK
-
-		if (expr->type->kind != TYPE_ARRAY) {
-			if (expr->compound.typespec) {
-				da_printf(str, "(%s)", gen_typespec_c(expr->compound.typespec, ""));
-			} else {
-				da_printf(str, "(%s)", gen_type_c(expr->type, ""));
-			}
-		}
-		da_printf(str, "{");
-
-        int num_args = expr->compound.num_args;
-        for (int i=0; i<num_args; ++i) {
-			da_printf(str, "%s%s", 
-				gen_expr_c(expr->compound.args[i]),
-				i == num_args - 1 ? "" : ", ");
-        }
-		da_printf(str, "}");
-		return str;
-    }
 	case EXPR_CAST:
 		return strf("(%s)(%s)", 
 			gen_typespec_c(expr->cast.typespec, ""),
@@ -280,7 +284,10 @@ char *gen_stmt_c(Stmt *stmt) {
 			: gen_type_c(stmt->init.expr->type, stmt->init.name);
 
 		if (stmt->init.expr) {
-			return strf("%s = %s", type, gen_expr_c(stmt->init.expr));
+			char *init_expr = (stmt->init.expr->kind == EXPR_COMPOUND) 
+				? gen_expr_compound_c(stmt->init.expr, true)
+				: gen_expr_c(stmt->init.expr);
+			return strf("%s = %s", type, init_expr);
 		} else {
 			return strf("%s", type);
 		}
@@ -414,7 +421,10 @@ char *gen_sym_c(Sym *sym) {
 			: gen_type_c(sym->type, decl->name);
 
 		if (decl->var.expr) {
-			return strf("%s = %s;", type, gen_expr_c(decl->var.expr));
+			char *init_expr = (decl->var.expr->kind == EXPR_COMPOUND) 
+				? gen_expr_compound_c(decl->var.expr, true)
+				: gen_expr_c(decl->var.expr);
+			return strf("%s = %s;", type, init_expr);
 		} else {
 			return strf("%s;", type);
 		}
