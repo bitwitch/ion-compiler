@@ -49,5 +49,5 @@ struct T(?) {
 
 print("func main(argc: int, argv: char**): int { return 0; }")
 
-for i in range(2 * 1024):
+for i in range(4 * 1024):
     print(template.replace("(?)", str(i)))

@@ -63,7 +63,7 @@ struct Type {
 };
 
 Arena type_arena;
-BUF(Type **cached_ptr_types);
+Map cached_ptr_types;
 BUF(Type **cached_array_types);
 BUF(Type **cached_func_types);
 
@@ -137,17 +137,14 @@ Type *type_alloc(TypeKind kind) {
 }
 
 Type *type_ptr(Type *base) {
-    for (int i=0; i<da_len(cached_ptr_types); ++i) {
-        Type *cached = cached_ptr_types[i];
-        if (cached->ptr.base == base)
-            return cached;
-    }
+	Type *cached = map_get(&cached_ptr_types, base);
+	if (cached) return cached;
 
     Type *t = type_alloc(TYPE_PTR);
     t->size = PTR_SIZE;
 	t->align = PTR_SIZE;
     t->ptr.base = base;
-    da_push(cached_ptr_types, t);
+	map_put(&cached_ptr_types, base, t);
     return t;
 }
 
