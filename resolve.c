@@ -436,6 +436,9 @@ void cast_operand(ResolvedExpr *operand, Type *type) {
 		case TYPE_FLOAT:     CASE(f,   float);    break;
 		case TYPE_DOUBLE:    CASE(d,   double);   break;
 		case TYPE_BOOL:      CASE(b,   bool);     break;
+		case TYPE_PTR:
+			assert(is_null_ptr(*operand));
+			break;
 		default: 
 			assert(0); 
 			break;

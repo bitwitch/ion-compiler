@@ -1,9 +1,8 @@
 @foreign func printf(fmt: char*, ...): int {}
 @foreign func scanf(fmt: char*, ...): int {}
 @foreign func rand(): int {}
-@foreign func time(arg: int* ): int {}
-// @foreign func srand(seed: uint) {}
-@foreign func srand(seed: int) {}
+@foreign func time(arg: void* ): int {}
+@foreign func srand(seed: uint) {}
 
 var board: char[3][3] = {0};
 
