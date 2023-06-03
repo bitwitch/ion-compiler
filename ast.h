@@ -28,6 +28,7 @@ stmt = 'return' expr? ';'
      | 'while' '(' expr ')' stmt_block
      | 'switch' '(' expr ')' case* ('default' ':' stmt*)?
      | expr (INC | DEC | assign_op expr)?
+     | 'defer' stmt ';'
 
 base_type = NAME
           | 'func' '(' type_list? ')' (':' type)?
@@ -202,6 +203,7 @@ typedef enum {
 	STMT_ASSIGN,
 	STMT_INIT,
 	STMT_EXPR,
+	STMT_DEFER,
 } StmtKind;
 
 struct Stmt {
@@ -245,6 +247,9 @@ struct Stmt {
         struct {
             Expr *expr;
         } return_stmt;
+        struct {
+			Stmt *stmt;
+        } defer;
     };
 };
 

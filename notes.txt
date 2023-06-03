@@ -1,12 +1,20 @@
 TODO:
 
-[ ] defer statements
+[ ] when reordering functions in tictactoe, shadowed variable warnings were
+    incorrectly triggering
+
+[X] defer statements
+    [X] disallow returns and breaks in defer statements
     - statements are typechecked in the context of the defer statement
     - at scope exit, defer statements execute in stack order
-    - disallow returns and breaks in defer statements
     - see https://youtu.be/Oeqeqw4OHPE?t=2595
     - the sort of "macro expansion" (by analogy) kind of defer only works
       if we explicitly disallow shadowed local variables
+
+[ ] handle generating . vs -> for field access of values vs pointers in c
+    codegen
+
+[ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
 [X] allow implicitly sized arrays
 	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
@@ -16,8 +24,6 @@ TODO:
 
 [ ] issue warnings for conversions that could potentially lose information
     (truncations)
-
-[ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
 [ ] think about removing var keyword, could just look ahead to see if the next
 		token is ':' to tell if it is a DECL_VAR
@@ -29,12 +35,15 @@ TODO:
     a, b: int;
     var j, k: int;
     struct int2 {
-        x, y: int;        
+        x, y: int;
     }
 
 [ ] comments
 	[X] single line
-	[ ] multi line  
+	[ ] multi line 
+
+[ ] return and continue statements inside switch cases should NOT be followed by
+    an implicit break
 	
 [ ] string escape chars
     [X] \n, \t, \\, \', \"

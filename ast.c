@@ -227,6 +227,12 @@ Stmt *stmt_return(SourcePos pos, Expr *expr) {
     return stmt;
 }
 
+Stmt *stmt_defer(SourcePos pos, Stmt *inner_stmt) {
+	Stmt *stmt = stmt_alloc(STMT_DEFER, pos);
+    stmt->defer.stmt = inner_stmt;
+    return stmt;
+}
+
 Stmt *stmt_for(SourcePos pos, Stmt *init, Expr *cond, Stmt *next, StmtBlock block) {
 	Stmt *stmt = stmt_alloc(STMT_FOR, pos);
     stmt->for_stmt.init = init;

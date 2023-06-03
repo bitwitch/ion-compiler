@@ -287,6 +287,11 @@ Stmt *parse_stmt_return(void) {
     return stmt_return(pos, expr);
 }
 
+Stmt *parse_stmt_defer(void) {
+	SourcePos pos = token.pos;
+    Stmt *stmt = parse_stmt();
+    return stmt_defer(pos, stmt);
+}
 
 Stmt *parse_stmt_if(void) {
 	SourcePos pos = token.pos;
@@ -470,6 +475,8 @@ Stmt *parse_stmt(void) {
         return parse_stmt_while();
     else if (match_keyword(keyword_switch))
         return parse_stmt_switch();
+    else if (match_keyword(keyword_defer))
+        return parse_stmt_defer();
     else if (is_token('{'))
 		return stmt_brace_block(token.pos, parse_stmt_block());
     else {

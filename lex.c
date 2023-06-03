@@ -85,6 +85,7 @@ char *keyword_case;
 char *keyword_default;
 char *keyword_cast;
 char *keyword_sizeof;
+char *keyword_defer;
 
 // non-keyword string interned names
 char *name_foreign;
@@ -112,6 +113,7 @@ void init_keywords(void) {
         keyword_default = str_intern("default");
         keyword_cast = str_intern("cast");
         keyword_sizeof = str_intern("sizeof");
+        keyword_defer = str_intern("defer");
 
 		name_foreign = str_intern("foreign");
 	}
@@ -139,7 +141,8 @@ bool is_keyword_name(char *check) {
            s == keyword_case     ||
            s == keyword_default  ||
            s == keyword_cast     ||
-           s == keyword_sizeof;
+           s == keyword_sizeof   ||
+           s == keyword_defer;
 }
 
 uint8_t char_to_digit[256] = {

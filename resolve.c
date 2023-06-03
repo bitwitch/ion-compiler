@@ -1228,6 +1228,9 @@ ResolvedExpr resolve_expr(Expr *expr) {
 	return resolve_expr_expected(expr, NULL);
 }
 
+bool stmt_illegal_in_defer(Stmt *stmt) {
+	return stmt->kind == STMT_RETURN || stmt->kind == STMT_BREAK || stmt->kind == STMT_CONTINUE;
+}
 
 void resolve_stmt_block(StmtBlock block, Type *expected_ret_type);
 
@@ -1253,11 +1256,39 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 			break;
 
 		case STMT_RETURN: {
-			if (!stmt->return_stmt.expr) break;
+			if (!stmt->return_stmt.expr) {
+				if (expected_ret_type) {
+					semantic_error(stmt->pos, "expected return type %s, got no value", 
+						type_to_str(expected_ret_type));
+				}
+				break;
+			}
 			ResolvedExpr resolved = resolve_expr(stmt->return_stmt.expr);
 			if (resolved.type != expected_ret_type) {
 				semantic_error(stmt->pos, "expected return type %s, got %s", 
 					type_to_str(expected_ret_type), type_to_str(resolved.type));
+			}
+			break;
+		}
+		case STMT_DEFER: {
+			Stmt *inner_stmt = stmt->defer.stmt;
+			if (inner_stmt->kind == STMT_BRACE_BLOCK) {
+				Sym **scope_start = sym_enter_scope();
+				for (int i = 0; i < inner_stmt->block.num_stmts; ++i) {
+					Stmt *block_stmt = inner_stmt->block.stmts[i];
+					if (stmt_illegal_in_defer(block_stmt)) {
+						semantic_error(block_stmt->pos,
+							"illegal statement in defer block; return, break, and continue are not allowed");
+						continue;
+					}
+					resolve_stmt(scope_start, block_stmt, expected_ret_type);
+				}
+				sym_leave_scope(scope_start);
+			} else if (stmt_illegal_in_defer(inner_stmt)) {
+				semantic_error(inner_stmt->pos,
+					"illegal statement in defer; return, break, and continue are not allowed");
+			} else {
+				resolve_stmt(scope_start, inner_stmt, expected_ret_type);
 			}
 			break;
 		}

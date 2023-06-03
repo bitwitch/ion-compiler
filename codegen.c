@@ -1,6 +1,41 @@
 // @LEAK all the strf calls allocate and leak, right now strf calls malloc, but
 // will switch to arena allocator in future
 
+#define MAX_DEFER_STACK 4096
+Stmt *defer_stack[MAX_DEFER_STACK];
+Stmt **defer_stack_end = defer_stack;
+// the innermost scope that break or continue refer to
+Stmt **defer_break_scope = defer_stack;
+
+Stmt **defer_enter_scope(void) {
+	return defer_stack_end;
+}
+
+void defer_leave_scope(Stmt **scope_start) {
+	defer_stack_end = scope_start;
+}
+
+void defer_leave_break_scope(Stmt **scope_start) {
+	defer_break_scope = scope_start;
+}
+
+void defer_push(Stmt *stmt) {
+	if (defer_stack_end > defer_stack + MAX_DEFER_STACK) {
+		fatal("Too many active defer statements, max is %d", MAX_DEFER_STACK);
+	}
+	*defer_stack_end++ = stmt;
+}
+
+Stmt *defer_pop_scoped(Stmt **scope_start) {
+	if (!scope_start) scope_start = defer_stack;
+	if (defer_stack_end <= scope_start || defer_stack_end == defer_stack) {
+		return NULL;
+	}
+	--defer_stack_end;
+	return *defer_stack_end;
+}
+
+
 #define INDENT_WIDTH 4
 static int gen_indent = 0; 
 
@@ -250,19 +285,56 @@ char *gen_forward_decls_c(Sym **global_syms) {
 	return str;
 }
 
+bool semicolon_follows_stmt_c(Stmt *stmt) {
+	return stmt->kind == STMT_RETURN   ||
+		   stmt->kind == STMT_CONTINUE ||
+		   stmt->kind == STMT_BREAK    ||
+		   stmt->kind == STMT_DO       ||
+		   stmt->kind == STMT_ASSIGN   ||
+		   stmt->kind == STMT_INIT     ||
+		   stmt->kind == STMT_EXPR;
+}
 
-char *gen_stmt_block_c(StmtBlock block);
+char *gen_stmt_c(Stmt *stmt, Stmt **break_scope_start, Stmt **scope_start);
+char *gen_stmt_block_c(StmtBlock block, Stmt **break_scope_start);
 
-char *gen_stmt_c(Stmt *stmt) {
+char *gen_defers_c(Stmt **break_scope, Stmt **scope, Stmt **defer_scope, bool trailing_newline) {
+	BUF(char *str) = NULL;
+	Stmt *defer_stmt = defer_pop_scoped(defer_scope);
+	while (defer_stmt) {
+		da_printf(str, "%s", gen_stmt_c(defer_stmt, break_scope, scope));
+		if (semicolon_follows_stmt_c(defer_stmt))
+			da_printf(str, ";");
+		defer_stmt = defer_pop_scoped(defer_scope);
+		if (defer_stmt || trailing_newline)
+			gen_newline(str);
+	}
+	return str;
+}
+
+
+char *gen_stmt_c(Stmt *stmt, Stmt **break_scope_start, Stmt **scope_start) {
 	switch (stmt->kind) {
-	case STMT_CONTINUE:
-		return "continue";
-	case STMT_BREAK:
-		return "break";
-	case STMT_RETURN:
-		return strf("return %s", gen_expr_c(stmt->return_stmt.expr));
+	case STMT_CONTINUE: {
+		BUF(char *str) = NULL;
+		char *defers = gen_defers_c(break_scope_start, scope_start, break_scope_start, true);
+		return defers ? strf("%scontinue", defers) : "continue";
+	}
+	case STMT_BREAK: {
+		char *defers = gen_defers_c(break_scope_start, scope_start, break_scope_start, true);
+		return defers ? strf("%sbreak", defers) : "break";
+	}
+	case STMT_RETURN: {
+		char *defers = gen_defers_c(break_scope_start, scope_start, NULL, true);
+		char *expr = gen_expr_c(stmt->return_stmt.expr);
+		if (defers) {
+			return strf("%sreturn %s", defers, expr);
+		} else {
+			return strf("return %s", expr);
+		}
+	}
 	case STMT_BRACE_BLOCK:
-		return gen_stmt_block_c(stmt->block);
+		return gen_stmt_block_c(stmt->block, break_scope_start);
 	case STMT_EXPR:
 		return gen_expr_c(stmt->expr);
 
@@ -297,39 +369,52 @@ char *gen_stmt_c(Stmt *stmt) {
 		BUF(char *str) = NULL;
 		da_printf(str, "if (%s) %s", 
 				gen_expr_c(stmt->if_stmt.cond),
-				gen_stmt_block_c(stmt->if_stmt.then_block));
+				gen_stmt_block_c(stmt->if_stmt.then_block, break_scope_start));
 
 		ElseIf *else_ifs = stmt->if_stmt.else_ifs; 
 		for (int i=0; i < stmt->if_stmt.num_else_ifs; ++i) {
 			da_printf(str, " else if (%s) %s", 
 				gen_expr_c(else_ifs[i].cond),
-				gen_stmt_block_c(else_ifs[i].block));
+				gen_stmt_block_c(else_ifs[i].block, break_scope_start));
 		}
 
 		StmtBlock else_block = stmt->if_stmt.else_block;
 		if (else_block.num_stmts > 0) {
-			da_printf(str, " else %s", gen_stmt_block_c(stmt->if_stmt.else_block));
+			da_printf(str, " else %s", gen_stmt_block_c(stmt->if_stmt.else_block, break_scope_start));
 		}
 		return str;
 	}
 
 	case STMT_FOR: {
-		char *init = stmt->for_stmt.init ? gen_stmt_c(stmt->for_stmt.init) : "";
+		char *init = stmt->for_stmt.init ? gen_stmt_c(stmt->for_stmt.init, break_scope_start, scope_start) : "";
 		char *cond = stmt->for_stmt.cond ? gen_expr_c(stmt->for_stmt.cond) : "";
-		char *next = stmt->for_stmt.next ? gen_stmt_c(stmt->for_stmt.next) : "";
-		return strf("for (%s; %s; %s) %s", init, cond, next, gen_stmt_block_c(stmt->for_stmt.block));
+		char *next = stmt->for_stmt.next ? gen_stmt_c(stmt->for_stmt.next, break_scope_start, scope_start) : "";
+
+		Stmt **break_scope_start = defer_enter_scope();
+		char *block = gen_stmt_block_c(stmt->for_stmt.block, break_scope_start);
+		defer_leave_break_scope(break_scope_start);
+
+		return strf("for (%s; %s; %s) %s", init, cond, next, block);
 	}
 
 	case STMT_DO: {
-		return strf("do %s while(%s)", 
-			gen_stmt_block_c(stmt->while_stmt.block),
-			gen_expr_c(stmt->while_stmt.cond));
+		Stmt **break_scope_start = defer_enter_scope();
+		char *block = gen_stmt_block_c(stmt->while_stmt.block, break_scope_start);
+		defer_leave_break_scope(break_scope_start);
+
+		char *cond = gen_expr_c(stmt->while_stmt.cond);
+
+		return strf("do %s while(%s)", block, cond);
 	}
 
 	case STMT_WHILE: {
-		return strf("while(%s) %s", 
-			gen_expr_c(stmt->while_stmt.cond),
-			gen_stmt_block_c(stmt->while_stmt.block));
+		char *cond = gen_expr_c(stmt->while_stmt.cond);
+
+		Stmt **break_scope_start = defer_enter_scope();
+		char *block = gen_stmt_block_c(stmt->while_stmt.block, break_scope_start);
+		defer_leave_break_scope(break_scope_start);
+
+		return strf("while(%s) %s", cond, block);
 	}
 
 	case STMT_SWITCH: {
@@ -348,7 +433,7 @@ char *gen_stmt_c(Stmt *stmt) {
 						gen_newline(str);
 				}
 			}
-			da_printf(str, "%s", gen_stmt_block_c(switch_case.block));
+			da_printf(str, "%s", gen_stmt_block_c(switch_case.block, break_scope_start));
 			if (i < stmt->switch_stmt.num_cases - 1)
 				gen_newline(str);
 		}
@@ -364,29 +449,33 @@ char *gen_stmt_c(Stmt *stmt) {
 	}
 }
 
-bool semicolon_follows_stmt_c(Stmt *stmt) {
-	return stmt->kind == STMT_RETURN   ||
-		   stmt->kind == STMT_CONTINUE ||
-		   stmt->kind == STMT_BREAK    ||
-		   stmt->kind == STMT_DO       ||
-		   stmt->kind == STMT_ASSIGN   ||
-		   stmt->kind == STMT_INIT     ||
-		   stmt->kind == STMT_EXPR;
-}
-
-char *gen_stmt_block_c(StmtBlock block) {
+char *gen_stmt_block_c(StmtBlock block, Stmt **break_scope_start) {
 	BUF(char *str) = NULL; // @LEAK
 	da_printf(str, "{");
+	Stmt **scope_start = defer_enter_scope();
 	++gen_indent;
 	gen_newline(str);
 	for (int i=0; i<block.num_stmts; ++i) {
 		Stmt *stmt = block.stmts[i];
-		da_printf(str, "%s", gen_stmt_c(stmt));
+		if (stmt->kind == STMT_DEFER) {
+			defer_push(stmt->defer.stmt);
+			continue;
+		}
+		da_printf(str, "%s", gen_stmt_c(stmt, break_scope_start, scope_start));
 		if (semicolon_follows_stmt_c(stmt))
 			da_printf(str, ";");
 		if (i < block.num_stmts - 1) 
 			gen_newline(str);
 	}
+
+	// generate defers for current scope
+	char *defers = gen_defers_c(break_scope_start, scope_start, scope_start, false);
+	if (defers) {
+		gen_newline(str);
+		da_printf(str, "%s", defers);
+	}
+	defer_leave_scope(scope_start);
+
 	--gen_indent;
 	gen_newline(str);
 	da_printf(str, "}");
@@ -499,7 +588,7 @@ char *gen_sym_c(Sym *sym) {
 		if (decl->func.is_variadic) {
 			da_printf(str, ", ...");
 		}
-		da_printf(str, ") %s", gen_stmt_block_c(decl->func.block));
+		da_printf(str, ") %s", gen_stmt_block_c(decl->func.block, NULL));
 
 		return str;
 	}
