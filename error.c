@@ -25,8 +25,8 @@ void semantic_error(SourcePos pos, char *fmt, ...) {
 	va_end(args);
 
 	// TODO(shaw): DELETE ME! JUST FOR DEVELOPMENT!
-	assert(0);
-	exit(1);
+	// assert(0);
+	// exit(1);
 }
 
 void print_note(SourcePos pos, char *fmt, ...) {

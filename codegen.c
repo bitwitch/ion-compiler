@@ -261,6 +261,40 @@ char *gen_typespec_c(Typespec *typespec, char *inner) {
 	}
 }
 
+bool note_is_foreign(Decl *decl) {
+	for (int i=0; i<decl->notes.num_notes; ++i) {
+		if (decl->notes.notes[i].name == name_foreign)
+			return true;
+	}
+	return false;
+}
+
+char *gen_decl_func_c(Decl *decl) {
+	BUF(char *str) = NULL; // @LEAK
+
+	if (decl->func.ret_typespec) {
+		da_printf(str, "%s ", gen_typespec_c(decl->func.ret_typespec, ""));
+	} else {
+		da_printf(str, "void ");
+	}
+
+	da_printf(str, "%s(", decl->name);
+
+	int num_params = decl->func.num_params;
+	if (num_params == 0) {
+		da_printf(str, "void");
+	}
+	for (int i=0; i<num_params; ++i) {
+		FuncParam param = decl->func.params[i];
+		da_printf(str, "%s%s", gen_typespec_c(param.typespec, param.name), i == num_params-1 ? "" : ", ");
+	}
+	if (decl->func.is_variadic) {
+		da_printf(str, ", ...");
+	}
+	da_printf(str, ")");
+	return str;
+}
+
 char *gen_forward_decls_c(Sym **global_syms) {
 	BUF(char *str) = NULL;
 
@@ -278,6 +312,11 @@ char *gen_forward_decls_c(Sym **global_syms) {
 				gen_newline(str);
 			} else if (sym->decl->kind == DECL_ENUM) {
 				da_printf(str, "typedef enum %s %s;", sym->name, sym->name);
+				gen_newline(str);
+			}
+		} else if (sym->kind == SYM_FUNC) {
+			if (!note_is_foreign(sym->decl)) {
+				da_printf(str, "%s;", gen_decl_func_c(sym->decl));
 				gen_newline(str);
 			}
 		}
@@ -482,13 +521,7 @@ char *gen_stmt_block_c(StmtBlock block, Stmt **break_scope_start) {
 	return str;
 }
 
-bool note_is_foreign(Decl *decl) {
-	for (int i=0; i<decl->notes.num_notes; ++i) {
-		if (decl->notes.notes[i].name == name_foreign)
-			return true;
-	}
-	return false;
-}
+
 
 char *gen_sym_c(Sym *sym) {
 	Decl *decl = sym->decl;
@@ -567,30 +600,8 @@ char *gen_sym_c(Sym *sym) {
 	}
 
 	case DECL_FUNC: {
-		BUF(char *str) = NULL; // @LEAK
-
-		if (decl->func.ret_typespec) {
-			da_printf(str, "%s ", gen_typespec_c(decl->func.ret_typespec, ""));
-		} else {
-			da_printf(str, "void ");
-		}
-
-		da_printf(str, "%s(", decl->name);
-
-		int num_params = decl->func.num_params;
-		if (num_params == 0) {
-			da_printf(str, "void");
-		}
-		for (int i=0; i<num_params; ++i) {
-			FuncParam param = decl->func.params[i];
-			da_printf(str, "%s%s", gen_typespec_c(param.typespec, param.name), i == num_params-1 ? "" : ", ");
-		}
-		if (decl->func.is_variadic) {
-			da_printf(str, ", ...");
-		}
-		da_printf(str, ") %s", gen_stmt_block_c(decl->func.block, NULL));
-
-		return str;
+		char *signature = gen_decl_func_c(decl);
+		return strf("%s %s", signature, gen_stmt_block_c(decl->func.block, NULL));
 	}
 
 	default: 

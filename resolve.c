@@ -1366,17 +1366,20 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 
 		case STMT_INIT: {
 			// redeclaration in the current scope is an error
+			Sym *shadow = sym_get(stmt->init.name);
 			if (name_in_local_scope(stmt->init.name, scope_start)) {
 				semantic_error(stmt->pos, "redeclaration of variable '%s'", stmt->init.name);
-				Sym *sym = sym_get(stmt->init.name);
-				assert(sym->name && sym->type);
-				print_note(sym->decl->pos, "previous declaration of '%s' with type '%s'",
-					sym->name, type_to_str(sym->type));
+				assert(shadow->name && shadow->type);
+				print_note(shadow->decl->pos, "previous declaration of '%s' with type '%s'",
+					shadow->name, type_to_str(shadow->type));
 				break;
 
-			// shadowing a variable name is a warning
-			} else if (sym_get(stmt->init.name)) {
-				warning(stmt->pos, "shadowing variable name '%s'", stmt->init.name);
+			// shadowing a variable name is an error
+			} else if (shadow) {
+				semantic_error(stmt->pos, "shadowing variable name '%s'", stmt->init.name);
+				assert(shadow->name && shadow->type);
+				print_note(shadow->decl->pos, "previous declaration of '%s' with type '%s'",
+					shadow->name, type_to_str(shadow->type));
 			}
 
 			Type *type = NULL;
@@ -1542,7 +1545,7 @@ void resolve_sym(Sym *sym) {
         sym->type = resolve_decl_const(sym->decl, &sym->val); 
         break;
     case SYM_FUNC:  
-        sym->type = resolve_decl_func(sym->decl);  
+        sym->type = resolve_decl_func(sym->decl); 
 		sym->state = SYM_RESOLVED;
 		resolve_func_body(sym->decl, sym->type);
         break;
@@ -1567,7 +1570,9 @@ void complete_sym(Sym *sym) {
     resolve_sym(sym);
 	if (sym->kind == SYM_TYPE) {
         complete_type(sym->type);
-	}
+	} // else if (sym->kind == SYM_FUNC) {
+		// resolve_func_body(sym->decl, sym->type);
+	// }
 }
 
 Sym *resolve_name(char *name) {
