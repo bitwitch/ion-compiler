@@ -1,9 +1,5 @@
 TODO:
 
-
-[ ] handle generating . vs -> for field access of values vs pointers in c
-    codegen
-
 [ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
 [X] allow implicitly sized arrays
@@ -61,6 +57,8 @@ TODO:
 
 
 
+[X] handle generating . vs -> for field access of values vs pointers in c
+    codegen
 [X] in resolution: when we encounter a function DEFINITION, at that point we
     need to resolve the function body. however, any other reference to the
     function, like a call expression, should resolve the function signature, but
