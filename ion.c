@@ -38,6 +38,7 @@ int compile_file(char *path) {
 	char *forward_decls = gen_forward_decls_c(global_syms_buf);
 	if (forward_decls) printf("%s\n", forward_decls);
 
+	printf("// Definitions ----------------------------------------------------------------\n");
 	for (int i = 0; i<da_len(ordered_syms); ++i) {
 		Sym *sym = ordered_syms[i];
 		char *str = gen_sym_c(ordered_syms[i]);

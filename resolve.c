@@ -1547,8 +1547,7 @@ void resolve_sym(Sym *sym) {
     case SYM_FUNC:  
         sym->type = resolve_decl_func(sym->decl); 
 		sym->state = SYM_RESOLVED;
-		resolve_func_body(sym->decl, sym->type);
-        break;
+		return; // don't add to ordered_syms until the function body is resolved
     case SYM_TYPE: 
         sym->type = resolve_decl_type(sym->decl);  
 		sym->type->sym = sym;
@@ -1570,9 +1569,10 @@ void complete_sym(Sym *sym) {
     resolve_sym(sym);
 	if (sym->kind == SYM_TYPE) {
         complete_type(sym->type);
-	} // else if (sym->kind == SYM_FUNC) {
-		// resolve_func_body(sym->decl, sym->type);
-	// }
+	} else if (sym->kind == SYM_FUNC) {
+		resolve_func_body(sym->decl, sym->type);
+		da_push(ordered_syms, sym);
+	}
 }
 
 Sym *resolve_name(char *name) {

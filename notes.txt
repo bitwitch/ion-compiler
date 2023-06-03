@@ -1,15 +1,5 @@
 TODO:
 
-[ ] when reordering functions in tictactoe, shadowed variable warnings were
-    incorrectly triggering
-
-[X] defer statements
-    [X] disallow returns and breaks in defer statements
-    - statements are typechecked in the context of the defer statement
-    - at scope exit, defer statements execute in stack order
-    - see https://youtu.be/Oeqeqw4OHPE?t=2595
-    - the sort of "macro expansion" (by analogy) kind of defer only works
-      if we explicitly disallow shadowed local variables
 
 [ ] handle generating . vs -> for field access of values vs pointers in c
     codegen
@@ -71,6 +61,21 @@ TODO:
 
 
 
+[X] in resolution: when we encounter a function DEFINITION, at that point we
+    need to resolve the function body. however, any other reference to the
+    function, like a call expression, should resolve the function signature, but
+    NOT the function body. Importantly the function must also not be added to
+    the ordered symbol table until after its body has been resolved
+		[X] my previous attempts to address this have conflicted with resolving
+        recursive functions, so need to make sure recursive functions still
+        resolve correctly
+[X] defer statements
+    [X] disallow return, break, continue in defer statements
+    - statements are typechecked in the context of the defer statement
+    - at scope exit, defer statements execute in stack order
+    - see https://youtu.be/Oeqeqw4OHPE?t=2595
+    - the sort of "macro expansion" (by analogy) kind of defer only works
+      if we explicitly disallow shadowed local variables
 [X] hash table
   [X] replace the linear search in str_intern
   [X] replace other naive linear searches

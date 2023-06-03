@@ -297,8 +297,11 @@ char *gen_decl_func_c(Decl *decl) {
 
 char *gen_forward_decls_c(Sym **global_syms) {
 	BUF(char *str) = NULL;
+	BUF(Sym **func_syms) = NULL;
 
 	// forward declare types
+	da_printf(str, "// Forward declared types -----------------------------------------------------");
+	gen_newline(str);
 	for (int i=0; i<da_len(global_syms); ++i) {
 		Sym *sym = global_syms[i];
 		// NOTE(shaw): primative types don't have declarations, skip those
@@ -314,13 +317,25 @@ char *gen_forward_decls_c(Sym **global_syms) {
 				da_printf(str, "typedef enum %s %s;", sym->name, sym->name);
 				gen_newline(str);
 			}
+
+		// collect function symbols for later
 		} else if (sym->kind == SYM_FUNC) {
-			if (!note_is_foreign(sym->decl)) {
-				da_printf(str, "%s;", gen_decl_func_c(sym->decl));
-				gen_newline(str);
-			}
+			da_push(func_syms, sym);
 		}
 	}
+
+	gen_newline(str);
+	da_printf(str, "// Forward declared functions -------------------------------------------------");
+	gen_newline(str);
+	for (int i=0; i<da_len(func_syms); ++i) {
+		Sym *sym = func_syms[i];
+		if (!note_is_foreign(sym->decl)) {
+			da_printf(str, "%s;", gen_decl_func_c(sym->decl));
+			gen_newline(str);
+		}
+	}
+	da_free(func_syms);
+
 	return str;
 }
 
@@ -612,6 +627,7 @@ char *gen_sym_c(Sym *sym) {
 
 char *gen_preamble_c(void) {
 	BUF(char *preamble) = NULL;
+	da_printf(preamble, "// Preamble -------------------------------------------------------------------\n");
 	// c lib includes
 	da_printf(preamble, "%s\n", "#include <stdio.h>\n#include <stdbool.h>\n#include <stdlib.h>\n#include <time.h>\n");
 	// typedefs for primative types
