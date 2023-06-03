@@ -9,7 +9,7 @@ struct Window {
 
 func create_window(title: char*): Window* {
 	window: Window* = malloc(sizeof(:Window));
-	// window.title = title;
+	window.title = title;
 	return window;
 }
 

@@ -1132,13 +1132,18 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 	}
 
 	case EXPR_FIELD: {
-		ResolvedExpr base = resolve_expr(expr->field.expr);
-		complete_type(base.type);
-		if (base.type->kind != TYPE_STRUCT && base.type->kind != TYPE_UNION) {
+		ResolvedExpr operand = resolve_expr(expr->field.expr);
+		Type *type = operand.type;
+		if (operand.type->kind == TYPE_PTR) {
+			type = operand.type->ptr.base;
+		}
+		complete_type(type);
+		if (type->kind != TYPE_STRUCT && type->kind != TYPE_UNION) {
 			semantic_error(expr->pos, "attempting to access a field of a non struct or union");
 		}
-		TypeField *fields = base.type->aggregate.fields;
-		int num_fields =  base.type->aggregate.num_fields;
+
+		TypeField *fields = type->aggregate.fields;
+		int num_fields =  type->aggregate.num_fields;
 		bool found = false;
 		for (int i = 0; i < num_fields; ++i) {
 			if (expr->field.name == fields[i].name) {
@@ -1148,7 +1153,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 			}
 		}
 		if (!found) {
-			semantic_error(expr->pos, "%s is not a field of %s", expr->field.name, type_to_str(base.type));
+			semantic_error(expr->pos, "%s is not a field of %s", expr->field.name, type_to_str(type));
 		}
 		break;
 	}

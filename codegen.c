@@ -198,8 +198,11 @@ char *gen_expr_c(Expr *expr) {
 			gen_expr_c(expr->index.expr),
             gen_expr_c(expr->index.index));
     case EXPR_FIELD: 
-        return strf("%s.%s",
+		Type *type = expr->field.expr->type;
+		assert(type);
+        return strf("%s%s%s",
             gen_expr_c(expr->field.expr),
+			type->kind == TYPE_PTR ? "->" : ".",
             expr->field.name);
 	case EXPR_CAST:
 		return strf("(%s)(%s)", 
