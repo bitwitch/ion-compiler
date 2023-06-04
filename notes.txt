@@ -166,6 +166,12 @@ TODO:
 [X] type resolution, type checking
 [X] replace instances of fatal() with syntax_error() where appropriate. fatal is useful now in early development 
 
+2023-06-04
+--------------------------------------------------------------------------------
+break scope and continue scope can be different. I haven't encountered this yet,
+but in switch statements, break refers to the switch statement but continue
+refers to the innermost loop that it can break out of. right now for defers,
+there is no separation and this is causing a bug.
 
 2023-05-29
 --------------------------------------------------------------------------------

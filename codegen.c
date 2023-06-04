@@ -1,22 +1,30 @@
 // @LEAK all the strf calls allocate and leak, right now strf calls malloc, but
 // will switch to arena allocator in future
 
+typedef struct {
+	Stmt **continue_scope;
+	Stmt **break_scope;
+	Stmt **block_scope;
+} DeferScope;
+
 #define MAX_DEFER_STACK 4096
 Stmt *defer_stack[MAX_DEFER_STACK];
 Stmt **defer_stack_end = defer_stack;
 // the innermost scope that break or continue refer to
 Stmt **defer_break_scope = defer_stack;
+Stmt **defer_continue_scope = defer_stack;
 
 Stmt **defer_enter_scope(void) {
 	return defer_stack_end;
 }
 
-void defer_leave_scope(Stmt **scope_start) {
-	defer_stack_end = scope_start;
-}
-
-void defer_leave_break_scope(Stmt **scope_start) {
-	defer_break_scope = scope_start;
+void defer_leave_scope(Stmt **scope_start, bool leave_continue, bool leave_break, bool leave_block) {
+	if (leave_continue)
+		defer_continue_scope = scope_start;
+	if (leave_break)
+		defer_break_scope = scope_start;
+	if (leave_block)
+		defer_stack_end = scope_start;
 }
 
 void defer_push(Stmt *stmt) {
@@ -26,7 +34,7 @@ void defer_push(Stmt *stmt) {
 	*defer_stack_end++ = stmt;
 }
 
-Stmt *defer_pop_scoped(Stmt **scope_start) {
+Stmt *defer_pop(Stmt **scope_start) {
 	if (!scope_start) scope_start = defer_stack;
 	if (defer_stack_end <= scope_start || defer_stack_end == defer_stack) {
 		return NULL;
@@ -352,17 +360,17 @@ bool semicolon_follows_stmt_c(Stmt *stmt) {
 		   stmt->kind == STMT_EXPR;
 }
 
-char *gen_stmt_c(Stmt *stmt, Stmt **break_scope_start, Stmt **scope_start);
-char *gen_stmt_block_c(StmtBlock block, Stmt **break_scope_start);
+char *gen_stmt_c(Stmt *stmt, DeferScope defer_scope);
+char *gen_stmt_block_c(StmtBlock block, DeferScope defer_Scope);
 
-char *gen_defers_c(Stmt **break_scope, Stmt **scope, Stmt **defer_scope, bool trailing_newline) {
+char *gen_defers_c(DeferScope defer_scope, Stmt **scope_start, bool trailing_newline) {
 	BUF(char *str) = NULL;
-	Stmt *defer_stmt = defer_pop_scoped(defer_scope);
+	Stmt *defer_stmt = defer_pop(scope_start);
 	while (defer_stmt) {
-		da_printf(str, "%s", gen_stmt_c(defer_stmt, break_scope, scope));
+		da_printf(str, "%s", gen_stmt_c(defer_stmt, defer_scope));
 		if (semicolon_follows_stmt_c(defer_stmt))
 			da_printf(str, ";");
-		defer_stmt = defer_pop_scoped(defer_scope);
+		defer_stmt = defer_pop(scope_start);
 		if (defer_stmt || trailing_newline)
 			gen_newline(str);
 	}
@@ -370,28 +378,30 @@ char *gen_defers_c(Stmt **break_scope, Stmt **scope, Stmt **defer_scope, bool tr
 }
 
 
-char *gen_stmt_c(Stmt *stmt, Stmt **break_scope_start, Stmt **scope_start) {
+char *gen_stmt_c(Stmt *stmt, DeferScope defer_scope) {
 	switch (stmt->kind) {
 	case STMT_CONTINUE: {
-		BUF(char *str) = NULL;
-		char *defers = gen_defers_c(break_scope_start, scope_start, break_scope_start, true);
+		char *defers = gen_defers_c(defer_scope, defer_scope.continue_scope, true);
 		return defers ? strf("%scontinue", defers) : "continue";
 	}
 	case STMT_BREAK: {
-		char *defers = gen_defers_c(break_scope_start, scope_start, break_scope_start, true);
+		char *defers = gen_defers_c(defer_scope, defer_scope.break_scope, true);
 		return defers ? strf("%sbreak", defers) : "break";
 	}
 	case STMT_RETURN: {
-		char *defers = gen_defers_c(break_scope_start, scope_start, NULL, true);
-		char *expr = gen_expr_c(stmt->return_stmt.expr);
+		BUF(char *str) = NULL;
+		char *defers = gen_defers_c(defer_scope, NULL, true);
 		if (defers) {
-			return strf("%sreturn %s", defers, expr);
-		} else {
-			return strf("return %s", expr);
+			da_printf(str, defers);
+		} 
+		da_printf(str, "return");
+		if (stmt->return_stmt.expr) {
+			da_printf(str, " %s", gen_expr_c(stmt->return_stmt.expr));
 		}
+		return str;
 	}
 	case STMT_BRACE_BLOCK:
-		return gen_stmt_block_c(stmt->block, break_scope_start);
+		return gen_stmt_block_c(stmt->block, defer_scope);
 	case STMT_EXPR:
 		return gen_expr_c(stmt->expr);
 
@@ -426,38 +436,48 @@ char *gen_stmt_c(Stmt *stmt, Stmt **break_scope_start, Stmt **scope_start) {
 		BUF(char *str) = NULL;
 		da_printf(str, "if (%s) %s", 
 				gen_expr_c(stmt->if_stmt.cond),
-				gen_stmt_block_c(stmt->if_stmt.then_block, break_scope_start));
+				gen_stmt_block_c(stmt->if_stmt.then_block, defer_scope));
 
 		ElseIf *else_ifs = stmt->if_stmt.else_ifs; 
 		for (int i=0; i < stmt->if_stmt.num_else_ifs; ++i) {
 			da_printf(str, " else if (%s) %s", 
 				gen_expr_c(else_ifs[i].cond),
-				gen_stmt_block_c(else_ifs[i].block, break_scope_start));
+				gen_stmt_block_c(else_ifs[i].block, defer_scope));
 		}
 
 		StmtBlock else_block = stmt->if_stmt.else_block;
 		if (else_block.num_stmts > 0) {
-			da_printf(str, " else %s", gen_stmt_block_c(stmt->if_stmt.else_block, break_scope_start));
+			da_printf(str, " else %s", gen_stmt_block_c(stmt->if_stmt.else_block, defer_scope));
 		}
 		return str;
 	}
 
 	case STMT_FOR: {
-		char *init = stmt->for_stmt.init ? gen_stmt_c(stmt->for_stmt.init, break_scope_start, scope_start) : "";
+		char *init = stmt->for_stmt.init ? gen_stmt_c(stmt->for_stmt.init, defer_scope) : "";
 		char *cond = stmt->for_stmt.cond ? gen_expr_c(stmt->for_stmt.cond) : "";
-		char *next = stmt->for_stmt.next ? gen_stmt_c(stmt->for_stmt.next, break_scope_start, scope_start) : "";
+		char *next = stmt->for_stmt.next ? gen_stmt_c(stmt->for_stmt.next, defer_scope) : "";
 
-		Stmt **break_scope_start = defer_enter_scope();
-		char *block = gen_stmt_block_c(stmt->for_stmt.block, break_scope_start);
-		defer_leave_break_scope(break_scope_start);
+		Stmt **loop_scope = defer_enter_scope();
+		DeferScope new_defer_scope = { 
+			.continue_scope = loop_scope,
+			.break_scope    = loop_scope,
+			.block_scope    = defer_scope.block_scope,
+		};
+		char *block = gen_stmt_block_c(stmt->for_stmt.block, new_defer_scope);
+		defer_leave_scope(loop_scope, true, true, false);
 
 		return strf("for (%s; %s; %s) %s", init, cond, next, block);
 	}
 
 	case STMT_DO: {
-		Stmt **break_scope_start = defer_enter_scope();
-		char *block = gen_stmt_block_c(stmt->while_stmt.block, break_scope_start);
-		defer_leave_break_scope(break_scope_start);
+		Stmt **loop_scope = defer_enter_scope();
+		DeferScope new_defer_scope = { 
+			.continue_scope = loop_scope,
+			.break_scope    = loop_scope,
+			.block_scope    = defer_scope.block_scope,
+		};
+		char *block = gen_stmt_block_c(stmt->while_stmt.block, new_defer_scope);
+		defer_leave_scope(loop_scope, true, true, false);
 
 		char *cond = gen_expr_c(stmt->while_stmt.cond);
 
@@ -465,11 +485,16 @@ char *gen_stmt_c(Stmt *stmt, Stmt **break_scope_start, Stmt **scope_start) {
 	}
 
 	case STMT_WHILE: {
-		char *cond = gen_expr_c(stmt->while_stmt.cond);
+		Stmt **loop_scope = defer_enter_scope();
+		DeferScope new_defer_scope = { 
+			.continue_scope = loop_scope,
+			.break_scope    = loop_scope,
+			.block_scope    = defer_scope.block_scope,
+		};
+		char *block = gen_stmt_block_c(stmt->while_stmt.block, new_defer_scope);
+		defer_leave_scope(loop_scope, true, true, false);
 
-		Stmt **break_scope_start = defer_enter_scope();
-		char *block = gen_stmt_block_c(stmt->while_stmt.block, break_scope_start);
-		defer_leave_break_scope(break_scope_start);
+		char *cond = gen_expr_c(stmt->while_stmt.cond);
 
 		return strf("while(%s) %s", cond, block);
 	}
@@ -490,7 +515,12 @@ char *gen_stmt_c(Stmt *stmt, Stmt **break_scope_start, Stmt **scope_start) {
 						gen_newline(str);
 				}
 			}
-			da_printf(str, "%s", gen_stmt_block_c(switch_case.block, break_scope_start));
+
+			Stmt **new_break_scope = defer_enter_scope();
+			defer_scope.break_scope = new_break_scope;
+			da_printf(str, "%s", gen_stmt_block_c(switch_case.block, defer_scope));
+			defer_leave_scope(new_break_scope, false, true, false);
+
 			if (i < stmt->switch_stmt.num_cases - 1)
 				gen_newline(str);
 		}
@@ -506,19 +536,21 @@ char *gen_stmt_c(Stmt *stmt, Stmt **break_scope_start, Stmt **scope_start) {
 	}
 }
 
-char *gen_stmt_block_c(StmtBlock block, Stmt **break_scope_start) {
+char *gen_stmt_block_c(StmtBlock block, DeferScope defer_scope) {
 	BUF(char *str) = NULL; // @LEAK
 	da_printf(str, "{");
-	Stmt **scope_start = defer_enter_scope();
 	++gen_indent;
 	gen_newline(str);
+
+	Stmt **block_scope = defer_enter_scope();
+	defer_scope.block_scope = block_scope;
 	for (int i=0; i<block.num_stmts; ++i) {
 		Stmt *stmt = block.stmts[i];
 		if (stmt->kind == STMT_DEFER) {
 			defer_push(stmt->defer.stmt);
 			continue;
 		}
-		da_printf(str, "%s", gen_stmt_c(stmt, break_scope_start, scope_start));
+		da_printf(str, "%s", gen_stmt_c(stmt, defer_scope));
 		if (semicolon_follows_stmt_c(stmt))
 			da_printf(str, ";");
 		if (i < block.num_stmts - 1) 
@@ -526,12 +558,12 @@ char *gen_stmt_block_c(StmtBlock block, Stmt **break_scope_start) {
 	}
 
 	// generate defers for current scope
-	char *defers = gen_defers_c(break_scope_start, scope_start, scope_start, false);
+	char *defers = gen_defers_c(defer_scope, block_scope, false);
 	if (defers) {
 		gen_newline(str);
 		da_printf(str, "%s", defers);
 	}
-	defer_leave_scope(scope_start);
+	defer_leave_scope(block_scope, false, false, true);
 
 	--gen_indent;
 	gen_newline(str);
@@ -619,7 +651,8 @@ char *gen_sym_c(Sym *sym) {
 
 	case DECL_FUNC: {
 		char *signature = gen_decl_func_c(decl);
-		return strf("%s %s", signature, gen_stmt_block_c(decl->func.block, NULL));
+		DeferScope defer_scope = {0};
+		return strf("%s %s", signature, gen_stmt_block_c(decl->func.block, defer_scope));
 	}
 
 	default: 

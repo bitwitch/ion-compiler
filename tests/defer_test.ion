@@ -17,6 +17,28 @@ func destroy_window(window: Window*) {
 	free(window);
 }
 
+func nested() {
+	x: int;
+	defer x = 1;
+
+	cond1 := false;
+	cond2 := false;
+	cond3 := true;
+	cond4 := false;
+	
+	if (cond1) {
+		defer x = 2;
+		if (cond2) {
+			return;
+		}
+		defer x = 3;
+		defer x = 4;
+		if (cond3) {
+			return;
+		}
+	}
+}
+
 
 func main(argc: int, argv: char**): int {
 	window := create_window("Taco");

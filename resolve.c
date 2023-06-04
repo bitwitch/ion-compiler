@@ -57,6 +57,10 @@ BUF(Sym **ordered_syms);
 Sym *local_syms[MAX_LOCAL_SYMS];
 Sym **local_syms_end = local_syms;
 
+// set upon entering a new local scope and reset upon exit
+// used to issue errors for defer statements that follow a scope exit stmt
+Stmt *scope_exit_stmt;
+
 Arena resolve_arena;
 ResolvedExpr resolved_null = {0};
 
@@ -1246,7 +1250,7 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 	switch (stmt->kind) {
 		case STMT_CONTINUE:
 		case STMT_BREAK:
-			// do nothing
+			scope_exit_stmt = stmt;
 			break;
 		case STMT_EXPR:
 			resolve_expr(stmt->expr);
@@ -1261,8 +1265,9 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 			break;
 
 		case STMT_RETURN: {
+			scope_exit_stmt = stmt;
 			if (!stmt->return_stmt.expr) {
-				if (expected_ret_type) {
+				if (expected_ret_type && expected_ret_type != type_void) {
 					semantic_error(stmt->pos, "expected return type %s, got no value", 
 						type_to_str(expected_ret_type));
 				}
@@ -1276,6 +1281,9 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 			break;
 		}
 		case STMT_DEFER: {
+			if (scope_exit_stmt) {
+				semantic_error(stmt->pos, "defer statement cannot follow return, break, or continue in the current scope");
+			}
 			Stmt *inner_stmt = stmt->defer.stmt;
 			if (inner_stmt->kind == STMT_BRACE_BLOCK) {
 				Sym **scope_start = sym_enter_scope();
@@ -1428,11 +1436,14 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 }
 
 void resolve_stmt_block(StmtBlock block, Type *expected_ret_type) {
+	Stmt *prev_scope_exit_stmt = scope_exit_stmt;
+	scope_exit_stmt = NULL;
 	Sym **scope_start = sym_enter_scope();
 	for (int i = 0; i < block.num_stmts; ++i) {
 		resolve_stmt(scope_start, block.stmts[i], expected_ret_type);
 	}
 	sym_leave_scope(scope_start);
+	scope_exit_stmt = prev_scope_exit_stmt;
 }
 
 Type *resolve_decl_const(Decl *decl, Val *val) {
