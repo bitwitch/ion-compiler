@@ -51,6 +51,9 @@ TODO:
     [ ] cast exprs ??
 
 [ ] improve error messages
+    [ ] if a ';' follows a '}' in a top level declaration, should have a more
+        user friendly message to deal with this than "expected top level
+        declaration, got ';'"
 
 [ ] should string literals in var decls and init statements decay to pointer
     types or nah?? (s := "farts"; --> char *s = "farts";)

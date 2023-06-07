@@ -329,12 +329,13 @@ Decl *decl_aggregate(SourcePos pos, DeclKind kind, char *name, AggregateField *f
     return decl;
 }
 
-Decl *decl_func(SourcePos pos, char *name, FuncParam *params, int num_params, bool is_variadic, Typespec *ret_typespec, StmtBlock block) {
+Decl *decl_func(SourcePos pos, char *name, FuncParam *params, int num_params, bool is_variadic, bool is_incomplete, Typespec *ret_typespec, StmtBlock block) {
 	Decl *decl = decl_alloc(DECL_FUNC, pos);
     decl->name = name;
     decl->func.params = ast_memdup(params, num_params * sizeof(*params));
     decl->func.num_params = num_params;
     decl->func.is_variadic = is_variadic;
+    decl->func.is_incomplete = is_incomplete;
     decl->func.ret_typespec = ret_typespec;
     decl->func.block = block;
     return decl;

@@ -1,3 +1,7 @@
+func return_ptr(arg: int**): int** {
+	return arg;
+}
+
 func do_shit_with_struct(v: Vec3): float {
 	return v.x + v.y;
 }
@@ -27,7 +31,7 @@ func test_unary() {
 	f := &a;
 	g := *f;
 
-	// h warns for shadowed variable
+	// h is a shadowed variable error
 	l := +some_const;
 	i := -some_const;
 	j := ~some_const;

@@ -303,6 +303,7 @@ struct Decl {
             FuncParam *params;
             int num_params;
 			bool is_variadic;
+			bool is_incomplete; // true if function is declared but not defined
             Typespec *ret_typespec;
             StmtBlock block;
         } func;

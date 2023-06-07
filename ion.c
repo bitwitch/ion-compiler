@@ -22,28 +22,19 @@ int compile_file(char *path) {
 	sym_init_table();
 	init_stream(path, file_data);
 
-	// parse decls until you reach end of file
+	// parsing
 	while (token.kind != TOKEN_EOF) {
 		Decl *decl = parse_decl();
 		sym_put_decl(decl);
 	}
 	
+	// semantic analysis
 	for (int i = 0; i<da_len(global_syms_buf); ++i) {
 		complete_sym(global_syms_buf[i]);
 	}
 
-	char *preamble = gen_preamble_c();
-	if (preamble) printf("%s\n", preamble);
-
-	char *forward_decls = gen_forward_decls_c(global_syms_buf);
-	if (forward_decls) printf("%s\n", forward_decls);
-
-	printf("// Definitions ----------------------------------------------------------------\n");
-	for (int i = 0; i<da_len(ordered_syms); ++i) {
-		Sym *sym = ordered_syms[i];
-		char *str = gen_sym_c(ordered_syms[i]);
-		if (str) printf("%s\n", str);
-	}
+	// code generation
+	gen_all_c();
 
 	return 0;
 }

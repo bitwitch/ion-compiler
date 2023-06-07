@@ -283,12 +283,6 @@ bool note_is_foreign(Decl *decl) {
 char *gen_decl_func_c(Decl *decl) {
 	BUF(char *str) = NULL; // @LEAK
 
-	if (decl->func.ret_typespec) {
-		da_printf(str, "%s ", gen_typespec_c(decl->func.ret_typespec, ""));
-	} else {
-		da_printf(str, "void ");
-	}
-
 	da_printf(str, "%s(", decl->name);
 
 	int num_params = decl->func.num_params;
@@ -303,49 +297,12 @@ char *gen_decl_func_c(Decl *decl) {
 		da_printf(str, ", ...");
 	}
 	da_printf(str, ")");
-	return str;
-}
 
-char *gen_forward_decls_c(Sym **global_syms) {
-	BUF(char *str) = NULL;
-	BUF(Sym **func_syms) = NULL;
-
-	// forward declare types
-	da_printf(str, "// Forward declared types -----------------------------------------------------");
-	gen_newline(str);
-	for (int i=0; i<da_len(global_syms); ++i) {
-		Sym *sym = global_syms[i];
-		// NOTE(shaw): primative types don't have declarations, skip those
-		if (!sym->decl) continue;
-		if (sym->kind == SYM_TYPE) {
-			if (sym->decl->kind == DECL_STRUCT) {
-				da_printf(str, "typedef struct %s %s;", sym->name, sym->name);
-				gen_newline(str);
-			} else if (sym->decl->kind == DECL_UNION) {
-				da_printf(str, "typedef union %s %s;", sym->name, sym->name);
-				gen_newline(str);
-			} else if (sym->decl->kind == DECL_ENUM) {
-				da_printf(str, "typedef enum %s %s;", sym->name, sym->name);
-				gen_newline(str);
-			}
-
-		// collect function symbols for later
-		} else if (sym->kind == SYM_FUNC) {
-			da_push(func_syms, sym);
-		}
+	if (decl->func.ret_typespec) {
+		return strf("%s", gen_typespec_c(decl->func.ret_typespec, str));
+	} else {
+		return strf("void %s", str);
 	}
-
-	gen_newline(str);
-	da_printf(str, "// Forward declared functions -------------------------------------------------");
-	gen_newline(str);
-	for (int i=0; i<da_len(func_syms); ++i) {
-		Sym *sym = func_syms[i];
-		if (!note_is_foreign(sym->decl)) {
-			da_printf(str, "%s;", gen_decl_func_c(sym->decl));
-			gen_newline(str);
-		}
-	}
-	da_free(func_syms);
 
 	return str;
 }
@@ -392,7 +349,7 @@ char *gen_stmt_c(Stmt *stmt, DeferScope defer_scope) {
 		BUF(char *str) = NULL;
 		char *defers = gen_defers_c(defer_scope, NULL, true);
 		if (defers) {
-			da_printf(str, defers);
+			da_printf(str, "%s", defers);
 		} 
 		da_printf(str, "return");
 		if (stmt->return_stmt.expr) {
@@ -571,9 +528,8 @@ char *gen_stmt_block_c(StmtBlock block, DeferScope defer_scope) {
 	return str;
 }
 
-
-
-char *gen_sym_c(Sym *sym) {
+// generate declaration from symbol
+char *gen_sym_decl_c(Sym *sym) {
 	Decl *decl = sym->decl;
 	assert(decl);
 
@@ -583,37 +539,25 @@ char *gen_sym_c(Sym *sym) {
 	}
 
 	switch (decl->kind) {
-	case DECL_CONST: {
-		return strf("enum { %s = %s };", decl->name, gen_expr_c(decl->const_decl.expr));
-	}
-
-	case DECL_VAR: {
-		char *type = decl->var.typespec
-			? gen_typespec_c(decl->var.typespec, decl->name)
-			: gen_type_c(sym->type, decl->name);
-
-		if (decl->var.expr) {
-			char *init_expr = (decl->var.expr->kind == EXPR_COMPOUND) 
-				? gen_expr_compound_c(decl->var.expr, true)
-				: gen_expr_c(decl->var.expr);
-			return strf("%s = %s;", type, init_expr);
-		} else {
-			return strf("%s;", type);
-		}
-	}
-
-	case DECL_TYPEDEF: {
+	case DECL_CONST:
+		// constants are definition only, so do nothing here
+		break;
+	case DECL_TYPEDEF:
 		return strf("typedef %s;", gen_typespec_c(decl->typedef_decl.typespec, decl->name));
-	}
 
 	case DECL_UNION:
 	case DECL_STRUCT: {
+		int num_fields = decl->aggregate.num_fields;
+		if (num_fields == 0) {
+			// NOTE: rely on aggregate declarations all being generated at the top of the file in gen_forward_decls()
+			break;
+		}
+
 		BUF(char *str) = NULL; // @LEAK
 		da_printf(str, "%s %s {", decl->kind == DECL_STRUCT ? "struct" : "union", decl->name);
 		++gen_indent;
 		gen_newline(str);
 
-		int num_fields = decl->aggregate.num_fields;
 		for (int i=0; i<num_fields; ++i) {
 			AggregateField field = decl->aggregate.fields[i];
 			da_printf(str, "%s;", gen_typespec_c(field.typespec, field.name));
@@ -649,17 +593,81 @@ char *gen_sym_c(Sym *sym) {
 		return str;
 	}
 
-	case DECL_FUNC: {
-		char *signature = gen_decl_func_c(decl);
-		DeferScope defer_scope = {0};
-		return strf("%s %s", signature, gen_stmt_block_c(decl->func.block, defer_scope));
+	case DECL_VAR: {
+		char *str = decl->var.typespec
+			? gen_typespec_c(decl->var.typespec, decl->name)
+			: gen_type_c(sym->type, decl->name);
+		return strf("extern %s;", str); 
 	}
 
+	case DECL_FUNC: {
+		return strf("%s;", gen_decl_func_c(decl));
+	}
+	
 	default: 
 		assert(0);
 		return NULL;
 	}
+
+	return NULL;
 }
+
+// generate definition from symbol
+char *gen_sym_def_c(Sym *sym) {
+	Decl *decl = sym->decl;
+	assert(decl);
+
+	// don't generate code for foreign declarations
+	if (note_is_foreign(decl)) {
+		return NULL;
+	}
+
+	switch (decl->kind) {
+	case DECL_ENUM:
+	case DECL_UNION:
+	case DECL_STRUCT:
+	case DECL_TYPEDEF:
+		// these are declaration only, so do nothing here
+		break;
+
+	case DECL_CONST: {
+		return strf("enum { %s = %s };", decl->name, gen_expr_c(decl->const_decl.expr));
+	}
+
+	case DECL_VAR: {
+		char *type = decl->var.typespec
+		   ? gen_typespec_c(decl->var.typespec, decl->name)
+		   : gen_type_c(sym->type, decl->name);
+
+		if (decl->var.expr) {
+			char *init_expr = (decl->var.expr->kind == EXPR_COMPOUND) 
+				? gen_expr_compound_c(decl->var.expr, true)
+				: gen_expr_c(decl->var.expr);
+			return strf("%s = %s;", type, init_expr);
+		} else { 
+			return strf("%s;", type);
+		}
+	}
+
+	case DECL_FUNC: {
+		if (!decl->func.is_incomplete) {
+			char *signature = gen_decl_func_c(decl);
+			DeferScope defer_scope = {0};
+			return strf("%s %s", signature, gen_stmt_block_c(decl->func.block, defer_scope));
+		} 
+		break;
+	}
+	
+	default:
+		assert(0);
+		break;
+	}
+
+	return NULL;
+}
+
+
+
 
 char *gen_preamble_c(void) {
 	BUF(char *preamble) = NULL;
@@ -676,6 +684,76 @@ char *gen_preamble_c(void) {
 	da_printf(preamble, "%s\n", "typedef unsigned long long ulonglong;");
 	return preamble;
 }
+
+char *gen_forward_decls_c(void) {
+	BUF(char *str) = NULL;
+
+	// forward declare types
+	da_printf(str, "// Forward declared types -----------------------------------------------------");
+	gen_newline(str);
+	for (int i=0; i<da_len(global_syms_buf); ++i) {
+		Sym *sym = global_syms_buf[i];
+		// NOTE(shaw): primative types don't have declarations, skip those
+		if (!sym->decl) continue;
+		if (note_is_foreign(sym->decl)) continue;
+		if (sym->kind == SYM_TYPE) {
+			if (sym->decl->kind == DECL_STRUCT) {
+				da_printf(str, "typedef struct %s %s;", sym->name, sym->name);
+				gen_newline(str);
+			} else if (sym->decl->kind == DECL_UNION) {
+				da_printf(str, "typedef union %s %s;", sym->name, sym->name);
+				gen_newline(str);
+			} else if (sym->decl->kind == DECL_ENUM) {
+				da_printf(str, "typedef enum %s %s;", sym->name, sym->name);
+				gen_newline(str);
+			}
+		} 
+	}
+	return str;
+}
+
+char *gen_decls_c(void) {
+	BUF(char *cdecls) = NULL;
+	printf("// Declarations ---------------------------------------------------------------");
+	gen_newline(cdecls);
+	for (int i = 0; i<da_len(ordered_syms); ++i) {
+		char *decl_str = gen_sym_decl_c(ordered_syms[i]);
+		if (decl_str) {
+			da_printf(cdecls, "%s", decl_str);
+			gen_newline(cdecls);
+		}
+	}
+	return cdecls;
+}
+
+char *gen_definitions_c(void) {
+	BUF(char *defs) = NULL;
+	printf("// Definitions ----------------------------------------------------------------");
+	gen_newline(defs);
+	for (int i = 0; i<da_len(ordered_syms); ++i) {
+		char *def_str = gen_sym_def_c(ordered_syms[i]);
+		if (def_str) {
+			da_printf(defs, "%s", def_str);
+			gen_newline(defs);
+		}
+	}
+	return defs;
+}
+
+void gen_all_c(void) {
+	char *preamble = gen_preamble_c();
+	printf("%s\n", preamble);
+
+	char *forward_decls = gen_forward_decls_c();
+	printf("%s\n", forward_decls);
+
+	char *cdecls = gen_decls_c();
+	printf("%s\n", cdecls);
+
+	char *defs = gen_definitions_c();
+	printf("%s\n", defs);
+}
+
 
 
 int compile_file(char *path);

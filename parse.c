@@ -556,12 +556,18 @@ AggregateField parse_decl_aggregate_field(void) {
 Decl *parse_decl_aggregate(DeclKind kind) {
 	SourcePos pos = token.pos;
     char *name = parse_name();
-    expect_token('{');
-    BUF(AggregateField *fields) = NULL; // @LEAK
-    do {
-        if (match_token('}')) break;
-        da_push(fields, parse_decl_aggregate_field());
-    } while (match_token(';'));
+	BUF(AggregateField *fields) = NULL; // @LEAK
+	if (match_token('{')) {
+		do {
+			if (match_token('}')) break;
+			da_push(fields, parse_decl_aggregate_field());
+		} while (match_token(';'));
+	} else if (match_token(';')) {
+		// this is a forward declared aggregate
+	} else {
+		syntax_error("expected '{' or ';' to follow aggregate name, got '%s'", 
+			token_kind_to_str(token.kind));
+	}
 
 	Decl *decl = decl_aggregate(pos, kind, name, fields, da_len(fields));
     return decl;
@@ -608,9 +614,15 @@ Decl *parse_decl_func(void) {
         ret_type = parse_typespec();
     }
 
-    StmtBlock block = parse_stmt_block();
+	StmtBlock block = {0};
+	bool is_incomplete = false;
+	if (match_token(';')) {
+		is_incomplete = true;
+	} else {
+		block = parse_stmt_block();
+	}
 
-	return decl_func(pos, name, params, da_len(params), is_variadic, ret_type, block);
+	return decl_func(pos, name, params, da_len(params), is_variadic, is_incomplete, ret_type, block);
 }
 
 Note parse_note(void) {
