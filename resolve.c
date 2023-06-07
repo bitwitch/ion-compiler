@@ -1547,6 +1547,25 @@ Type *resolve_decl_type(Decl *decl) {
 	}
 }
 
+void resolve_decl_directive(Decl *decl) {
+	assert(decl->kind == DECL_DIRECTIVE);
+
+	// only handling "foreign" directive for now
+	assert(decl->name == name_foreign);
+	// if (decl->name != name_foreign) return;
+
+	for (int i=0; i<decl->directive.num_args; ++i) {
+		DirectiveArg arg = decl->directive.args[i];
+		// only handling include args for now
+		assert(arg.name == name_include);
+		ResolvedExpr resolved = resolve_expr(arg.expr);
+		if (resolved.type != type_ptr(type_char)) {
+			semantic_error(decl->pos, "expected include value to be type char*, got %s", 
+				type_to_str(resolved.type));
+		}
+	}
+}
+
 void resolve_sym(Sym *sym) {
     if (sym->state == SYM_RESOLVED) {
         return;
@@ -1577,8 +1596,7 @@ void resolve_sym(Sym *sym) {
 		resolve_sym(sym_get(sym->decl->name));
 		return;
 	case SYM_DIRECTIVE:
-		// TODO(shaw): type checking for specific directives, like foreign
-		// includes, the values should be string type
+		resolve_decl_directive(sym->decl);
 		break;
     default:
         assert(0);

@@ -1,10 +1,6 @@
 TODO:
 
 
-[X] foreign c includes (basically "preprocessor" directives)
-    [ ] in resolution, check that foreign directives with include args have
-        values with string type 
-
 [ ] compile to a file with the same name as the source file but swap extension
 
 [ ] designated initializers ( pos := Vec3{x=6, y=9} )
@@ -72,6 +68,10 @@ TODO:
 
 
 
+
+[X] foreign c includes (basically "preprocessor" directives)
+    [X] in resolution, check that foreign directives with include args have
+        values with string type 
 [X] handle generating . vs -> for field access of values vs pointers in c
     codegen
 [X] in resolution: when we encounter a function DEFINITION, at that point we
