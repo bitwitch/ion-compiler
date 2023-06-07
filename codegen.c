@@ -540,7 +540,7 @@ char *gen_sym_decl_c(Sym *sym) {
 
 	switch (decl->kind) {
 	case DECL_CONST:
-		// constants are definition only, so do nothing here
+		return strf("#define %s (%s)", decl->name, gen_expr_c(decl->const_decl.expr));
 		break;
 	case DECL_TYPEDEF:
 		return strf("typedef %s;", gen_typespec_c(decl->typedef_decl.typespec, decl->name));
@@ -629,10 +629,10 @@ char *gen_sym_def_c(Sym *sym) {
 	case DECL_TYPEDEF:
 		// these are declaration only, so do nothing here
 		break;
-
-	case DECL_CONST: {
-		return strf("enum { %s = %s };", decl->name, gen_expr_c(decl->const_decl.expr));
-	}
+	case DECL_CONST:
+		// constants must be defined with its declaration for dependancies to work properly
+		// meaning in gen_sym_decl_c(), so nothing is done here
+		break;	
 
 	case DECL_VAR: {
 		char *type = decl->var.typespec
