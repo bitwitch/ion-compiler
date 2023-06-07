@@ -626,8 +626,7 @@ Decl *parse_decl_func(void) {
 }
 
 Note parse_note(void) {
-	char *name = token.name;
-	next_token();
+	char *name = parse_name();
 	return (Note){ .name = name };
 }
 
@@ -638,6 +637,23 @@ NoteList parse_note_list(void) {
 		da_push(notes, parse_note());
 	}
 	return note_list(pos, notes, da_len(notes));
+}
+
+Decl *parse_decl_directive(void) {
+	SourcePos pos = token.pos;
+	char *name = parse_name();
+	expect_token('(');
+	BUF(DirectiveArg *args) = NULL;
+	do {
+		char *arg_name = parse_name();
+		expect_token('=');
+		Expr *expr = parse_expr();
+		da_push(args, (DirectiveArg){arg_name, expr});
+	} while (match_token(','));
+	expect_token(')');
+	Decl *decl = decl_directive(pos, name, args, da_len(args));
+	da_free(args);
+	return decl;
 }
 
 Decl *parse_decl(void) {
@@ -662,6 +678,8 @@ Decl *parse_decl(void) {
         decl = parse_decl_func();
     } else if (match_keyword(keyword_typedef)) {
         decl = parse_decl_typedef();
+    } else if (match_token('#')) {
+        decl = parse_decl_directive();
     } else {
 		syntax_error("Expected top level declaration, got %s", token_kind_to_str(token.kind));
 	}

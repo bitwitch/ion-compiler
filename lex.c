@@ -89,6 +89,7 @@ char *keyword_defer;
 
 // non-keyword string interned names
 char *name_foreign;
+char *name_include;
 
 void init_keywords(void) {
     static bool first = true;
@@ -116,6 +117,7 @@ void init_keywords(void) {
         keyword_defer = str_intern("defer");
 
 		name_foreign = str_intern("foreign");
+		name_include = str_intern("include");
 	}
     first = false;
 }

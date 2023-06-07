@@ -1,3 +1,5 @@
+#foreign(include = "<stdio.h>", include = "<stdlib.h>", include = "<time.h>")
+
 @foreign func printf(fmt: char*, ...): int {}
 @foreign func scanf(fmt: char*, ...): int {}
 @foreign func rand(): int {}

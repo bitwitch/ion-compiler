@@ -539,6 +539,8 @@ char *gen_sym_decl_c(Sym *sym) {
 	}
 
 	switch (decl->kind) {
+	case DECL_DIRECTIVE:
+		return NULL;
 	case DECL_CONST:
 		return strf("#define %s (%s)", decl->name, gen_expr_c(decl->const_decl.expr));
 		break;
@@ -623,6 +625,9 @@ char *gen_sym_def_c(Sym *sym) {
 	}
 
 	switch (decl->kind) {
+	case DECL_DIRECTIVE:
+		// don't generate code for directives
+		break;
 	case DECL_ENUM:
 	case DECL_UNION:
 	case DECL_STRUCT:
@@ -672,8 +677,22 @@ char *gen_sym_def_c(Sym *sym) {
 char *gen_preamble_c(void) {
 	BUF(char *preamble) = NULL;
 	da_printf(preamble, "// Preamble -------------------------------------------------------------------\n");
+	
+	// directive includes
+	for (int i=0; i<da_len(ordered_syms); ++i) {
+		if (ordered_syms[i]->kind != SYM_DIRECTIVE) continue;
+		Decl *decl = ordered_syms[i]->decl;
+		if (decl->name == name_foreign) {
+			for (int j=0; j<decl->directive.num_args; ++j) {
+				DirectiveArg arg = decl->directive.args[j];
+				if (arg.name == name_include) {
+					da_printf(preamble, "#include %s\n", arg.expr->str_val);
+				}
+			}
+		}
+	}
 	// c lib includes
-	da_printf(preamble, "%s\n", "#include <stdio.h>\n#include <stdbool.h>\n#include <stdlib.h>\n#include <time.h>\n");
+	da_printf(preamble, "%s\n", "#include <stdbool.h>\n#include <stdint.h>\n");
 	// typedefs for primative types
 	da_printf(preamble, "%s\n", "typedef signed char schar;");
 	da_printf(preamble, "%s\n", "typedef unsigned char uchar;");

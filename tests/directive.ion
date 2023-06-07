@@ -1,0 +1,16 @@
+#foreign(include = "<stdio.h>", include = "<stdlib.h>", include = "<string.h>")
+@foreign func malloc(size: uint): void*;
+@foreign func strcpy(dst: char*, src: char*): char*;
+@foreign func printf(fmt: char*, ...);
+
+func main(): int {
+	buf: char[] = {'S', 'i', 's', 'i', 'g'};
+	len := sizeof(buf);
+	str: char* = malloc(len + 1);
+	str[len] = 0;
+	strcpy(str, buf);
+	printf("%s\n", str);
+	return 0;
+}
+
+

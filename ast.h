@@ -6,6 +6,7 @@ var_decl = NAME '=' expr
          | NAME ':' type ('=' expr)?
 const_decl = NAME '=' expr
 typedef_decl = NAME '=' type
+directive = NAME
 
 decl = 'enum' enum_decl
      | 'struct' aggregate_decl
@@ -14,6 +15,7 @@ decl = 'enum' enum_decl
      | 'const' const_decl
      | 'typedef' typedef_decl
      | 'func' func_decl
+	 | '#' directive '(' (NAME '=' expr ','?)+ ')'
 
 for_init = 
 assign_op = EQ | AUTO_EQ | ADD_EQ | SUB_EQ | MUL_EQ | DIV_EQ | MOD_EQ | LSHIFT_EQ | RSHIFT_EQ | XOR_EQ | AND_EQ | OR_EQ
@@ -273,6 +275,7 @@ typedef enum {
     DECL_VAR,
     DECL_CONST,
     DECL_TYPEDEF,
+    DECL_DIRECTIVE,
 } DeclKind;
 
 typedef struct {
@@ -284,6 +287,11 @@ typedef struct {
     char *name;
     Typespec *typespec;
 } FuncParam;
+
+typedef struct {
+	char *name;
+	Expr *expr;
+} DirectiveArg;
 
 struct Decl {
     DeclKind kind;
@@ -317,6 +325,10 @@ struct Decl {
         struct {
             Typespec *typespec;
         } typedef_decl;
+		struct {
+			DirectiveArg *args;
+			int num_args;
+		} directive;
     };
 };
 

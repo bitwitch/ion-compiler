@@ -340,3 +340,11 @@ Decl *decl_func(SourcePos pos, char *name, FuncParam *params, int num_params, bo
     decl->func.block = block;
     return decl;
 }
+
+Decl *decl_directive(SourcePos pos, char *name, DirectiveArg *args, int num_args) {
+	Decl *decl = decl_alloc(DECL_DIRECTIVE, pos);
+	decl->name = name;
+	decl->directive.args = ast_memdup(args, num_args * sizeof(*args));
+	decl->directive.num_args = num_args;
+	return decl;
+}
