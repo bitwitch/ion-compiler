@@ -733,7 +733,7 @@ char *gen_forward_decls_c(void) {
 
 char *gen_decls_c(void) {
 	BUF(char *cdecls) = NULL;
-	printf("// Declarations ---------------------------------------------------------------");
+	da_printf(cdecls, "// Declarations ---------------------------------------------------------------");
 	gen_newline(cdecls);
 	for (int i = 0; i<da_len(ordered_syms); ++i) {
 		char *decl_str = gen_sym_decl_c(ordered_syms[i]);
@@ -747,7 +747,7 @@ char *gen_decls_c(void) {
 
 char *gen_definitions_c(void) {
 	BUF(char *defs) = NULL;
-	printf("// Definitions ----------------------------------------------------------------");
+	da_printf(defs, "// Definitions ----------------------------------------------------------------");
 	gen_newline(defs);
 	for (int i = 0; i<da_len(ordered_syms); ++i) {
 		char *def_str = gen_sym_def_c(ordered_syms[i]);
@@ -759,21 +759,14 @@ char *gen_definitions_c(void) {
 	return defs;
 }
 
-void gen_all_c(void) {
+void gen_all_c(FILE *out_file) {
+	assert(out_file);
 	char *preamble = gen_preamble_c();
-	printf("%s\n", preamble);
-
 	char *forward_decls = gen_forward_decls_c();
-	printf("%s\n", forward_decls);
-
 	char *cdecls = gen_decls_c();
-	printf("%s\n", cdecls);
-
 	char *defs = gen_definitions_c();
-	printf("%s\n", defs);
+	fprintf(out_file, "%s\n%s\n%s\n%s", preamble, forward_decls, cdecls, defs);
 }
-
-
 
 int compile_file(char *path);
 

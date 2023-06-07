@@ -1,8 +1,5 @@
 TODO:
 
-
-[ ] compile to a file with the same name as the source file but swap extension
-
 [ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
 [ ] free dynamic arrays used in ast node creation, many ast nodes use ast_memdup
@@ -69,6 +66,7 @@ TODO:
 
 
 
+[X] compile to a file with the same name as the source file but swap extension
 [X] foreign c includes (basically "preprocessor" directives)
     [X] in resolution, check that foreign directives with include args have
         values with string type 

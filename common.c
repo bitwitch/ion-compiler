@@ -63,6 +63,19 @@ void strf_test(void) {
     printf("%s\n", str);
 }
 
+char *replace_ext(char *path, char *ext) {
+	if (!path) return NULL;
+	for (int i = strlen(path); i > 0; --i) {
+		if (path[i] == '/' || path[i] == '\\') {
+			// path has no extension
+			return NULL;
+		} else if (path[i] == '.') {
+			return strf("%.*s.%s", i, path, ext);
+		}
+	}
+	return NULL;
+}
+
 // File IO
 
 // this is the size of a chunk of data in each read. one is added to this in

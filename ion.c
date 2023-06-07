@@ -7,12 +7,17 @@ int compile_file(char *path) {
 	}
 
 	compilation_filepath = path;
+	char *out_filepath = replace_ext(path, "c");
+	if (!out_filepath) {
+		// if there is no extension on the filepath passed in, just append .c
+		out_filepath = strf("%s.c", path);
+	}
 
 	char *file_data;
 	size_t file_size;
 	int rc = read_entire_file(fp, &file_data, &file_size);
 	if (rc != READ_ENTIRE_FILE_OK) {
-		printf("error: failed to read file %s\n", path);
+		fprintf(stderr, "error: failed to read file %s\n", path);
 		fclose(fp);
 		return 1;
 	}
@@ -34,7 +39,15 @@ int compile_file(char *path) {
 	}
 
 	// code generation
-	gen_all_c();
+	FILE *out_file = fopen(out_filepath, "w");
+	if (!out_file) {
+		fprintf(stderr, "error: failed to open output file %s\n", out_filepath);
+		return 1;
+	}
+	gen_all_c(out_file);
+	fclose(out_file);
+
+	printf("Compilation succeeded: %s\n", out_filepath);
 
 	return 0;
 }
