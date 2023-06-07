@@ -2,16 +2,14 @@ TODO:
 
 [ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
-[ ] free dynamic arrays used in ast node creation, many ast nodes use ast_memdup
-    to copy over data from dynamic arrays, the caller of that ast node
-    constructor can now free the dynamic array, but there are places where i
-    don't do this
-
 [X] allow implicitly sized arrays
 	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
 
 [ ] output line directives to the c compiler (preprocessor technically, i
     think) to allow debugging ion source code
+
+[ ] return and continue statements inside switch cases should NOT be followed by
+    an implicit break
 
 [ ] issue warnings for conversions that could potentially lose information
     (truncations)
@@ -29,12 +27,16 @@ TODO:
         x, y: int;
     }
 
+[ ] preserve comments for c codegen
+
+[ ] free dynamic arrays used in ast node creation, many ast nodes use ast_memdup
+    to copy over data from dynamic arrays, the caller of that ast node
+    constructor can now free the dynamic array, but there are places where i
+    don't do this
+
 [ ] comments
 	[X] single line
 	[ ] multi line 
-
-[ ] return and continue statements inside switch cases should NOT be followed by
-    an implicit break
 	
 [ ] string escape chars
     [X] \n, \t, \\, \', \"
@@ -45,8 +47,6 @@ TODO:
 
 [ ] declarations in functions (statement declarations)
 	- like an enum, or struct declared inside a function
-
-[ ] reformat for stupid tabs vs spaces
 
 [ ] local_syms should probably be a stretchy buffer
 

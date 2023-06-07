@@ -539,8 +539,6 @@ char *gen_sym_decl_c(Sym *sym) {
 	}
 
 	switch (decl->kind) {
-	case DECL_DIRECTIVE:
-		return NULL;
 	case DECL_CONST:
 		return strf("#define %s (%s)", decl->name, gen_expr_c(decl->const_decl.expr));
 		break;
@@ -625,9 +623,6 @@ char *gen_sym_def_c(Sym *sym) {
 	}
 
 	switch (decl->kind) {
-	case DECL_DIRECTIVE:
-		// don't generate code for directives
-		break;
 	case DECL_ENUM:
 	case DECL_UNION:
 	case DECL_STRUCT:
@@ -679,9 +674,8 @@ char *gen_preamble_c(void) {
 	da_printf(preamble, "// Preamble -------------------------------------------------------------------\n");
 	
 	// directive includes
-	for (int i=0; i<da_len(ordered_syms); ++i) {
-		if (ordered_syms[i]->kind != SYM_DIRECTIVE) continue;
-		Decl *decl = ordered_syms[i]->decl;
+	for (int i=0; i<da_len(directives); ++i) {
+		Decl *decl = directives[i];
 		if (decl->name == name_foreign) {
 			for (int j=0; j<decl->directive.num_args; ++j) {
 				DirectiveArg arg = decl->directive.args[j];

@@ -1,3 +1,14 @@
+void parse_file(void) {
+	while (token.kind != TOKEN_EOF) {
+		Decl *decl = parse_decl();
+		if (decl->kind == DECL_DIRECTIVE) {
+			da_push(directives, decl);
+		} else {
+			sym_put_decl(decl);
+		}
+	}
+}
+
 int compile_file(char *path) {
 
 	FILE *fp = fopen(path, "r");
@@ -28,12 +39,12 @@ int compile_file(char *path) {
 	init_stream(path, file_data);
 
 	// parsing
-	while (token.kind != TOKEN_EOF) {
-		Decl *decl = parse_decl();
-		sym_put_decl(decl);
-	}
-	
+	parse_file();
+
 	// semantic analysis
+	for (int i = 0; i<da_len(directives); ++i) {
+		resolve_decl_directive(directives[i]);
+	}
 	for (int i = 0; i<da_len(global_syms_buf); ++i) {
 		complete_sym(global_syms_buf[i]);
 	}

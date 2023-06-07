@@ -32,7 +32,6 @@ typedef enum {
     SYM_FUNC,
     SYM_TYPE,
     SYM_ENUM_CONST,
-    SYM_DIRECTIVE,
 } SymKind;
 
 typedef enum {
@@ -55,6 +54,7 @@ struct Sym {
 Map global_syms_map;
 BUF(Sym **global_syms_buf);
 BUF(Sym **ordered_syms);
+BUF(Decl **directives);
 Sym *local_syms[MAX_LOCAL_SYMS];
 Sym **local_syms_end = local_syms;
 
@@ -108,9 +108,6 @@ Sym *sym_decl(Decl *decl) {
         break;
     case DECL_FUNC:
         kind = SYM_FUNC;
-        break;
-    case DECL_DIRECTIVE:
-        kind = SYM_DIRECTIVE;
         break;
     default:
         assert(0);
@@ -1595,9 +1592,6 @@ void resolve_sym(Sym *sym) {
 		// resolve the entire enum decl that this enum item is apart of
 		resolve_sym(sym_get(sym->decl->name));
 		return;
-	case SYM_DIRECTIVE:
-		resolve_decl_directive(sym->decl);
-		break;
     default:
         assert(0);
         break;
