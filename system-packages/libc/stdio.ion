@@ -1,0 +1,3 @@
+#foreign(include = "<stdio.h>")
+
+@func printf(fmt: char*, ...);

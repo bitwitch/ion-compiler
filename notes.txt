@@ -1,5 +1,13 @@
 TODO:
 
+[ ] packages
+    [X] physical organization, compiling multile ion files in a directory
+    [ ] dependency management, specifying which packages symbols you depend on
+    [ ] namespacing
+    [ ] compiler takes package (directory name) on command line
+    [ ] issue user friendly message for when a single .ion file is passed (could
+        also just support compiling both single ion files and packages??)
+
 [ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
 [X] allow implicitly sized arrays
@@ -178,6 +186,34 @@ TODO:
 [X] order independent declarations
 [X] type resolution, type checking
 [X] replace instances of fatal() with syntax_error() where appropriate. fatal is useful now in early development 
+
+2023-06-08
+--------------------------------------------------------------------------------
+Packages
+
+
+Part One: compiling a package
+1. pass a package (directory name) to the compiler on the command line 
+2. walk the directory whose name matches the package name, and collect all the
+   .ion files in that directory
+3. parse all the files and add all the declarations to a package scoped symbol
+   table
+4. resolve all the symbols in the package
+5. generate code for the package
+
+
+
+Part Two: imports
+1. create a new declaration for imports
+[ same as 2 and 3 above ]
+2. need to walk the directory whose name matches the imported package name, and
+   collect all the .ion files in that directory
+3. parse all the files and add all the declarations to a package scoped symbol
+   table
+
+
+
+
 
 2023-06-04
 --------------------------------------------------------------------------------

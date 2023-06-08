@@ -50,30 +50,22 @@ var CENTERED = Int2{-1, -1};
 
 
 
+// Example usage:
+// func main(argc: int, argv: char**): int {
+	// init();
 
+	// window := create_window("Title", CENTERED, {800, 600});
 
+	// while(1) {
+		// update();
+		// if (keys[KEY_RETURN].pressed) {
+			// printf("Return pressed\n");
+		// }
+		// if (keys[KEY_RETURN].released) {
+			// printf("Return released\n");
+		// }
+	// }
 
-
-// Solitaire -------------------------------------------------------------------
-
-func main(argc: int, argv: char**): int {
-	// TODO(shaw): package prefix: i.e. noir.init()
-	init();
-	// TODO(shaw): need a way to handle errors
-
-	window := create_window("Solitaire", CENTERED, {800, 600});
-
-	while(1) {
-		update();
-		if (keys[KEY_RETURN].pressed) {
-			printf("Return pressed\n");
-		}
-		if (keys[KEY_RETURN].released) {
-			printf("Return released\n");
-		}
-
-	}
-
-	destroy_window(window);
-	return 0;
-}
+	// destroy_window(window);
+	// return 0;
+// }

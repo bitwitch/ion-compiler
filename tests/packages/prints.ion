@@ -1,0 +1,8 @@
+#foreign(include = "<stdio.h>")
+@foreign func printf(fmt: char*, ...);
+
+func do_some_prints() {
+	printf("Well, ");
+	printf("hello friends\n");
+	printf("\nsuh dude\n");
+}

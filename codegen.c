@@ -769,7 +769,7 @@ void gen_all_c(FILE *out_file) {
 	fprintf(out_file, "%s\n%s\n%s\n%s", preamble, forward_decls, cdecls, defs);
 }
 
-int compile_file(char *path);
+bool compile_package(char *path);
 
 void codegen_test(void) {
     SourcePos pos = {"", 0};
@@ -825,8 +825,8 @@ void codegen_test(void) {
 	assert(0 == strcmp(str, "int (*(*(x[3])))(int, int)"));
 	
 
-	if (compile_file("tests/codegen_test.ion") != 0) {
-		fprintf(stderr, "Failed to compile codegen_test.ion\n");
+	if (!compile_package("tests/codegen")) {
+		fprintf(stderr, "Failed to compile tests/codegen\n");
 		return;
 	}
 

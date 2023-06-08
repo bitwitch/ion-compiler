@@ -1,0 +1,6 @@
+
+
+func main(argc: int, argv: char**): int {
+	do_some_prints();
+	return 0;
+}

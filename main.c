@@ -13,6 +13,7 @@
 #include <limits.h>
 
 #include "common.c"
+#include "os.c"
 #include "error.c"
 #include "lex.c"
 #include "ast.h"
@@ -25,17 +26,19 @@
 #include "ion.c"
 
 void run_tests(void) {
-    init_keywords();
+	init_keywords();
 	sym_init_table();
 
-	da_test();
-	map_test();
-	str_intern_test();
-	lex_test();
-	parse_test();
-	type_intern_test();
-	resolve_test();
-	codegen_test();
+	// read_dir_test();
+	// da_test();
+	// map_test();
+	// str_intern_test();
+	// lex_test();
+	// parse_test();
+	// type_intern_test();
+	// resolve_test();
+	// codegen_test();
+
 }
 
 int main(int argc, char **argv) {
@@ -43,12 +46,12 @@ int main(int argc, char **argv) {
 	// run_tests();
 
 	if (argc < 2) {
-		printf("usage: %s <filepath>\n", argv[0]);
+		printf("usage: %s <ion-package> [outfile]\n", argv[0]);
 		return 1;
 	}
 
-	if (compile_file(argv[1]) != 0) {
-		fprintf(stderr, "Failed to compile file %s\n", argv[1]);
+	if (!compile_package(argv[1])) {
+		fprintf(stderr, "Failed to compile package %s\n", argv[1]);
 		return 1;
 	}
 

@@ -1,0 +1,22 @@
+import libc {printf}
+import noir {...}
+
+func main(argc: int, argv: char**): int {
+	printf("Let's play solitaire!\n");
+
+	init();
+	window := create_window("Solitaire", CENTERED, {800, 600});
+
+	while(1) {
+		update();
+		if (keys[KEY_RETURN].pressed) {
+			printf("Return pressed\n");
+		}
+		if (keys[KEY_RETURN].released) {
+			printf("Return released\n");
+		}
+	}
+
+	destroy_window(window);
+	return 0;
+}
