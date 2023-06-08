@@ -680,7 +680,14 @@ char *gen_preamble_c(void) {
 			for (int j=0; j<decl->directive.num_args; ++j) {
 				DirectiveArg arg = decl->directive.args[j];
 				if (arg.name == name_include) {
-					da_printf(preamble, "#include %s\n", arg.expr->str_val);
+					char *val = arg.expr->str_val;
+					if (val[0] == '<') {
+						// system include
+						da_printf(preamble, "#include %s\n", val);
+					} else {
+						// local include
+						da_printf(preamble, "#include \"%s\"\n", val);
+					}
 				}
 			}
 		}

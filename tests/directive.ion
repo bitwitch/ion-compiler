@@ -2,6 +2,7 @@
 #foreign(include = "<stdio.h>")
 #foreign(include = "<stdlib.h>")
 #foreign(include = "<string.h>")
+#foreign(include = "some_local_lib.h")
 @foreign func malloc(size: uint): void*;
 @foreign func strcpy(dst: char*, src: char*): char*;
 @foreign func printf(fmt: char*, ...);
