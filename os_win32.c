@@ -18,6 +18,9 @@ DirEntry *read_dir(char *path) {
 	}
 
 	do {
+		if (0 == strcmp(fileinfo.name, ".") || 0 == strcmp(fileinfo.name, "..")) {
+			continue;
+		}
 		DirEntry entry = {0};
 		path_copy(entry.base, path);
 		entry.size = fileinfo.size;

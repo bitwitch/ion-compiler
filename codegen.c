@@ -272,14 +272,6 @@ char *gen_typespec_c(Typespec *typespec, char *inner) {
 	}
 }
 
-bool note_is_foreign(Decl *decl) {
-	for (int i=0; i<decl->notes.num_notes; ++i) {
-		if (decl->notes.notes[i].name == name_foreign)
-			return true;
-	}
-	return false;
-}
-
 char *gen_decl_func_c(Decl *decl) {
 	BUF(char *str) = NULL; // @LEAK
 
@@ -534,7 +526,7 @@ char *gen_sym_decl_c(Sym *sym) {
 	assert(decl);
 
 	// don't generate code for foreign declarations
-	if (note_is_foreign(decl)) {
+	if (is_foreign_decl(decl)) {
 		return NULL;
 	}
 
@@ -618,7 +610,7 @@ char *gen_sym_def_c(Sym *sym) {
 	assert(decl);
 
 	// don't generate code for foreign declarations
-	if (note_is_foreign(decl)) {
+	if (is_foreign_decl(decl)) {
 		return NULL;
 	}
 
@@ -665,8 +657,6 @@ char *gen_sym_def_c(Sym *sym) {
 
 	return NULL;
 }
-
-
 
 
 char *gen_preamble_c(void) {
@@ -724,7 +714,7 @@ char *gen_forward_decls_c(void) {
 		Sym *sym = reachable_syms[i];
 		// NOTE(shaw): primative types don't have declarations, skip those
 		if (!sym->decl) continue;
-		if (note_is_foreign(sym->decl)) continue;
+		if (is_foreign_decl(sym->decl)) continue;
 		if (sym->kind == SYM_TYPE) {
 			if (sym->decl->kind == DECL_STRUCT) {
 				da_printf(str, "typedef struct %s %s;", sym->name, sym->name);

@@ -103,7 +103,7 @@ bool parse_package_file(Package *package, char *filepath) {
 	return true;
 }
 
-void add_package_decls(Package *package) {
+void add_package_decl_syms(Package *package) {
 	for (int i=0; i<da_len(package->decls); ++i) {
 		Decl *decl = package->decls[i];
 		// if (decl->kind != DECL_DIRECTIVE && decl->kind != DECL_IMPORT
@@ -177,7 +177,7 @@ bool parse_package(Package *package) {
 	if (builtin_package) {
 		import_all_package_symbols(builtin_package);
 	}
-	add_package_decls(package);
+	add_package_decl_syms(package);
 	// process_package_imports(package);
 	leave_package(old_package);
 	return true;
@@ -226,17 +226,16 @@ Package *init_builtin_package(void) {
 void init_compiler(void) {
 	init_package_search_paths();
 	init_keywords();
-}
-
-bool compile_package(char *package_name, char *out_name) {
-	init_compiler();
 
 	builtin_package = init_builtin_package();
 	if (!builtin_package) {
 		fatal("failed to initialize builtins\n");
 	}
-
 	sym_init_table();
+}
+
+bool compile_package(char *package_name, char *out_name) {
+	init_compiler();
 
 	char package_path[MAX_PATH];
 	path_copy(package_path, package_name);

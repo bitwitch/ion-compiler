@@ -306,8 +306,13 @@ char *type_to_str(Type *type) {
 	}
 }
 
-
-
+bool is_foreign_decl(Decl *decl) {
+	for (int i=0; i<decl->notes.num_notes; ++i) {
+		if (decl->notes.notes[i].name == name_foreign)
+			return true;
+	}
+	return false;
+}
 
 
 
@@ -1668,14 +1673,15 @@ void complete_sym(Sym *sym) {
     assert(sym->state == SYM_RESOLVED);
     Package *old_package = enter_package(sym->package);
 
-    // if (sym->decl && !is_decl_foreign(sym->decl) && !sym->decl->is_incomplete) {
-
-	if (sym->kind == SYM_TYPE) {
-        complete_type(sym->type);
-	} else if (sym->kind == SYM_FUNC) {
-		resolve_func_body(sym->decl, sym->type);
-		da_push(ordered_syms, sym);
+	if (sym->decl && !is_foreign_decl(sym->decl)) {
+		if (sym->kind == SYM_TYPE) {
+			complete_type(sym->type);
+		} else if (sym->kind == SYM_FUNC && !sym->decl->func.is_incomplete) {
+			resolve_func_body(sym->decl, sym->type);
+			da_push(ordered_syms, sym);
+		}
 	}
+
     leave_package(old_package);
 }
 

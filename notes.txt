@@ -8,6 +8,8 @@ TODO:
     [ ] issue user friendly message for when a single .ion file is passed (could
         also just support compiling both single ion files and packages??)
 
+[ ] implement read_dir() on linux (in os_unix.c)
+
 [ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
 [X] allow implicitly sized arrays
