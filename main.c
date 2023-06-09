@@ -50,8 +50,11 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	if (!compile_package(argv[1])) {
-		fprintf(stderr, "Failed to compile package %s\n", argv[1]);
+	char *package_name = argv[1];
+	char *out_name = argc >= 3 ? argv[2] : NULL;
+
+	if (!compile_package(package_name, out_name)) {
+		fprintf(stderr, "Failed to compile package %s\n", package_name);
 		return 1;
 	}
 

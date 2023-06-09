@@ -1,5 +1,6 @@
 #define ARRAY_COUNT(a) sizeof(a)/sizeof(*(a))
 #define MAX(x, y) ((x) >= (y) ? (x) : (y))
+#define MIN(x, y) ((x) <= (y) ? (x) : (y))
 #define IS_POW2(x) (((x) != 0) && ((x) & ((x)-1)) == 0)
 
 // Helper Utilities

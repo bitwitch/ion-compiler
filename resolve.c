@@ -1,5 +1,7 @@
 #define MAX_LOCAL_SYMS 2048
 
+typedef struct Package Package;
+
 typedef union {
 	bool b;
 	char c;
@@ -40,6 +42,7 @@ typedef enum {
     SYM_RESOLVED,
 } SymState;
 
+
 // struct Sym is typedefed to Sym in type.c
 struct Sym {
     char *name;
@@ -48,13 +51,32 @@ struct Sym {
     Decl *decl;
     Type *type;
     Val val;
+	Package *package;
+	bool reachable;
 };
 
+struct Package {
+	char *external_name;
+	char *path;
+	char full_path[MAX_PATH];
+	Map syms_map;
+	BUF(Sym **syms);
+	BUF(Decl **decls);
+	BUF(Decl **directives);
+}; 
 
-Map global_syms_map;
-BUF(Sym **global_syms_buf);
+Map package_map;
+BUF(Package **packages);
+Package *current_package;
+Package *builtin_package;
+
+// Map global_syms_map;
+// BUF(Sym **global_syms_buf);
+// BUF(Decl **directives);
+
 BUF(Sym **ordered_syms);
-BUF(Decl **directives);
+BUF(Sym **reachable_syms);
+
 Sym *local_syms[MAX_LOCAL_SYMS];
 Sym **local_syms_end = local_syms;
 
@@ -65,20 +87,20 @@ Stmt *scope_exit_stmt;
 Arena resolve_arena;
 ResolvedExpr resolved_null = {0};
 
-int integer_conversion_ranks[] = {
-	[TYPE_BOOL]      = 1,
-	[TYPE_CHAR]      = 2,
-	[TYPE_SCHAR]     = 2,
-	[TYPE_UCHAR]     = 2,
-	[TYPE_SHORT]     = 3,
-	[TYPE_USHORT]    = 3,
-	[TYPE_INT]       = 4,
-	[TYPE_UINT]      = 4,
-	[TYPE_LONG]      = 5,
-	[TYPE_ULONG]     = 5,
-	[TYPE_LONGLONG]  = 6,
-	[TYPE_ULONGLONG] = 6,
-};
+Sym *get_package_sym(Package *package, char *name) {
+    return map_get(&package->syms_map, name);
+}
+
+Package *enter_package(Package *package) {
+	Package *prev_package = current_package;
+	current_package = package;
+	return prev_package;
+}
+
+void leave_package(Package *old_package) {
+	current_package = old_package;
+}
+
 
 bool is_null_ptr(ResolvedExpr operand) {
 	return operand.type->kind == TYPE_PTR && operand.is_const && operand.val.p == 0;
@@ -88,6 +110,7 @@ Sym *sym_alloc(char *name, SymKind kind) {
     Sym *sym = arena_alloc_zeroed(&resolve_arena, sizeof(Sym));
     sym->name = name;
     sym->kind = kind;
+	sym->package = current_package;
     return sym;
 }
 
@@ -146,14 +169,38 @@ Sym *sym_enum_const(char *name, Decl *decl) {
 	return sym;
 }
 
-Sym *sym_get(char *name) {
-	// first check symbols in local scopes
+Sym *sym_get_local(char *name) {
 	for (Sym **it = local_syms_end; it > local_syms; --it) {
 		Sym *sym = it[-1];
 		if (sym->name == name) return sym;
 	}
-	// then check global symbols
-	return map_get(&global_syms_map, name);
+	return NULL;
+}
+
+Sym *sym_get(char *name) {
+	// first check symbols in local scopes
+	Sym *sym = sym_get_local(name);
+	if (sym) return sym;
+	// then check package symbols
+	return get_package_sym(current_package, name);
+}
+
+void sym_global_put(char *name, Sym *sym) {
+	Sym *old_sym = map_get(&current_package->syms_map, name);
+	if (old_sym) {
+		if (sym == old_sym) return;
+		SourcePos pos = sym->decl ? sym->decl->pos : pos_builtin;
+		semantic_error(pos, "duplicate definition of global symbol '%s'.", name);
+		if (old_sym->decl) {
+			print_note(old_sym->decl->pos, "previous definition of '%s'", name);
+		}
+	}
+	map_put(&current_package->syms_map, name, sym);
+	da_push(current_package->syms, sym);
+}
+
+bool is_local_sym(Sym *sym) {
+	return sym_get_local(sym->name) != NULL;
 }
 
 bool name_in_local_scope(char *name, Sym **scope_start) {
@@ -165,64 +212,61 @@ bool name_in_local_scope(char *name, Sym **scope_start) {
 }
 
 void sym_put_decl(Decl *decl) {
-    assert(sym_get(decl->name) == NULL);
-
 	Sym *sym = sym_decl(decl);
-	map_put(&global_syms_map, decl->name, sym);
-	da_push(global_syms_buf, sym);
+	sym_global_put(sym->name, sym);
 
 	if (decl->kind == DECL_ENUM) {
 		EnumItem *items = decl->enum_decl.items;
 		for (int i = 0; i < decl->enum_decl.num_items; ++i) {
 			Sym *s = sym_enum_const(items[i].name, decl);
-			map_put(&global_syms_map, items[i].name, s);
-			da_push(global_syms_buf, s);
+			sym_global_put(s->name, s);
 		}
 	}
 }
 
 // currently used for primative types
 void sym_put_type(char *name, Type *type) {
-    assert(sym_get(name) == NULL);
     Sym *sym = sym_type(name, type);
 	type->sym = sym;
-	map_put(&global_syms_map, sym->name, sym);
-	da_push(global_syms_buf, sym);
+	sym_global_put(sym->name, sym);
 }
 
 void sym_put_const(char *name, Type *type, Val val) {
-	assert(sym_get(name) == NULL);
 	Sym *sym   = sym_alloc(name, SYM_CONST);
 	sym->state = SYM_RESOLVED;
 	sym->type  = type;
 	sym->val   = val;
-	map_put(&global_syms_map, sym->name, sym);
-	da_push(global_syms_buf, sym);
+	sym_global_put(sym->name, sym);
 }
 
 // initializes primative types and built-in constants
 void sym_init_table(void) {
+	assert(builtin_package);
+	Package *old_package = enter_package(builtin_package);
+
 	// primative types
-	if (!sym_get(str_intern("void")))       sym_put_type(str_intern("void"),       type_void);
-	if (!sym_get(str_intern("char")))       sym_put_type(str_intern("char"),       type_char);
-	if (!sym_get(str_intern("schar")))      sym_put_type(str_intern("schar"),      type_schar);
-	if (!sym_get(str_intern("uchar")))      sym_put_type(str_intern("uchar"),      type_uchar);
-	if (!sym_get(str_intern("short")))      sym_put_type(str_intern("short"),      type_short);
-	if (!sym_get(str_intern("ushort")))     sym_put_type(str_intern("ushort"),     type_ushort);
-	if (!sym_get(str_intern("int")))        sym_put_type(str_intern("int"),        type_int);
-	if (!sym_get(str_intern("uint")))       sym_put_type(str_intern("uint"),       type_uint);
-	if (!sym_get(str_intern("long")))       sym_put_type(str_intern("long"),       type_long);
-	if (!sym_get(str_intern("ulong")))      sym_put_type(str_intern("ulong"),      type_ulong);
-	if (!sym_get(str_intern("longlong")))   sym_put_type(str_intern("longlong"),   type_longlong);
-	if (!sym_get(str_intern("ulonglong")))  sym_put_type(str_intern("ulonglong"),  type_ulonglong);
-	if (!sym_get(str_intern("float")))      sym_put_type(str_intern("float"),      type_float);
-	if (!sym_get(str_intern("double")))     sym_put_type(str_intern("double"),     type_double);
-	if (!sym_get(str_intern("bool")))       sym_put_type(str_intern("bool"),       type_bool);
+	sym_put_type(str_intern("void"),       type_void);
+	sym_put_type(str_intern("char"),       type_char);
+	sym_put_type(str_intern("schar"),      type_schar);
+	sym_put_type(str_intern("uchar"),      type_uchar);
+	sym_put_type(str_intern("short"),      type_short);
+	sym_put_type(str_intern("ushort"),     type_ushort);
+	sym_put_type(str_intern("int"),        type_int);
+	sym_put_type(str_intern("uint"),       type_uint);
+	sym_put_type(str_intern("long"),       type_long);
+	sym_put_type(str_intern("ulong"),      type_ulong);
+	sym_put_type(str_intern("longlong"),   type_longlong);
+	sym_put_type(str_intern("ulonglong"),  type_ulonglong);
+	sym_put_type(str_intern("float"),      type_float);
+	sym_put_type(str_intern("double"),     type_double);
+	sym_put_type(str_intern("bool"),       type_bool);
 
 	// built-in constants
-	if (!sym_get(str_intern("true")))  sym_put_const(str_intern("true"),  type_bool,           (Val){.i=1});
-	if (!sym_get(str_intern("false"))) sym_put_const(str_intern("false"), type_bool,           (Val){.i=0});
-	if (!sym_get(str_intern("NULL")))  sym_put_const(str_intern("NULL"),  type_ptr(type_void), (Val){.p=0});
+	sym_put_const(str_intern("true"),  type_bool,           (Val){.i=1});
+	sym_put_const(str_intern("false"), type_bool,           (Val){.i=0});
+	sym_put_const(str_intern("NULL"),  type_ptr(type_void), (Val){.p=0});
+
+	leave_package(old_package);
 }
 
 Sym **sym_enter_scope(void) {
@@ -485,6 +529,21 @@ uint64_t integer_max_values[] = {
 	[TYPE_ULONG]     = ULONG_MAX,
 	[TYPE_LONGLONG]  = LLONG_MAX,
 	[TYPE_ULONGLONG] = ULLONG_MAX,
+};
+
+int integer_conversion_ranks[] = {
+	[TYPE_BOOL]      = 1,
+	[TYPE_CHAR]      = 2,
+	[TYPE_SCHAR]     = 2,
+	[TYPE_UCHAR]     = 2,
+	[TYPE_SHORT]     = 3,
+	[TYPE_USHORT]    = 3,
+	[TYPE_INT]       = 4,
+	[TYPE_UINT]      = 4,
+	[TYPE_LONG]      = 5,
+	[TYPE_ULONG]     = 5,
+	[TYPE_LONGLONG]  = 6,
+	[TYPE_ULONGLONG] = 6,
 };
 
 void integer_promotion(ResolvedExpr *operand) {
@@ -1564,6 +1623,10 @@ void resolve_decl_directive(Decl *decl) {
 }
 
 void resolve_sym(Sym *sym) {
+	if (!sym->reachable && !is_local_sym(sym)) {
+		da_push(reachable_syms, sym);
+		sym->reachable = true;
+	}
     if (sym->state == SYM_RESOLVED) {
         return;
     } else if (sym->state == SYM_RESOLVING) {
@@ -1602,13 +1665,18 @@ void resolve_sym(Sym *sym) {
 
 
 void complete_sym(Sym *sym) {
-    resolve_sym(sym);
+    assert(sym->state == SYM_RESOLVED);
+    Package *old_package = enter_package(sym->package);
+
+    // if (sym->decl && !is_decl_foreign(sym->decl) && !sym->decl->is_incomplete) {
+
 	if (sym->kind == SYM_TYPE) {
         complete_type(sym->type);
 	} else if (sym->kind == SYM_FUNC) {
 		resolve_func_body(sym->decl, sym->type);
 		da_push(ordered_syms, sym);
 	}
+    leave_package(old_package);
 }
 
 Sym *resolve_name(char *name) {
@@ -1618,129 +1686,164 @@ Sym *resolve_name(char *name) {
     return sym;
 }
 
+void resolve_package(Package *package) {
+	Package *old_package = enter_package(package);
+	for (int i = 0; i<da_len(package->directives); ++i) {
+		resolve_decl_directive(package->directives[i]);
+	}
+	for (int i = 0; i<da_len(package->syms); ++i) {
+		Sym *sym = package->syms[i];
+		if (sym->package == package) {
+			resolve_sym(sym);
+		}
+	}
+	leave_package(old_package);
+}
+
+void complete_reachable_syms(void) {
+    printf("Completing reachable symbols\n");
+    int prev_num_reachable = 0;
+    int num_reachable = da_len(reachable_syms);
+    for (int i=0; i<num_reachable; ++i) {
+        complete_sym(reachable_syms[i]);
+
+        if (i == num_reachable - 1) {
+			// if calls to complete_sym() have added new reachable syms, we
+			// need to update num_reachable so these new symbols get completed
+			// in this loop as well
+            printf("New reachable symbols:");
+            for (int j = prev_num_reachable; j < num_reachable; ++j) {
+                printf(" %s/%s", reachable_syms[j]->package->path, reachable_syms[j]->name);
+            }
+            printf("\n");
+            prev_num_reachable = num_reachable;
+            num_reachable = da_len(reachable_syms);
+        }
+    }
+}
 
 void resolve_test(void) {
 
-	init_keywords();
-	sym_init_table();
+	// init_keywords();
+	// sym_init_table();
 	
-    char *decls[] = {
-		"struct Vec2 { x: int; y: int; }",
+    // char *decls[] = {
+		// "struct Vec2 { x: int; y: int; }",
 		
-		"func test1(): void {"
-		"	count := 0;"
-		"	quit := 0;"
-		"	while (!quit) {"
-		"		if (count > 99) {"
-		"			quit = 1;"
-		"		} else if (count % 2 == 0) {"
-		"			count++;"
-		"		} else {"
-		"			count += 2;"
-		"		}"
-		"	}"
-		"	is_true := 1;"
-		"	tern_result := is_true ? 69 : 420;"
-		"	v := Vec2{3, 6};"
-		"   x := v.x;"
-		"	arr: int[5] = {1,2,3,4,5};"
-		"	num := arr[3];"
-		"	ptr := &arr[2];"
-		"	num2 := ptr[-1];"
-		"	fib_result := fib(num2);"
-		"	as_float := cast(float, fib_result);"
-		"	dot_product := vec3_dot({1,2,3}, {4,5,6});"
-		"	i := 2;"
-		"	switch (v.y) {"
-		"		case 1: i += 1; break;"
-		"		case 2: i += 2; break;"
-		"		default: i = 0; break;"
-		"	}"
-		"	func_ptr: func(int): int;"
-		"	func_ptr = fib;"
-		"	func_ptr(7);"
-		"}",
+		// "func test1(): void {"
+		// "	count := 0;"
+		// "	quit := 0;"
+		// "	while (!quit) {"
+		// "		if (count > 99) {"
+		// "			quit = 1;"
+		// "		} else if (count % 2 == 0) {"
+		// "			count++;"
+		// "		} else {"
+		// "			count += 2;"
+		// "		}"
+		// "	}"
+		// "	is_true := 1;"
+		// "	tern_result := is_true ? 69 : 420;"
+		// "	v := Vec2{3, 6};"
+		// "   x := v.x;"
+		// "	arr: int[5] = {1,2,3,4,5};"
+		// "	num := arr[3];"
+		// "	ptr := &arr[2];"
+		// "	num2 := ptr[-1];"
+		// "	fib_result := fib(num2);"
+		// "	as_float := cast(float, fib_result);"
+		// "	dot_product := vec3_dot({1,2,3}, {4,5,6});"
+		// "	i := 2;"
+		// "	switch (v.y) {"
+		// "		case 1: i += 1; break;"
+		// "		case 2: i += 2; break;"
+		// "		default: i = 0; break;"
+		// "	}"
+		// "	func_ptr: func(int): int;"
+		// "	func_ptr = fib;"
+		// "	func_ptr(7);"
+		// "}",
 
-		"func vec3_dot(a: Vec3, b: Vec3): float {"
-		"	return a.x*b.x + a.y*b.y + a.z*b.z;"
-		"}",
+		// "func vec3_dot(a: Vec3, b: Vec3): float {"
+		// "	return a.x*b.x + a.y*b.y + a.z*b.z;"
+		// "}",
 
-		"struct Vec3 { x: float; y: float; z: float }",
+		// "struct Vec3 { x: float; y: float; z: float }",
 
-		"func fib(n: int): int {"
-		"	result := 1;"
-		"	for (i := 1; i<n; i++) {"
-		"		result += i;"
-		"	}"
-		"	return result;"
-		"}",
+		// "func fib(n: int): int {"
+		// "	result := 1;"
+		// "	for (i := 1; i<n; i++) {"
+		// "		result += i;"
+		// "	}"
+		// "	return result;"
+		// "}",
 		
 	
-		/*
-		"var result: int = 69;",
-		"func f1(start: Vec3, end: Vec3): Vec3 { result: Vec3 = {6, 6, 6}; return result; }",
-		"struct Vec3 { x: int, y: int, z: int }",
+		// /*
+		// "var result: int = 69;",
+		// "func f1(start: Vec3, end: Vec3): Vec3 { result: Vec3 = {6, 6, 6}; return result; }",
+		// "struct Vec3 { x: int, y: int, z: int }",
 
 		
-		"var vec_ptr: Vec2*;",
-		"var accel = Vec2{ 1, 2 };",
-		"var vel: Vec2 = { 1, 2 };",
-		"var pos: Vec2 = Vec2{ 6, 9 };",
-		"struct Vec2 { x: int; y: int; }",
-		"var vecs: Vec2[2][2] = {{{1,2},{3,4}}, {{5,6},{7,8}}};",
+		// "var vec_ptr: Vec2*;",
+		// "var accel = Vec2{ 1, 2 };",
+		// "var vel: Vec2 = { 1, 2 };",
+		// "var pos: Vec2 = Vec2{ 6, 9 };",
+		// "struct Vec2 { x: int; y: int; }",
+		// "var vecs: Vec2[2][2] = {{{1,2},{3,4}}, {{5,6},{7,8}}};",
 		
 		
-		"var i: int = 69;",
-		"struct Vec2 { x: int; y: int*; }",
-		"var vecs: Vec2[2][2] = {{{1,&i},{3,&i}}, {{5,&i},{7,&i}}};",
+		// "var i: int = 69;",
+		// "struct Vec2 { x: int; y: int*; }",
+		// "var vecs: Vec2[2][2] = {{{1,&i},{3,&i}}, {{5,&i},{7,&i}}};",
 		
-		"func f1(start: Vec3, end: Vec3): Vec3 { }",
-		"struct Vec3 { x: int, y: int, z: int }",
+		// "func f1(start: Vec3, end: Vec3): Vec3 { }",
+		// "struct Vec3 { x: int, y: int, z: int }",
 
 		
-        "const p = sizeof(*j);",
-        "const q = sizeof(:int);",
-        "var y: int = x;",
-        "var x: int = 69;",
-        "var j: int* = &x;",
+        // "const p = sizeof(*j);",
+        // "const q = sizeof(:int);",
+        // "var y: int = x;",
+        // "var x: int = 69;",
+        // "var j: int* = &x;",
 	
-        "const x = y;",
-        "const y = 666;",
-        "var m: Mesh;",
-        "struct Mesh { data: u8*; }",
-        "typedef u8 = char;",
+        // "const x = y;",
+        // "const y = 666;",
+        // "var m: Mesh;",
+        // "struct Mesh { data: u8*; }",
+        // "typedef u8 = char;",
        
 
-        "const y = sizeof(*x)",
-        "var x: B*",
-        */
+        // "const y = sizeof(*x)",
+        // "var x: B*",
+        // */
 
-		/*
-		// Negative (failing) tests
-		"var accel = { 1, 2 };", // type cannot be inferred
-		"func f2(start: int, end: int): int* { result: int = 69; return result; }",
-		*/
-    };
+		// /*
+		// // Negative (failing) tests
+		// "var accel = { 1, 2 };", // type cannot be inferred
+		// "func f2(start: int, end: int): int* { result: int = 69; return result; }",
+		// */
+    // };
 
-    for (size_t i = 0; i<ARRAY_COUNT(decls); ++i) {
-        init_stream("", decls[i]);
-        Decl *decl = parse_decl();
-        sym_put_decl(decl);
-    }
+    // for (size_t i = 0; i<ARRAY_COUNT(decls); ++i) {
+        // init_stream("", decls[i]);
+        // Decl *decl = parse_decl();
+        // sym_put_decl(decl);
+    // }
 
 
-	for (int i = 0; i<da_len(global_syms_buf); ++i) {
-		complete_sym(global_syms_buf[i]);
-	}
+	// for (int i = 0; i<da_len(global_syms_buf); ++i) {
+		// complete_sym(global_syms_buf[i]);
+	// }
 
-    for (int i = 0; i<da_len(ordered_syms); ++i) {
-        Sym *sym = ordered_syms[i];
-        print_decl(sym->decl);
-        printf("\n");
-    }
+    // for (int i = 0; i<da_len(ordered_syms); ++i) {
+        // Sym *sym = ordered_syms[i];
+        // print_decl(sym->decl);
+        // printf("\n");
+    // }
 
-	map_clear(&global_syms_map);
-	da_free(global_syms_buf);
-	da_free(ordered_syms);
+	// map_clear(&global_syms_map);
+	// da_free(global_syms_buf);
+	// da_free(ordered_syms);
 }
 

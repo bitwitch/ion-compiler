@@ -63,7 +63,6 @@ typedef struct {
 Token token;
 char *stream;
 int current_line = 1;
-char *compilation_filepath;
 
 char *keyword_enum;
 char *keyword_typedef;
@@ -479,14 +478,13 @@ repeat:
 			break;
         }
 	}
-	token.pos.filepath = compilation_filepath;
 	token.pos.line = current_line;
     token.end = stream;
 }
 
 void init_stream(char *path, char *source) {
     stream = source;
-	compilation_filepath = path;
+	token.pos.filepath = path;
 	current_line = 1;
     next_token();
 }

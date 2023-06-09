@@ -3,6 +3,8 @@ typedef struct {
 	int line;
 } SourcePos;
 
+SourcePos pos_builtin = {.filepath = "<builtin>"};
+
 void syntax_error_at(SourcePos pos, char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);

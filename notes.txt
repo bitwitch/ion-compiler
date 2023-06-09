@@ -192,18 +192,22 @@ TODO:
 Packages
 
 
-Part One: compiling a package
+Part One: compiling all .ion files in a "package" directory
 1. pass a package (directory name) to the compiler on the command line 
 2. walk the directory whose name matches the package name, and collect all the
    .ion files in that directory
-3. parse all the files and add all the declarations to a package scoped symbol
-   table
-4. resolve all the symbols in the package
-5. generate code for the package
+3. parse all the files and add all the declarations to the symbol table
+4. resolve all the symbols 
+5. generate code 
 
+Part Two: scoped packages
+1. Create a package structure to contain package symbols and other package
+   specific data
+2. When parsing a package, add symbols to the symbol table within the package
+3. resolve all the symbols in the package
+4. generate code for the package
 
-
-Part Two: imports
+Part Three: imports
 1. create a new declaration for imports
 [ same as 2 and 3 above ]
 2. need to walk the directory whose name matches the imported package name, and
@@ -212,7 +216,17 @@ Part Two: imports
    table
 
 
+Package *import_package(char *dot_path) : allocates a new package (or returns
+cached one), parses the package
 
+---
+
+Search path order:
+1. system-packages for the %ION_HOME% directory
+2. the current working directory
+3. the semicolon separated list of directories in %ION_PATH%
+
+Bitwise Day 20 Extra approx. 1:09:00 working on starting packages in proper
 
 
 2023-06-04
