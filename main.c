@@ -26,18 +26,16 @@
 #include "ion.c"
 
 void run_tests(void) {
-	init_keywords();
-	sym_init_table();
+	init_compiler();
 
-	// read_dir_test();
-	// da_test();
-	// map_test();
-	// str_intern_test();
-	// lex_test();
-	// parse_test();
-	// type_intern_test();
-	// resolve_test();
-	// codegen_test();
+	read_dir_test();
+	da_test();
+	map_test();
+	str_intern_test();
+	lex_test();
+	parse_test();
+	type_intern_test();
+	codegen_test();
 
 }
 

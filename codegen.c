@@ -772,57 +772,57 @@ void gen_all_c(FILE *out_file) {
 bool compile_package(char *package_name, char *out_name);
 
 void codegen_test(void) {
-    // SourcePos pos = {"", 0};
-	// char *str;
+	SourcePos pos = {"", 0};
+	char *str;
 
-	// // exprs
-    // str = gen_expr_c(expr_int(pos, 69, TOKENMOD_NONE));
-	// assert(0 == strcmp(str, "69"));
-    // str = gen_expr_c(expr_float(pos, 6.66, TOKENMOD_NONE));
-	// assert(0 == strcmp(str, "6.66"));
-    // str = gen_expr_c(expr_bool(pos, true));
-	// assert(0 == strcmp(str, "true"));
-    // str = gen_expr_c(expr_bool(pos, false));
-	// assert(0 == strcmp(str, "false"));
-    // str = gen_expr_c(expr_str(pos, "well hello friends"));
-	// assert(0 == strcmp(str, "\"well hello friends\""));
-    // str = gen_expr_c(expr_name(pos, "Vector3"));
-	// assert(0 == strcmp(str, "Vector3"));
-    // str = gen_expr_c(expr_unary(pos, '~', expr_int(pos, 42, TOKENMOD_NONE)));
-	// assert(0 == strcmp(str, "~(42)"));
-    // str = gen_expr_c(expr_binary(pos, '+', expr_int(pos, 33, TOKENMOD_NONE), expr_int(pos, 36, TOKENMOD_NONE)));
-	// assert(0 == strcmp(str, "(33) + (36)"));
-    // str = gen_expr_c(expr_cast(pos, typespec_name(pos, "int"), expr_name(pos, "x")));
-	// assert(0 == strcmp(str, "(int)(x)"));
-    // str = gen_expr_c(expr_sizeof_expr(pos, expr_name(pos, "x")));
-	// assert(0 == strcmp(str, "sizeof(x)"));
-    // str = gen_expr_c(expr_sizeof_typespec(pos, typespec_name(pos, "int")));
-	// assert(0 == strcmp(str, "sizeof(int)"));
-     
-	// // types
-    // str = gen_type_c(type_int, "");
-	// assert(0 == strcmp(str, "int"));
-    // str = gen_type_c(type_char, "");
-	// assert(0 == strcmp(str, "char"));
-    // str = gen_type_c(type_float, "");
-	// assert(0 == strcmp(str, "float"));
-    // str = gen_type_c(type_bool, "");
-	// assert(0 == strcmp(str, "bool"));
+	// exprs
+	str = gen_expr_c(expr_int(pos, 69, TOKENMOD_NONE));
+	assert(0 == strcmp(str, "69"));
+	str = gen_expr_c(expr_float(pos, 6.66, TOKENMOD_NONE));
+	assert(0 == strcmp(str, "6.66"));
+	str = gen_expr_c(expr_bool(pos, true));
+	assert(0 == strcmp(str, "true"));
+	str = gen_expr_c(expr_bool(pos, false));
+	assert(0 == strcmp(str, "false"));
+	str = gen_expr_c(expr_str(pos, "well hello friends"));
+	assert(0 == strcmp(str, "\"well hello friends\""));
+	str = gen_expr_c(expr_name(pos, "Vector3"));
+	assert(0 == strcmp(str, "Vector3"));
+	str = gen_expr_c(expr_unary(pos, '~', expr_int(pos, 42, TOKENMOD_NONE)));
+	assert(0 == strcmp(str, "~(42)"));
+	str = gen_expr_c(expr_binary(pos, '+', expr_int(pos, 33, TOKENMOD_NONE), expr_int(pos, 36, TOKENMOD_NONE)));
+	assert(0 == strcmp(str, "(33) + (36)"));
+	str = gen_expr_c(expr_cast(pos, typespec_name(pos, "int"), expr_name(pos, "x")));
+	assert(0 == strcmp(str, "(int)(x)"));
+	str = gen_expr_c(expr_sizeof_expr(pos, expr_name(pos, "x")));
+	assert(0 == strcmp(str, "sizeof(x)"));
+	str = gen_expr_c(expr_sizeof_typespec(pos, typespec_name(pos, "int")));
+	assert(0 == strcmp(str, "sizeof(int)"));
+	 
+	// types
+	str = gen_type_c(type_int, "");
+	assert(0 == strcmp(str, "int"));
+	str = gen_type_c(type_char, "");
+	assert(0 == strcmp(str, "char"));
+	str = gen_type_c(type_float, "");
+	assert(0 == strcmp(str, "float"));
+	str = gen_type_c(type_bool, "");
+	assert(0 == strcmp(str, "bool"));
 
-	// TypeField params[] = {
-		// { "param1", type_int },
-		// { "param2", type_int },
-	// };
-	// Type *func_int_int = type_func(params, ARRAY_COUNT(params), false, type_int);
+	TypeField params[] = {
+		{ "param1", type_int },
+		{ "param2", type_int },
+	};
+	Type *func_int_int = type_func(params, ARRAY_COUNT(params), false, type_int);
 
-	// str = gen_type_c(type_array(type_int, 16), "x");
-	// assert(0 == strcmp(str, "int (x[16])"));
-	// str = gen_type_c(func_int_int, "x");
-	// assert(0 == strcmp(str, "int (*x)(int, int)"));
-	// str = gen_type_c(type_ptr(func_int_int), "x");
-	// assert(0 == strcmp(str, "int (*(*x))(int, int)"));
-	// str = gen_type_c(type_array(type_ptr(func_int_int), 3), "x");
-	// assert(0 == strcmp(str, "int (*(*(x[3])))(int, int)"));
+	str = gen_type_c(type_array(type_int, 16), "x");
+	assert(0 == strcmp(str, "int (x[16])"));
+	str = gen_type_c(func_int_int, "x");
+	assert(0 == strcmp(str, "int (*x)(int, int)"));
+	str = gen_type_c(type_ptr(func_int_int), "x");
+	assert(0 == strcmp(str, "int (*(*x))(int, int)"));
+	str = gen_type_c(type_array(type_ptr(func_int_int), 3), "x");
+	assert(0 == strcmp(str, "int (*(*(x[3])))(int, int)"));
 	
 
 	// if (!compile_package("tests/codegen")) {

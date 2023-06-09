@@ -30,6 +30,9 @@ TODO:
 [ ] control flow analysis, like detecting if all branches of an if statement
     return a value if they should
 
+[ ] build a simple system to compile all the test packages and maybe check them
+    against a reference file
+
 [ ] define multiple variables of the same type with commas:
     a, b: int;
     var j, k: int;
