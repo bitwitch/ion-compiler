@@ -348,3 +348,14 @@ Decl *decl_directive(SourcePos pos, char *name, DirectiveArg *args, int num_args
 	decl->directive.num_args = num_args;
 	return decl;
 }
+
+Decl *decl_import(SourcePos pos, char *name, bool is_relative, bool import_all, char *package_path, ImportItem *items, int num_items) {
+	Decl *decl = decl_alloc(DECL_IMPORT, pos);
+	decl->name = name;
+	decl->import.is_relative = is_relative;
+	decl->import.import_all = import_all;
+	decl->import.package_path = package_path;
+	decl->import.items = ast_memdup(items, num_items * sizeof(*items));
+	decl->import.num_items = num_items;
+	return decl;
+}

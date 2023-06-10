@@ -656,6 +656,51 @@ Decl *parse_decl_directive(void) {
 	return decl;
 }
 
+Decl *parse_decl_import(void) {
+	SourcePos pos = token.pos;
+	BUF(char *name_buf) = NULL;
+	BUF(ImportItem *items) = NULL;
+	bool is_relative = false;
+	bool import_all = false;
+
+	if (match_token('.')) {
+		is_relative = true;
+		da_printf(name_buf, ".%s", parse_name());
+	} else {
+		da_printf(name_buf, "%s", parse_name());
+	}
+	while (match_token('.')) {
+		da_printf(name_buf, ".%s", parse_name());
+	}
+	char *name = str_intern(name_buf);
+
+	// replace dots with slashes to get path
+	char *tmp = is_relative ? name + 1 : name; // skip starting dot
+	char *path = str_replace_char(tmp, '.', '/');
+	char *package_path = str_intern(path);
+
+	if (match_token('{')) {
+		do {
+			if (match_token(TOKEN_ELLIPSIS)) {
+				import_all = true;
+			} else {
+				ImportItem item = {0};
+				char *name = parse_name();
+				if (match_token('=')) {
+					item.rename = name;
+					item.name = parse_name();
+				} else {
+					item.name = name;
+				}
+				da_push(items, item);
+			}
+		} while (match_token(','));
+		expect_token('}');
+	}
+
+	return decl_import(pos, name, is_relative, import_all, package_path, items, da_len(items));
+}
+
 Decl *parse_decl(void) {
 	Decl *decl = NULL;
 
@@ -678,6 +723,8 @@ Decl *parse_decl(void) {
         decl = parse_decl_func();
     } else if (match_keyword(keyword_typedef)) {
         decl = parse_decl_typedef();
+    } else if (match_keyword(keyword_import)) {
+        decl = parse_decl_import();
     } else if (match_token('#')) {
         decl = parse_decl_directive();
     } else {

@@ -1,5 +1,6 @@
-#foreign(include = "<stdio.h>")
-@foreign func printf(fmt: char*, ...) {}
+// #foreign(include = "<stdio.h>")
+// @foreign func printf(fmt: char*, ...);
+import libc {printf}
 
 struct Int2 {
 	x: int;

@@ -1,8 +1,18 @@
-#foreign(include = "<stdio.h>")
-@foreign func printf(fmt: char*, ...);
+import libc {pf = printf}
+import libc {fgets, sin = stdin}
 
 func do_some_prints() {
-	printf("Well, ");
-	printf("hello friends\n");
-	printf("\nsuh dude\n");
+	// printf("Well, ");
+	// printf("hello friends\n");
+	// printf("\nsuh dude\n");
+	pf("Well, ");
+	pf("hello friends\n");
+	pf("\nsuh dude\n");
+}
+
+func get_input() {
+	pf("Input some text: ");
+	buf: char[256];
+	fgets(buf, 256, sin);
+	pf("You input: %s\n", buf);
 }

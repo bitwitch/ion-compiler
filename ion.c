@@ -106,8 +106,7 @@ bool parse_package_file(Package *package, char *filepath) {
 void add_package_decl_syms(Package *package) {
 	for (int i=0; i<da_len(package->decls); ++i) {
 		Decl *decl = package->decls[i];
-		// if (decl->kind != DECL_DIRECTIVE && decl->kind != DECL_IMPORT
-		if (decl->kind != DECL_DIRECTIVE) {
+		if (decl->kind != DECL_DIRECTIVE && decl->kind != DECL_IMPORT) {
 			sym_put_decl(decl);
 		}
 	}
@@ -122,29 +121,77 @@ void import_all_package_symbols(Package *package) {
 	}
 }
 
-// void process_package_imports(Package *package) {
-    // for (int i=0; i<da_len(package->decls); ++i) {
-        // Decl *decl = package->decls[i];
-        // if (decl->kind == DECL_IMPORT) {
-            // BUF(char *path) = NULL;
-            // if (decl->import.is_relative) {
-                // da_printf(path, "%s/", package->path);
-            // }
-            // for (int j=0; j<decl->import.num_names; ++j) {
-                // da_printf(path, "%s%s", j == 0 ? "" : "/", decl->import.names[j]);
-            // }
-            // Package *imported_package = import_package(path);
-            // if (!imported_package) {
-                // semantic_error(decl->pos, "failed to import package '%s'", path);
-            // }
-            // da_free(path);
-            // import_package_symbols(decl, imported_package);
-            // if (decl->import.import_all) {
-                // import_all_package_symbols(imported_package);
-            // }
-        // }
-    // }
-// }
+
+void add_package(Package *package) {
+	Package *old_package = map_get(&package_map, package->path);
+	if (old_package != package) {
+		assert(!old_package);
+		da_push(packages, package);
+		map_put(&package_map, package->path, package);
+	}
+}
+
+bool parse_package(Package *package);
+
+// create new package or return cached one, parse all of the ion files in it,
+// and add symbols to the package symbol table
+Package *import_package(char *package_path) {
+	package_path = str_intern(package_path);
+	Package *package = map_get(&package_map, package_path);
+	if (!package) {
+		package = xcalloc(1, sizeof(Package));
+		package->path = package_path;
+		printf("Importing %s\n", package_path);
+		if (!copy_package_full_path(package->full_path, package_path)) {
+			free(package);
+			return NULL;
+		}
+		char *external_name = str_replace_char(package_path, '/', '_');
+		package->external_name = str_intern(external_name);
+		add_package(package);
+		parse_package(package);
+	}
+	return package;
+}
+
+void import_package_symbols(Decl *decl, Package *package) {
+	assert(decl->kind == DECL_IMPORT);
+	for (int i=0; i<decl->import.num_items; ++i) {
+		ImportItem item = decl->import.items[i];
+		Sym *sym = get_package_sym(package, item.name);
+        if (!sym) {
+            semantic_error(decl->pos, "symbol '%s' does not exist in package '%s'", item.name, package->path);
+		}
+		if (sym->package != package) {
+            semantic_error(decl->pos, "symbol '%s' is not native to package '%s', you must import it from its native package '%s'", 
+				item.name, package->path, sym->package->path);
+		}
+		sym_global_put(item.rename ? item.rename : item.name, sym);
+	}
+}
+
+
+void process_package_imports(Package *package) {
+	for (int i=0; i<da_len(package->decls); ++i) {
+		Decl *decl = package->decls[i];
+		if (decl->kind == DECL_IMPORT) {
+			BUF(char *path) = NULL;
+			if (decl->import.is_relative) {
+				da_printf(path, "%s/", package->path);
+			}
+			da_printf(path, "%s", decl->import.package_path);
+			Package *imported_package = import_package(path);
+			if (!imported_package) {
+				semantic_error(decl->pos, "failed to import package '%s'", path);
+			}
+			da_free(path);
+			import_package_symbols(decl, imported_package);
+			if (decl->import.import_all) {
+				import_all_package_symbols(imported_package);
+			}
+		}
+	}
+}
 
 bool parse_package(Package *package) {
 	// parse all .ion files in package directory
@@ -178,37 +225,9 @@ bool parse_package(Package *package) {
 		import_all_package_symbols(builtin_package);
 	}
 	add_package_decl_syms(package);
-	// process_package_imports(package);
+	process_package_imports(package);
 	leave_package(old_package);
 	return true;
-}
-
-void add_package(Package *package) {
-	Package *old_package = map_get(&package_map, package->path);
-	if (old_package != package) {
-		assert(!old_package);
-		da_push(packages, package);
-		map_put(&package_map, package->path, package);
-	}
-}
-
-// create new package or return cached one, parse all of the ion files in it,
-// and add symbols to the package symbol table
-Package *import_package(char *package_path) {
-	package_path = str_intern(package_path);
-	Package *package = map_get(&package_map, package_path);
-	if (!package) {
-		package = xcalloc(1, sizeof(Package));
-		package->path = package_path;
-		printf("Importing %s\n", package_path);
-		if (!copy_package_full_path(package->full_path, package_path)) {
-			free(package);
-			return NULL;
-		}
-		add_package(package);
-		parse_package(package);
-	}
-	return package;
 }
 
 Package *init_builtin_package(void) {
@@ -249,6 +268,15 @@ bool compile_package(char *package_name, char *out_name) {
 	complete_reachable_syms();
     printf("Compiled %d symbols in %d packages\n", da_len(reachable_syms), da_len(packages));
 
+	char *main_name = str_intern("main");
+	Sym *main_sym = get_package_sym(main_package, main_name);
+	if (!main_sym) {
+		fatal("package '%s' contains no function called main", package_name);
+	}
+
+	// ensure that package prefixing does not happen to main() in code gen
+	main_sym->external_name = main_name;
+	
 	// code generation
 	char out_filepath[MAX_PATH];
 	if (out_name) {
@@ -262,7 +290,9 @@ bool compile_package(char *package_name, char *out_name) {
 		fprintf(stderr, "error: failed to open output file %s\n", out_filepath);
 		return false;
 	}
+
 	gen_all_c(out_file);
+
 	fclose(out_file);
 
 	printf("Compilation succeeded: %s\n", out_filepath);

@@ -85,6 +85,7 @@ char *keyword_default;
 char *keyword_cast;
 char *keyword_sizeof;
 char *keyword_defer;
+char *keyword_import;
 
 // non-keyword string interned names
 char *name_foreign;
@@ -114,6 +115,7 @@ void init_keywords(void) {
         keyword_cast = str_intern("cast");
         keyword_sizeof = str_intern("sizeof");
         keyword_defer = str_intern("defer");
+        keyword_import = str_intern("import");
 
 		name_foreign = str_intern("foreign");
 		name_include = str_intern("include");
@@ -143,7 +145,8 @@ bool is_keyword_name(char *check) {
            s == keyword_default  ||
            s == keyword_cast     ||
            s == keyword_sizeof   ||
-           s == keyword_defer;
+           s == keyword_defer    ||
+           s == keyword_import;
 }
 
 uint8_t char_to_digit[256] = {
@@ -484,7 +487,7 @@ repeat:
 
 void init_stream(char *path, char *source) {
     stream = source;
-	token.pos.filepath = path;
+	token.pos.filepath = str_intern(path);
 	current_line = 1;
     next_token();
 }

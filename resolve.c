@@ -46,6 +46,7 @@ typedef enum {
 // struct Sym is typedefed to Sym in type.c
 struct Sym {
     char *name;
+	char *external_name;
     SymKind kind;
     SymState state;
     Decl *decl;
@@ -70,12 +71,9 @@ BUF(Package **packages);
 Package *current_package;
 Package *builtin_package;
 
-// Map global_syms_map;
-// BUF(Sym **global_syms_buf);
-// BUF(Decl **directives);
-
 BUF(Sym **ordered_syms);
 BUF(Sym **reachable_syms);
+Map reachable_syms_map;
 
 Sym *local_syms[MAX_LOCAL_SYMS];
 Sym **local_syms_end = local_syms;
@@ -1572,12 +1570,22 @@ Type *resolve_decl_func(Decl *decl) {
 	int num_params = decl->func.num_params;
 	for (int i = 0; i < num_params; ++i) {
 		FuncParam param = decl->func.params[i];
-		da_push(params, (TypeField){ .name=param.name, .type=resolve_typespec(param.typespec) });
+		Type *param_type = resolve_typespec(param.typespec); 
+		complete_type(param_type);
+		if (param_type == type_void) {
+			semantic_error(decl->pos, "function parameter '%s' type cannot be void", param.name);
+		}
+		da_push(params, (TypeField){ .name=param.name, .type=param_type});
 	}
 
 	Type *ret_type = type_void;
-	if (decl->func.ret_typespec)
+	if (decl->func.ret_typespec) {
 		ret_type = resolve_typespec(decl->func.ret_typespec);
+		complete_type(ret_type);
+	}
+    if (ret_type->kind == TYPE_ARRAY) {
+        semantic_error(decl->pos, "function return type cannot be array");
+    }
 
 	return type_func(params, num_params, decl->func.is_variadic, ret_type);
 }
@@ -1630,6 +1638,7 @@ void resolve_decl_directive(Decl *decl) {
 void resolve_sym(Sym *sym) {
 	if (!sym->reachable && !is_local_sym(sym)) {
 		da_push(reachable_syms, sym);
+		map_put(&reachable_syms_map, sym->name, sym);
 		sym->reachable = true;
 	}
     if (sym->state == SYM_RESOLVED) {
@@ -1676,8 +1685,10 @@ void complete_sym(Sym *sym) {
 	if (sym->decl && !is_foreign_decl(sym->decl)) {
 		if (sym->kind == SYM_TYPE) {
 			complete_type(sym->type);
-		} else if (sym->kind == SYM_FUNC && !sym->decl->func.is_incomplete) {
-			resolve_func_body(sym->decl, sym->type);
+		} else if (sym->kind == SYM_FUNC) {
+			if (!sym->decl->func.is_incomplete) {
+				resolve_func_body(sym->decl, sym->type);
+			}
 			da_push(ordered_syms, sym);
 		}
 	}

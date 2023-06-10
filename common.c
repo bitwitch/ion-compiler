@@ -211,6 +211,16 @@ char *da__printf(char *buf, char *fmt, ...) {
 	return buf;
 }
 
+char *str_replace_char(char *str, char to_replace, char replacement) {
+	BUF(char *result) = NULL;
+	for (char *it = str; *it; ++it) {
+		da_printf(result, "%c", *it == to_replace ? replacement : *it);
+	}
+	return result;
+}
+
+
+
 void da_test(void) {
 	int *buf = NULL;
     assert(da_len(buf) == 0);

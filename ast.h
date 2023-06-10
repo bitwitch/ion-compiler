@@ -6,7 +6,8 @@ var_decl = NAME '=' expr
          | NAME ':' type ('=' expr)?
 const_decl = NAME '=' expr
 typedef_decl = NAME '=' type
-directive = NAME
+directive_decl = NAME '(' (NAME '=' expr ','?)+ ')'
+import_decl = NAME ('{' '...' | (NAME ',')+ '}')?
 
 decl = 'enum' enum_decl
      | 'struct' aggregate_decl
@@ -15,7 +16,8 @@ decl = 'enum' enum_decl
      | 'const' const_decl
      | 'typedef' typedef_decl
      | 'func' func_decl
-	 | '#' directive '(' (NAME '=' expr ','?)+ ')'
+	 | '#' directive_decl
+	 | 'import' import_decl
 
 for_init = 
 assign_op = EQ | AUTO_EQ | ADD_EQ | SUB_EQ | MUL_EQ | DIV_EQ | MOD_EQ | LSHIFT_EQ | RSHIFT_EQ | XOR_EQ | AND_EQ | OR_EQ
@@ -276,6 +278,7 @@ typedef enum {
     DECL_CONST,
     DECL_TYPEDEF,
     DECL_DIRECTIVE,
+    DECL_IMPORT,
 } DeclKind;
 
 typedef struct {
@@ -292,6 +295,11 @@ typedef struct {
 	char *name;
 	Expr *expr;
 } DirectiveArg;
+
+typedef struct {
+	char *name;
+	char *rename;
+} ImportItem;
 
 struct Decl {
     DeclKind kind;
@@ -329,6 +337,13 @@ struct Decl {
 			DirectiveArg *args;
 			int num_args;
 		} directive;
+		struct {
+			bool is_relative;
+			bool import_all;
+			char *package_path;
+			ImportItem *items; // items represents the imported symbols
+			int num_items;
+		} import;
     };
 };
 

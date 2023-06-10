@@ -88,3 +88,5 @@ func fib(n: int): int {
 }
 
 const height = 600;
+
+func main() {}

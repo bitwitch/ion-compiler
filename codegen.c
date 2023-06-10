@@ -43,6 +43,7 @@ Stmt *defer_pop(Stmt **scope_start) {
 	return *defer_stack_end;
 }
 
+Map gen_name_map;
 
 #define INDENT_WIDTH 4
 static int gen_indent = 0; 
@@ -58,6 +59,27 @@ char *gen__newline(char *buf) {
 
 char *gen_parens(char *str, bool b) {
 	return b ? strf("(%s)", str) : str;
+}
+
+char *gen_name_c(char *name) {
+	char *gen_name = map_get(&gen_name_map, name);
+	if (!gen_name) {
+		Sym *sym = map_get(&reachable_syms_map, name);
+		if (sym) {
+			if (sym->external_name) {
+				gen_name = sym->external_name;
+			} else if (sym->package->external_name) {
+				gen_name = strf("%s_%s", sym->package->external_name, sym->name);
+			} else {
+				gen_name = sym->name;
+			}
+		} else {
+			assert(name);
+			gen_name = name;
+		}
+		map_put(&gen_name_map, name, gen_name);
+	}
+	return gen_name;
 }
 
 char *gen_type_c(Type *type, char *inner) {
@@ -162,6 +184,7 @@ char *gen_expr_c(Expr *expr) {
     case EXPR_CHAR: 
         return strf("\'%c\'", expr->int_val); 
     case EXPR_NAME: 
+        // return strf("%s", gen_name_c(expr->name)); 
         return strf("%s", expr->name); 
     case EXPR_UNARY: 
 		return strf("%c(%s)", expr->unary.op, gen_expr_c(expr->unary.expr));

@@ -2,11 +2,18 @@ TODO:
 
 [ ] packages
     [X] physical organization, compiling multile ion files in a directory
-    [ ] dependency management, specifying which packages symbols you depend on
+    [X] dependency management, specifying which packages symbols you depend on
     [ ] namespacing
-    [ ] compiler takes package (directory name) on command line
+    [X] compiler takes package (directory name) on command line
     [ ] issue user friendly message for when a single .ion file is passed (could
         also just support compiling both single ion files and packages??)
+
+[ ] c codegen needs to prefix decl names with a package prefix to avoid
+    name collisions with other packages
+
+[ ] importing a package that has a foreign function and declaring the same
+    foreign function in the current package yields a duplicate symbol error. but
+    this should probably work, right??
 
 [ ] implement read_dir() on linux (in os_unix.c)
 
@@ -78,7 +85,17 @@ TODO:
 
 
 
-
+[X] some buffer bug, maybe overflow
+		- compiling solitaire package yielded following output:
+			  Adding package search path C:/Users/shmow/code/ion-compiler/system_packages
+			  Adding package search path .
+			  Importing solitaire
+			  Importing libc
+			  Importing noir
+			  @_▀▄÷⌂:2: error: duplicate definition of global symbol 'printf'.
+			  Assertion failed: 0, file C:\Users\shmow\code\ion-compiler\error.c, line 30
+    - SOLVED: the issue was the string passed into init_stream() was not
+      interned, so the string was getting overwritten later
 [X] compile to a file with the same name as the source file but swap extension
 [X] foreign c includes (basically "preprocessor" directives)
     [X] in resolution, check that foreign directives with include args have
