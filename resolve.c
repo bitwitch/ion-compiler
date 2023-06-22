@@ -1625,8 +1625,9 @@ void resolve_decl_directive(Decl *decl) {
 
 	for (int i=0; i<decl->directive.num_args; ++i) {
 		DirectiveArg arg = decl->directive.args[i];
-		// only handling include args for now
-		assert(arg.name == name_include);
+
+		assert(arg.name == name_include || arg.name == name_source);
+
 		ResolvedExpr resolved = resolve_expr(arg.expr);
 		if (resolved.type != type_ptr(type_char)) {
 			semantic_error(decl->pos, "expected include value to be type char*, got %s", 

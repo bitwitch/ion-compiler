@@ -90,6 +90,7 @@ char *keyword_import;
 // non-keyword string interned names
 char *name_foreign;
 char *name_include;
+char *name_source;
 
 void init_keywords(void) {
     static bool first = true;
@@ -119,6 +120,7 @@ void init_keywords(void) {
 
 		name_foreign = str_intern("foreign");
 		name_include = str_intern("include");
+		name_source = str_intern("source");
 	}
     first = false;
 }

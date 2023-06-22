@@ -782,6 +782,27 @@ char *gen_definitions_c(void) {
 	return defs;
 }
 
+char *gen_foreign_sources_c(void) {
+	BUF(char *sources) = NULL;
+	da_printf(sources, "// Foreign sources ------------------------------------------------------------\n");
+	for (int j=0; j<da_len(packages); ++j) {
+		Package *package = packages[j];
+		for (int i=0; i<da_len(package->directives); ++i) {
+			Decl *decl = package->directives[i];
+			if (decl->name == name_foreign) {
+				for (int j=0; j<decl->directive.num_args; ++j) {
+					DirectiveArg arg = decl->directive.args[j];
+					if (arg.name == name_source) {
+						da_printf(sources, "#include \"%s\"\n", arg.expr->str_val);
+					}
+				}
+			}
+		}
+	}
+	return sources;
+}
+
+
 void gen_all_c(FILE *out_file) {
 	assert(out_file);
 	char *preamble = gen_preamble_c();
@@ -789,7 +810,8 @@ void gen_all_c(FILE *out_file) {
 	char *forward_decls = gen_forward_decls_c();
 	char *cdecls = gen_decls_c();
 	char *defs = gen_definitions_c();
-	fprintf(out_file, "%s\n%s\n%s\n%s\n%s", preamble, headers, forward_decls, cdecls, defs);
+	char *sources = gen_foreign_sources_c();
+	fprintf(out_file, "%s\n%s\n%s\n%s\n%s\n%s", preamble, headers, forward_decls, cdecls, defs, sources);
 }
 
 bool compile_package(char *package_name, char *out_name);

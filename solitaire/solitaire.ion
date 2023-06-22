@@ -1,11 +1,18 @@
 import libc {printf}
 import noir {...}
 
+const card_width = 100;
+const card_height = 200;
+const card_spacing = 25;
+
 func main(argc: int, argv: char**): int {
 	printf("Let's play solitaire!\n");
 
-	init();
+	init(); // noir init
 	window := create_window("Solitaire", CENTERED, {800, 600});
+
+	// deck := deck_alloc();
+	// deal_klondike(deck);
 
 	while(1) {
 		update();
@@ -15,8 +22,182 @@ func main(argc: int, argv: char**): int {
 		if (keys[KEY_RETURN].released) {
 			printf("Return released\n");
 		}
+
+		solitaire_render();
 	}
 
 	destroy_window(window);
 	return 0;
 }
+
+enum SuitName {
+	SUIT_CLUB,
+	SUIT_HEART,
+	SUIT_DIAMOND,
+	SUIT_SPADE,
+}
+
+struct Card {
+	num: int;     // the card number, 10 for face cards
+	symbol: char; // for face cards, J, Q, K, and A
+	suit: SuitName;
+	pile: Pile*;
+	face_down: bool;
+	prev: Card*;
+	next: Card*;
+}
+
+struct Pile {
+	cards: Card*;
+	count: int;
+}
+
+struct PileArray {
+	piles: Pile*;
+	count: int;
+}
+
+var stock: Pile;
+var waste: Pile;
+var tableau: PileArray;
+var foundations: PileArray;
+
+// returns a malloc'd array of 54 cards, jokers are at the end so if you just
+// use 52 as length of the array you will not use jokers
+// func deck_alloc(): Card* {
+	// card_index := 0;
+	// deck := calloc(54, sizeof(Card));
+	// prev: Card* = NULL;
+
+	// for (suit := 0; suit < 4; suit++) {
+		// card := deck[card_index];
+		// card.suit = suit;
+
+		// if (prev) {
+			// prev.next = &card;
+		// }
+
+		// // add ace
+		// deck[card_index++] = Card{num=1, symbol='A', face_down=true, prev=prev};
+
+		// // add num cards
+		// for (i := 2; i <= 10; i++) {
+			// deck[card_index++] = Card{num=i, face_down=true, prev=prev};
+		// }
+
+		// // add face cards
+		// deck[card_index++] = Card{num=10, symbol='K', face_down=true, prev=prev};
+		// deck[card_index++] = Card{num=10, symbol='Q', face_down=true, prev=prev};
+		// deck[card_index++] = Card{num=10, symbol='J', face_down=true, prev=prev};
+
+		// // add jokers??
+		// deck[card_index++] = Card{num=0, symbol='*', face_down=true, prev=prev};
+		// deck[card_index++] = Card{num=0, symbol='*', face_down=true, prev=prev};
+	// }
+	// return deck;
+// }
+
+// func pile_transfer(dst: Pile*, src: Pile*, num_cards: int) {
+	// card := pile_pop(src);
+	// while (src && num_cards) {
+		// pile_push(dst, card);
+		// num_cards--;
+		// card := pile_pop(src);
+	// }
+// }
+
+// func deck_shuffle(deck: Card*, num_cards: int) {
+
+// }
+
+// func deal_klondike(deck: Card*) {
+	// deck_shuffle(deck, 52);
+	// deck_pile := Pile{deck, deck+51};
+	// for (i := 0; i < 7; i++) {
+		// pile_transfer(tableau[i], deck_pile, i+1);
+	// }
+	// stock = deck_pile;
+	// foundations
+
+// }
+
+// func solitaire_update() {
+	// // get user input
+	// // 
+	// //  
+	// //   
+	// // user drags cards from pile to pile
+	// //
+	// //
+	// if (mouse_left.pressed) {
+		// moveable := true;
+		// // get card mouse is currently over
+		// // if the selected card has any cards on top of it
+			// // if any of those cards are out of sequence
+				// // then this subpile is not moveable
+	// }
+
+	// if (mouse_left.released) {
+		// // get drop target
+		// // if a card/pile is held, check if this is a valid drop target
+		// // if drop target is valid, transfer all cards from hand to target pile
+		
+		// selected := ...;
+		// // if dropping selection here should reveal a face down card
+		// if (selected && selected->prev && selected->prev->face_down && drop_target_is_valid && drop_target != selected->prev) {
+			// flip_card(selected->prev);
+		// }
+	// }
+
+// }
+
+
+func draw_pile(pile: Pile, x: int, y: int) {
+	y_off := 10;
+	for (i := 0; i < pile.count; i++) {
+		if (pile.cards[i].face_down) {
+			draw_rect(x, y + i * y_off, card_width, card_height, 0x2369ba);
+		} else {
+			draw_rect(x, y + i * y_off, card_width, card_height, 0xa0cbee);
+		}
+	}
+}
+
+func draw_pile_stacked(pile: Pile, x: int, y: int) {
+	if (pile.count == 0) {
+		return;
+	}
+
+	if (pile.cards[0].face_down) {
+		draw_rect(x, y, card_width, card_height, 0x2369ba);
+	} else {
+		draw_rect(x, y, card_width, card_height, 0xa0cbee);
+	}
+}
+
+func solitaire_render() {
+	x := 15;
+	y := 15;
+
+	// draw stock & waste
+	draw_pile_stacked(stock, x, y);
+	x += card_width + card_spacing;
+	draw_pile_stacked(waste, x, y);
+	x += 2 * (card_width + card_spacing);
+
+	// draw foundations
+	for (i := 0; i<foundations.count; i++) {
+		draw_pile_stacked(foundations.piles[i], x, y);
+		x += card_width + card_spacing;
+	}
+
+	x = 15;
+	y = 15 + card_height + card_spacing;
+
+	// draw tableau
+	for (i := 0; i<tableau.count; i++) {
+		draw_pile(tableau.piles[i], x, y);
+		x += card_width + card_spacing;
+	}
+}
+

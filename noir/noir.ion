@@ -1,6 +1,7 @@
 // #foreign(include = "<stdio.h>")
 // @foreign func printf(fmt: char*, ...);
 import libc {printf}
+#foreign(source = "noir_impl.c")
 
 struct Int2 {
 	x: int;
@@ -45,6 +46,7 @@ func init(): bool;
 func create_window(title: char*, pos: Int2, size: Int2): Window;
 func update();
 func destroy_window(window: Window);
+func draw_rect(x: int, y: int, w: int, h: int, color: uint);
 
 var keys: Key[NUM_KEYS];
 var CENTERED = Int2{-1, -1};
@@ -70,3 +72,4 @@ var CENTERED = Int2{-1, -1};
 	// destroy_window(window);
 	// return 0;
 // }
+

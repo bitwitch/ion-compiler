@@ -1,5 +1,3 @@
-#include "noir.c"
-
 #include <stdbool.h>
 #include <ctype.h>
 #include <SDL2/SDL.h>
@@ -21,6 +19,9 @@ int sdl_scancode_from_noir_key[NUM_KEYS] = {
     [KEY_LALT]      = SDL_SCANCODE_LALT,
     [KEY_RALT]      = SDL_SCANCODE_RALT,
 };
+
+// TODO(shaw): this is a temporary solution, currently for draw_rect()
+SDL_Window *active_window;
 
 int noir_key_from_sdl_scancode[SDL_NUM_SCANCODES];
 
@@ -55,6 +56,10 @@ Window create_window(char *title, Int2 pos, Int2 size) {
 	int x = pos.x < 0 ? SDL_WINDOWPOS_CENTERED : pos.x;
 	int y = pos.y < 0 ? SDL_WINDOWPOS_CENTERED : pos.y;
     window.sdl_window = SDL_CreateWindow(title, x, y, size.x, size.y, 0);
+
+	// TODO: This is TEMP
+	active_window = window.sdl_window;
+
 	return window;
 }
 
@@ -74,4 +79,20 @@ void update(void) {
 
 void destroy_window(Window window) {
 	SDL_DestroyWindow(window.sdl_window);
+}
+
+void draw_rect(int x, int y, int w, int h, uint32_t color) {
+	if (!active_window) {
+		fprintf(stderr, "Warning: draw_rect() called but there is no active_window\n");
+		return;
+	}
+
+	SDL_Renderer *renderer = SDL_GetRenderer(active_window);
+	SDL_SetRenderDrawColor(renderer,
+		(color >> 24) & 0xFF,
+		(color >> 16) & 0xFF,
+		(color >>  8) & 0xFF,
+		(color >>  0) & 0xFF);
+	SDL_Rect rect = {x,y,w,h};
+	SDL_RenderFillRect(renderer, &rect);
 }

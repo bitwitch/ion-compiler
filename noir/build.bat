@@ -51,7 +51,7 @@ REM compile noir.ion
 "%ION_DIR%\build\ion.exe" "%SRC_DIR%\noir.ion"
 
 REM compile main program
-cl /Zi /nologo /W3 /DSDL_MAIN_HANDLED /D_CRT_SECURE_NO_WARNINGS /ISDL2\include /Fesolitaire "%SRC_DIR%\noir_impl.c" /link /LIBPATH:SDL2\lib SDL2.lib
+cl /Zi /nologo /W3 /DSDL_MAIN_HANDLED /D_CRT_SECURE_NO_WARNINGS /ISDL2\include /Fenoir "%SRC_DIR%\noir_impl.c" /link /LIBPATH:SDL2\lib SDL2.lib
 
 endlocal
 popd
