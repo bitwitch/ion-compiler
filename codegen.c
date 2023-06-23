@@ -228,13 +228,14 @@ char *gen_expr_c(Expr *expr) {
         return strf("%s[%s]",
 			gen_expr_c(expr->index.expr),
             gen_expr_c(expr->index.index));
-    case EXPR_FIELD: 
+    case EXPR_FIELD: {
 		Type *type = expr->field.expr->type;
 		assert(type);
         return strf("%s%s%s",
             gen_expr_c(expr->field.expr),
 			type->kind == TYPE_PTR ? "->" : ".",
             expr->field.name);
+	}
 	case EXPR_CAST:
 		return strf("(%s)(%s)", 
 			gen_typespec_c(expr->cast.typespec, ""),
@@ -793,7 +794,10 @@ char *gen_foreign_sources_c(void) {
 				for (int j=0; j<decl->directive.num_args; ++j) {
 					DirectiveArg arg = decl->directive.args[j];
 					if (arg.name == name_source) {
-						da_printf(sources, "#include \"%s\"\n", arg.expr->str_val);
+						char source_path[MAX_PATH];
+						path_copy(source_path, package->full_path);
+						path_join(source_path, arg.expr->str_val);
+						da_printf(sources, "#include \"%s\"\n", source_path);
 					}
 				}
 			}

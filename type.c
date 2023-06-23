@@ -86,11 +86,11 @@ Type *type_double      = &(Type){ .kind = TYPE_DOUBLE,    .size = 8, .align = 8 
 Type *type_bool        = &(Type){ .kind = TYPE_BOOL,      .size = 4, .align = 4 };
 
 
-inline bool is_aggregate_type(Type *type) {
+bool is_aggregate_type(Type *type) {
 	return type->kind == TYPE_STRUCT || type->kind == TYPE_UNION;
 }
 
-inline bool is_floating_type(Type *type) {
+bool is_floating_type(Type *type) {
 	return type == type_float || type == type_double;
 }
 

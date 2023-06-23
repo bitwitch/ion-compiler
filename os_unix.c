@@ -2,7 +2,8 @@
 
 // return a stretchy buf of directory entries
 DirEntry *read_dir(char *path) {
-	assert(0);
+	(void)path;
+	assert(0 && "NOT IMPLEMENTED");
 	BUF(DirEntry *entries) = NULL;
 	return entries;
 }

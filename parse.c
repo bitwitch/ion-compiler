@@ -414,7 +414,7 @@ Stmt *parse_stmt_while(void) {
 }
 
 SwitchCase parse_stmt_switch_case(void) {
-	SourcePos pos = token.pos;
+	// SourcePos pos = token.pos;
     BUF(Expr **exprs) = NULL; // @LEAK
     bool is_default = false;
     while (is_keyword(keyword_case) || is_keyword(keyword_default)) {

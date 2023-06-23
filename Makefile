@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -Wall -Wextra -pedantic -g -Og -std=c11
+CFLAGS := -Wall -Wextra -pedantic -Wno-switch -g -Og -std=c11
 LFLAGS := -lm
 # NOTE(shaw): c11 is only used for anonymous unions, otherwise everything is c99
 

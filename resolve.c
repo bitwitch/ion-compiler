@@ -1058,7 +1058,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 	}
 	case EXPR_CAST: {
 		Type *type = resolve_typespec(expr->cast.typespec);
-		ResolvedExpr resolved_expr = resolve_expr(expr->cast.expr);
+		resolve_expr(expr->cast.expr);
 		result = resolved_rvalue(type);
 		break;
 	}
@@ -1080,7 +1080,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 	}
 
 	case EXPR_TERNARY: {
-		ResolvedExpr cond      = resolve_expr_cond(expr->ternary.cond);
+		resolve_expr_cond(expr->ternary.cond);
 		ResolvedExpr then_expr = resolve_expr(expr->ternary.then_expr);
 		ResolvedExpr else_expr = resolve_expr(expr->ternary.else_expr);
 
