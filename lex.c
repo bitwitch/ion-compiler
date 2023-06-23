@@ -494,8 +494,6 @@ void init_stream(char *path, char *source) {
     next_token();
 }
 
-// Warning! this returns a pointer to a static buffer, so its contents will
-// change on each call
 char *token_kind_to_str(TokenKind kind) {
     static char str[64] = {0};
     switch(kind) {
@@ -532,7 +530,7 @@ char *token_kind_to_str(TokenKind kind) {
         break;
     }
 
-    return str;
+    return str_intern(str);
 }
 
 char *token_info(void) {
@@ -579,10 +577,7 @@ void expect_token(TokenKind kind) {
     if (token.kind == kind) {
         next_token();
     } else {
-        // FIXME(shaw): token_kind_to_str needs to be fixed to not return a
-        // pointer to a static buffer, arenas will probably be good for that
-        char *tmp = token_kind_to_str(kind);
-        char *expected = strdup(tmp);
+        char *expected = token_kind_to_str(kind);
         syntax_error("Expected token '%s', got '%s'\n", 
                 expected, token_kind_to_str(token.kind));
         exit(1);
