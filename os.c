@@ -86,8 +86,18 @@ DirEntry *read_dir(char *path);
 
 
 void read_dir_test(void) {
-	DirEntry *entries = read_dir("C:/Users/shmow/code/ion-compiler");
-	for (int i=0; i<da_len(entries); ++i) {
-		printf("Entry[%d]=%s\n", i, entries[i].name);
+	char *path = getenv("IONHOME");
+	if (!path) {
+		fprintf(stderr, "error: IONHOME environment variable not defined: in function read_dir_test()\n");
+		return;
+	}
+
+	DirEntry *entries = read_dir(path);
+	if (da_len(entries) == 0) {
+		fprintf(stderr, "error: failed to read directory: %s\n", path);
+	} else {
+		for (int i=0; i<da_len(entries); ++i) {
+			printf("Entry[%d]=%s\n", i, entries[i].name);
+		}
 	}
 }
