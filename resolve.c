@@ -72,7 +72,8 @@ Package *current_package;
 Package *builtin_package;
 
 BUF(Sym **ordered_syms);
-BUF(Sym **reachable_syms);
+// reachable global symbols
+BUF(Sym **reachable_syms); 
 Map reachable_syms_map;
 
 Sym *local_syms[MAX_LOCAL_SYMS];

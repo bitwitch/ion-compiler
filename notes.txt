@@ -1,4 +1,11 @@
 TODO:
+[ ] symbol renaming on import
+    [ ] c codegen should output the original symbol name (although with any
+        package prefixes to avoid duplicate names)
+
+[ ] when importing all symbols from a package, ignore the main symbol. this
+    should allow programmers to create packages that can be used as an
+    executable and also as a library
 
 [ ] packages
     [X] physical organization, compiling multile ion files in a directory
@@ -14,8 +21,6 @@ TODO:
 [ ] importing a package that has a foreign function and declaring the same
     foreign function in the current package yields a duplicate symbol error. but
     this should probably work, right??
-
-[ ] implement read_dir() on linux (in os_unix.c)
 
 [ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
@@ -85,6 +90,7 @@ TODO:
 
 
 
+[X] implement read_dir() on linux (in os_unix.c)
 [X] some buffer bug, maybe overflow
 		- compiling solitaire package yielded following output:
 			  Adding package search path C:/Users/shmow/code/ion-compiler/system_packages
@@ -208,6 +214,23 @@ TODO:
 [X] order independent declarations
 [X] type resolution, type checking
 [X] replace instances of fatal() with syntax_error() where appropriate. fatal is useful now in early development 
+
+
+2023-06-28
+--------------------------------------------------------------------------------
+Packages: resolution and code gen
+
+current problem:
+compiling solitaire, no code is generated for imported symbols that are not used
+by the importing package. however, when a package has foreign sources (in this
+case noir), the foreign c file is not a part of the resolution phase, so symbols
+that it uses from the associated ion package will not be put into reachable
+symbols and no code will be generated for them.
+
+In this case the constants like KEY_RETURN are defined in noir.ion and
+referenced in noir_impl.c, code is not generated for them.
+
+
 
 2023-06-08
 --------------------------------------------------------------------------------
