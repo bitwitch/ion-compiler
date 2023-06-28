@@ -230,6 +230,12 @@ symbols and no code will be generated for them.
 In this case the constants like KEY_RETURN are defined in noir.ion and
 referenced in noir_impl.c, code is not generated for them.
 
+I'm not yet sure if there are any other cases where reachable_syms, the way they
+are currently gathered does not account for all code that needs to be generated.
+It seems at this point that the only case is when there are foreign sources
+included. So could have any package with a foreign source directive have code
+generated for all its symbols 
+
 
 
 2023-06-08
