@@ -115,6 +115,10 @@ void add_package_decl_syms(Package *package) {
 void import_all_package_symbols(Package *package) {
 	for (int i=0; i<da_len(package->syms); ++i) {
 		Sym *sym = package->syms[i];
+		// ignore main function in imported packages to allow using package as executable and as a library
+		if (sym->kind == SYM_FUNC && sym->name == str_intern("main")) {
+			continue;
+		}
 		if (sym->package == package) {
 			sym_global_put(sym->name, sym);
 		}
@@ -169,7 +173,6 @@ void import_package_symbols(Decl *decl, Package *package) {
 		sym_global_put(item.rename ? item.rename : item.name, sym);
 	}
 }
-
 
 void process_package_imports(Package *package) {
 	for (int i=0; i<da_len(package->decls); ++i) {
@@ -258,21 +261,22 @@ bool compile_package(char *package_name, char *out_name) {
 
 	char package_path[MAX_PATH];
 	path_copy(package_path, package_name);
+
+	// parsing
 	Package *main_package = import_package(package_path);
 	if (!main_package) {
 		fatal("failed to import main package '%s'\n", package_path);
 	}
 
 	// semantic analysis
-	resolve_package(main_package);
-	complete_reachable_syms();
-    printf("Compiled %d symbols in %d packages\n", da_len(reachable_syms), da_len(packages));
-
 	char *main_name = str_intern("main");
 	Sym *main_sym = get_package_sym(main_package, main_name);
 	if (!main_sym) {
 		fatal("package '%s' contains no function called main", package_name);
 	}
+	resolve_package(main_package);
+	complete_reachable_syms();
+    printf("Compiled %d symbols in %d packages\n", da_len(reachable_syms), da_len(packages));
 
 	// ensure that package prefixing does not happen to main() in code gen
 	main_sym->external_name = main_name;
