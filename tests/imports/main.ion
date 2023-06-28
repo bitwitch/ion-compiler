@@ -1,0 +1,13 @@
+import tests.packages {...}
+
+func dummy(n: int): int {
+	return n + 69;
+}
+
+func main(argc: int, argv: char**): int {
+	n := get_input_int();
+	dummy_result := dummy(n);
+	do_some_prints();
+	return 0;
+}
+

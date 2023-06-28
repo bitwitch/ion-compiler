@@ -1,0 +1,8 @@
+import libc {printf, scanf}
+
+func get_input_int(): int {
+	printf("Input an integer: ");
+	n: int;
+	scanf("%d", &n);
+	return n;
+}

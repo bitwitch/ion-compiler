@@ -2,6 +2,7 @@
 
 @foreign func printf(fmt: char*, ...);
 @foreign func fgets(str: char*, count: int, stream: void*): char*;
+@foreign func scanf(fmt: char*, ...): int;
 @foreign var stdin: void*;
 @foreign var stdout: void*;
 @foreign var stderr: void*;
