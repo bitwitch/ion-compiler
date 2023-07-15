@@ -1,4 +1,11 @@
 TODO:
+
+[ ] designated initializers ( pos := Vec3{x=6, y=9} )
+
+[ ] support increment expression in array index
+		e.g.  deck[card_index++] = Card{num=1, symbol='A', face_down=true, prev=prev};
+
+
 [ ] symbol renaming on import
     [ ] c codegen should output the original symbol name (although with any
         package prefixes to avoid duplicate names)
@@ -22,7 +29,6 @@ TODO:
     foreign function in the current package yields a duplicate symbol error. but
     this should probably work, right??
 
-[ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
 [X] allow implicitly sized arrays
 	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
@@ -219,6 +225,16 @@ TODO:
 2023-07-15
 --------------------------------------------------------------------------------
 Packages
+
+Any package that contains a #foreign(source= ...) directive, requires all of its
+symbols to be resolved and code to be generated for them. This is because the
+foreign c file could potentially use any symbol declared in the ion package.
+
+I am starting to think that maybe the default should be resolving and generating
+code for all symbols, and then having a compiler flag to only resolve and
+generate code for reachable symbols. Keep in mind though, that regardless of the
+default, packages with foreign sources will always need all symbols resolved and
+gen'd.
 
 
 

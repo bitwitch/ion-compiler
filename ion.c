@@ -63,6 +63,20 @@ bool is_package_dir(char *search_path, char *package_path) {
 	return result;
 }
 
+bool has_foreign_sources(Package *package) {
+	for (int i=0; i<da_len(package->directives); ++i) {
+		assert(package->directives[i]->kind == DECL_DIRECTIVE);
+		DirectiveArg *args = package->directives[i]->directive.args;
+		int num_args = package->directives[i]->directive.num_args;
+		for (int j=0; j<num_args; ++j) {
+			if (args[j].name == name_source) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 bool copy_package_full_path(char dest[MAX_PATH], char *package_path) {
 	for (int i=0; i<num_package_search_paths; ++i) {
 		if (is_package_dir(package_search_paths[i], package_path)) {
@@ -223,6 +237,10 @@ bool parse_package(Package *package) {
 		return false;
 	}
 
+	if (has_foreign_sources(package)) {
+		package->gen_all_symbols = true;
+	}
+
 	// add symbols to package symbol table
 	Package *old_package = enter_package(package);
 	if (builtin_package) {
@@ -275,7 +293,16 @@ bool compile_package(char *package_name, char *out_name) {
 	if (!main_sym) {
 		fatal("package '%s' contains no function called main", package_name);
 	}
+
 	resolve_package(main_package);
+
+	// resolve all symbols in packages that have gen_all_symbols set
+	for (int i=0; i<da_len(packages); ++i) {
+		if (packages[i]->gen_all_symbols) {
+			resolve_package(packages[i]);
+		}
+	}
+
 	complete_reachable_syms();
     printf("Compiled %d symbols in %d packages\n", da_len(reachable_syms), da_len(packages));
 

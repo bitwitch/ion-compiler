@@ -64,6 +64,11 @@ struct Package {
 	BUF(Sym **syms);
 	BUF(Decl **decls);
 	BUF(Decl **directives);
+
+	// generate code for all symbols, including "unreachable"
+	// useful for packages that include foreign sources or for 
+	// generating c libraries
+	bool gen_all_symbols; 
 }; 
 
 Map package_map;
@@ -1631,7 +1636,7 @@ void resolve_decl_directive(Decl *decl) {
 
 		ResolvedExpr resolved = resolve_expr(arg.expr);
 		if (resolved.type != type_ptr(type_char)) {
-			semantic_error(decl->pos, "expected include value to be type char*, got %s", 
+			semantic_error(decl->pos, "expected directive argument value to be type char*, got %s", 
 				type_to_str(resolved.type));
 		}
 	}
