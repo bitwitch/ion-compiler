@@ -216,6 +216,12 @@ TODO:
 [X] replace instances of fatal() with syntax_error() where appropriate. fatal is useful now in early development 
 
 
+2023-07-15
+--------------------------------------------------------------------------------
+Packages
+
+
+
 2023-06-28
 --------------------------------------------------------------------------------
 Packages: resolution and code gen
@@ -235,6 +241,9 @@ are currently gathered does not account for all code that needs to be generated.
 It seems at this point that the only case is when there are foreign sources
 included. So could have any package with a foreign source directive have code
 generated for all its symbols 
+
+!Another use case would be writing c libraries in ion. You want code for all
+symbols to be generated in the c file.
 
 
 
@@ -273,9 +282,9 @@ cached one), parses the package
 ---
 
 Search path order:
-1. system-packages for the %ION_HOME% directory
+1. system-packages for the %IONHOME% directory
 2. the current working directory
-3. the semicolon separated list of directories in %ION_PATH%
+3. the semicolon separated list of directories in %IONPATH%
 
 Bitwise Day 20 Extra approx. 1:09:00 working on starting packages in proper
 

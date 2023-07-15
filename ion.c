@@ -3,6 +3,7 @@ char *package_search_paths[MAX_SEARCH_PATHS];
 int num_package_search_paths;
 
 void add_package_search_path(char *path) {
+	path_normalize(path);
 	printf("Adding package search path %s\n", path);
 	package_search_paths[num_package_search_paths++] = str_intern(path);
 }
