@@ -37,14 +37,18 @@ const KEY_DOWN      = 274;
 const NUM_KEYS = KEY_DOWN + 1;
 
 struct SDL_Window;
+struct SDL_Renderer;
 
 struct Window {
 	sdl_window: SDL_Window*;
+	sdl_renderer: SDL_Renderer*;
 }
 
 func init(): bool;
 func create_window(title: char*, pos: Int2, size: Int2): Window;
 func update();
+func render_clear(color: uint);
+func render_present();
 func destroy_window(window: Window);
 func draw_rect(x: int, y: int, w: int, h: int, color: uint);
 

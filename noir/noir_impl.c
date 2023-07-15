@@ -21,7 +21,7 @@ int sdl_scancode_from_noir_key[NUM_KEYS] = {
 };
 
 // TODO(shaw): this is a temporary solution, currently for draw_rect()
-SDL_Window *active_window;
+SDL_Renderer *active_renderer;
 
 int noir_key_from_sdl_scancode[SDL_NUM_SCANCODES];
 
@@ -57,8 +57,12 @@ Window create_window(char *title, Int2 pos, Int2 size) {
 	int y = pos.y < 0 ? SDL_WINDOWPOS_CENTERED : pos.y;
     window.sdl_window = SDL_CreateWindow(title, x, y, size.x, size.y, 0);
 
+	if (window.sdl_window) {
+		window.sdl_renderer = SDL_CreateRenderer(window.sdl_window, -1, SDL_RENDERER_ACCELERATED);
+	}
+
 	// TODO: This is TEMP
-	active_window = window.sdl_window;
+	active_renderer = window.sdl_renderer;
 
 	return window;
 }
@@ -77,22 +81,35 @@ void update(void) {
 	}
 }
 
+void render_clear(uint32_t color) {
+	SDL_SetRenderDrawColor(active_renderer,
+		(color >> 16) & 0xFF,  // red
+		(color >>  8) & 0xFF,  // green
+		(color >>  0) & 0xFF,  // blue
+		0xFF);                 // alpha
+	SDL_RenderClear(active_renderer);
+}
+
+void render_present(void) {
+	SDL_RenderPresent(active_renderer);
+}
+
 void destroy_window(Window window) {
 	SDL_DestroyWindow(window.sdl_window);
 }
 
+// NOTE(shaw): alpha color channel not supported currently
 void draw_rect(int x, int y, int w, int h, uint32_t color) {
-	if (!active_window) {
-		fprintf(stderr, "Warning: draw_rect() called but there is no active_window\n");
+	if (!active_renderer) {
+		fprintf(stderr, "Warning: draw_rect() called but there is no active_renderer\n");
 		return;
 	}
 
-	SDL_Renderer *renderer = SDL_GetRenderer(active_window);
-	SDL_SetRenderDrawColor(renderer,
-		(color >> 24) & 0xFF,
-		(color >> 16) & 0xFF,
-		(color >>  8) & 0xFF,
-		(color >>  0) & 0xFF);
+	SDL_SetRenderDrawColor(active_renderer,
+		(color >> 16) & 0xFF,  // red
+		(color >>  8) & 0xFF,  // green
+		(color >>  0) & 0xFF,  // blue
+		0xFF);                 // alpha
 	SDL_Rect rect = {x,y,w,h};
-	SDL_RenderFillRect(renderer, &rect);
+	SDL_RenderFillRect(active_renderer, &rect);
 }
