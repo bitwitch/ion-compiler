@@ -121,7 +121,7 @@ Expr *expr_field(SourcePos pos, Expr *expr, char *field) {
     return new_expr;
 }
 
-Expr *expr_compound(SourcePos pos, Typespec *typespec, Expr **args, int num_args) {
+Expr *expr_compound(SourcePos pos, Typespec *typespec, CompoundArg *args, int num_args) {
 	Expr *expr = expr_alloc(EXPR_COMPOUND, pos);
     expr->compound.typespec = typespec;
     expr->compound.args = ast_memdup(args, num_args * sizeof(*args));

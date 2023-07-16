@@ -83,12 +83,20 @@ Typespec *parse_typespec(void) {
 Expr *parse_expr_compound(Typespec *typespec) {
 	SourcePos pos = token.pos;
     expect_token('{');
-    BUF(Expr **exprs) = NULL; // @LEAK
+    BUF(CompoundArg *args) = NULL; // @LEAK
     do {
-        da_push(exprs, parse_expr());
+		CompoundArg arg = {0};
+		Expr *expr = parse_expr();
+		if (match_token('=')) {
+			arg.field_name = expr;
+			arg.field_value = parse_expr();
+		} else {
+			arg.field_value = expr;
+		}
+		da_push(args, arg);
     } while (match_token(','));
     expect_token('}');
-    return expr_compound(pos, typespec, exprs, da_len(exprs));
+    return expr_compound(pos, typespec, args, da_len(args));
 }
 
 Expr *parse_expr_base(void) {

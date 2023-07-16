@@ -94,7 +94,7 @@ void print_expr(Expr *expr) {
         ++print_indent;
         for (int i=0; i<expr->compound.num_args; ++i) {
             print_newline();
-            print_expr(expr->compound.args[i]);
+            print_expr(expr->compound.args[i].field_value);
         }
         --print_indent;
         printf(")");

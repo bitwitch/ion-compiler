@@ -1,6 +1,5 @@
 TODO:
 
-[ ] designated initializers ( pos := Vec3{x=6, y=9} )
 
 [ ] support increment expression in array index
 		e.g.  deck[card_index++] = Card{num=1, symbol='A', face_down=true, prev=prev};
@@ -96,6 +95,7 @@ TODO:
 
 
 
+[X] designated initializers ( pos := Vec3{x=6, y=9} )
 [X] implement read_dir() on linux (in os_unix.c)
 [X] some buffer bug, maybe overflow
 		- compiling solitaire package yielded following output:
@@ -238,12 +238,20 @@ gen'd.
 
 
 Designated Initializers
-When parsing compound expressions, the compund expression will contain a list of
-args. for regular initializer these are simple name or constant expressions, but
-for designated initializers we need to parse two expressions for each arg, the
-field name and the value.
+When parsing compound expressions, the compound expression will contain a list of
+args. for regular initializer these are simple expressions, but for designated
+initializers we need to parse two expressions for each arg, the field name and
+the value.
 
+1. change parsing of compound literals arguments from a list of expressions, to
+   a list of expression pairs, where the field name expression is optional
 
+2. when resolving, for a compound literal arg that has both a field name
+   expression and field value expression need to check that the field 
+   name expression is EXPR_NAME, and that the field exists in the type
+
+3. in codegen, if the compound literal expression has named fields, output the
+   corresponding c designated initializer
 
 
 2023-06-28

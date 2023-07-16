@@ -89,6 +89,11 @@ typedef enum {
     EXPR_SIZEOF_TYPE,
 } ExprKind;
 
+typedef struct {
+	Expr *field_name; // optional
+	Expr *field_value;
+} CompoundArg;
+
 struct Expr {
     ExprKind kind;
 	SourcePos pos;
@@ -135,8 +140,9 @@ struct Expr {
         } field;
         struct {
             Typespec *typespec;
-            Expr **args;
+			CompoundArg *args;
             int num_args;
+			bool is_designated_init;
         } compound;
     };
 };

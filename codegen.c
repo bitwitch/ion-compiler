@@ -148,9 +148,6 @@ char *gen_typespec_c(Typespec *typespec, char *inner);
 char *gen_expr_c(Expr *expr);
 
 char *gen_expr_compound_c(Expr *expr, bool is_init) {
-	// TODO(shaw): get the decl for the type here so that we can have named fields (designated initializer)
-	// (Vec2){ .x = 69, .y = 420 }
-
 	BUF(char *str) = NULL; // @LEAK
 
 	if (!is_init) {
@@ -163,11 +160,24 @@ char *gen_expr_compound_c(Expr *expr, bool is_init) {
 	da_printf(str, "{");
 
 	int num_args = expr->compound.num_args;
-	for (int i=0; i<num_args; ++i) {
-		da_printf(str, "%s%s", 
-				gen_expr_c(expr->compound.args[i]),
+	CompoundArg *args = expr->compound.args;
+
+	if (expr->compound.is_designated_init) {
+		for (int i=0; i<num_args; ++i) {
+			da_printf(str, ".%s = %s%s", 
+				gen_expr_c(args[i].field_name),
+				gen_expr_c(args[i].field_value),
 				i == num_args - 1 ? "" : ", ");
+		}
+
+	} else {
+		for (int i=0; i<num_args; ++i) {
+			da_printf(str, "%s%s", 
+				gen_expr_c(expr->compound.args[i].field_value),
+				i == num_args - 1 ? "" : ", ");
+		}
 	}
+
 	da_printf(str, "}");
 	return str;
 }

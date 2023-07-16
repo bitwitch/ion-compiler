@@ -1,0 +1,19 @@
+import libc {printf}
+
+struct Vec2 {
+	x: int;
+	y: int;
+}
+
+func print_vec(v: Vec2) {
+	printf("(%d,%d)\n", v.x, v.y);
+}
+
+func main() {
+	v1 := Vec2{6, 9};
+	v2 := Vec2{x=4, y=20};
+	printf("v1=(%d, %d)\nv2=(%d, %d)\n", v1.x, v1.y, v2.x, v2.y);
+
+	print_vec({1,3});
+	print_vec({x=2, y=4});
+}
