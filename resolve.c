@@ -348,6 +348,8 @@ void complete_type(Type *type) {
 		return;
 	}
 
+	Package *old_package = enter_package(type->sym->package);
+
 	BUF(TypeField *type_fields) = NULL; // @LEAK
 	AggregateField *decl_fields = decl->aggregate.fields;
 	int num_fields = decl->aggregate.num_fields;
@@ -403,6 +405,7 @@ void complete_type(Type *type) {
 		type->size = max_size;
 	}
 	da_push(ordered_syms, type->sym);
+	leave_package(old_package);
 }
 
 Type *resolve_typespec(Typespec *typespec) {
@@ -1543,6 +1546,7 @@ void resolve_stmt(Sym **scope_start, Stmt *stmt, Type *expected_ret_type) {
 				// update the expression type to account for pointer decay and conversion
 				stmt->init.expr->type = type;
 			}
+			complete_type(type);
 			// NOTE(shaw): the decl_var used here seems a bit hacky, however the declaration allows us 
 			// to get a SourcePos from the symbol table which is used for error messages about variable 
 			// redeclaration to point out where in the file the previous declaration occured.
@@ -1711,6 +1715,8 @@ void resolve_sym(Sym *sym) {
     assert(sym->state == SYM_UNRESOLVED);
     sym->state = SYM_RESOLVING;
 
+	Package *old_package = enter_package(sym->package);
+
     switch (sym->kind) {
     case SYM_VAR:   
         sym->type = resolve_decl_var(sym->decl);
@@ -1721,6 +1727,7 @@ void resolve_sym(Sym *sym) {
     case SYM_FUNC:  
         sym->type = resolve_decl_func(sym->decl); 
 		sym->state = SYM_RESOLVED;
+		leave_package(old_package);
 		return; // don't add to ordered_syms until the function body is resolved
     case SYM_TYPE: 
         sym->type = resolve_decl_type(sym->decl);  
@@ -1736,6 +1743,7 @@ void resolve_sym(Sym *sym) {
     }
     sym->state = SYM_RESOLVED;
     da_push(ordered_syms, sym);
+	leave_package(old_package);
 }
 
 

@@ -42,7 +42,7 @@ func test_statements(): int {
 	x + y;      // expr
 
 	{ // brace block
-		x := 33;
+		z := 33;
 		y = x;
 	}
 	
@@ -164,4 +164,8 @@ func test_exprs() {
 
 	// sizeof type
 	sizeof(:int);
+}
+
+func main() {
+	test_statements();
 }

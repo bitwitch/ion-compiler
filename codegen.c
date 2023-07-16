@@ -102,6 +102,7 @@ char *gen_type_c(Type *type, char *inner) {
 	case TYPE_DOUBLE:     return strf("double%s%s", sep, inner);
 	case TYPE_BOOL:       return strf("bool%s%s", sep, inner);
 
+	case TYPE_INCOMPLETE: // NOTE(shaw): this triggers an alarm in my head, but here it is used for opaque pointers
 	case TYPE_STRUCT:
 	case TYPE_UNION:
 	case TYPE_ENUM: {

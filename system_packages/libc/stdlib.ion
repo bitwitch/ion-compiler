@@ -1,0 +1,5 @@
+#foreign(include = "<stdlib.h>")
+
+@foreign func malloc(size: uint): void*;
+@foreign func calloc(num: uint, size: uint): void*;
+@foreign func free(ptr: void*);

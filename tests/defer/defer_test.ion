@@ -1,7 +1,4 @@
-@foreign func malloc(size: uint): void* {}
-@foreign func free(ptr: void*) {}
-@foreign func fopen(filename: char*, mode: char*): void* {}
-@foreign func fclose(file: void*): void {}
+import libc { malloc, free, fopen, fclose }
 
 struct Window {
 	title: char*;

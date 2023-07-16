@@ -1,13 +1,11 @@
 #foreign(include = "<stdio.h>")
-#foreign(include = "<stdlib.h>")
 
+@foreign struct FILE;
+@foreign var stdin: FILE*;
+@foreign var stdout: FILE*;
+@foreign var stderr: FILE*;
 @foreign func printf(fmt: char*, ...);
-@foreign func fgets(str: char*, count: int, stream: void*): char*;
+@foreign func fgets(str: char*, count: int, stream: FILE*): char*;
 @foreign func scanf(fmt: char*, ...): int;
-@foreign var stdin: void*;
-@foreign var stdout: void*;
-@foreign var stderr: void*;
-
-@foreign func malloc(size: uint): void*;
-@foreign func calloc(num: uint, size: uint): void*;
-
+@foreign func fopen(filename: char*, mode: char*): FILE*;
+@foreign func fclose(file: FILE*): int;
