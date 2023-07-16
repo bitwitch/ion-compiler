@@ -237,6 +237,14 @@ default, packages with foreign sources will always need all symbols resolved and
 gen'd.
 
 
+Designated Initializers
+When parsing compound expressions, the compund expression will contain a list of
+args. for regular initializer these are simple name or constant expressions, but
+for designated initializers we need to parse two expressions for each arg, the
+field name and the value.
+
+
+
 
 2023-06-28
 --------------------------------------------------------------------------------
