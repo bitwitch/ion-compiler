@@ -1051,13 +1051,46 @@ ResolvedExpr resolve_expr_compound(Expr *expr, Type *expected_type) {
 	bool is_implicit_sized_array = 
 		(typespec && typespec->kind == TYPESPEC_ARRAY && !typespec->array.num_items) ||
 		(expected_type && expected_type->kind == TYPE_ARRAY && !expected_type->array.num_items);
+
+	// TODO(shaw): handle case where compound expr is array type, explicitly
+	// sized, and has array index designators
+
 	if (is_implicit_sized_array) {
 		Type *elem_type = typespec 
 			? resolve_typespec(typespec->array.base) 
 			: expected_type->array.base;
-		type = type_array(elem_type, num_args);
-		// TODO(shaw): handle initializers with explicit indices
-		// i.e. this case: {1,2,3,4, [10]=69}  size is 11 here
+
+		// if designated_init, compute number of array elements
+		int num_items = 0;
+		for (int i=0; i<num_args; ++i) {
+			CompoundArg arg = args[i];
+			if (arg.field_index) {
+				ResolvedExpr index = resolve_expr(arg.field_index);
+				if (!is_integer_type(index.type)) {
+					semantic_error(arg.field_index->pos, 
+							"array index designator expression must have integer type, got %s",
+							type_to_str(index.type));
+					return resolved_null;
+				}
+
+				if (!index.is_const) {
+					semantic_error(arg.field_index->pos, "array index designator must be a constant expression");
+					return resolved_null;
+				}
+
+				// TODO(shaw): always interpreting val as int here, but it
+				// could be another integer type
+				if (index.val.i >= num_items) {
+					num_items = index.val.i + 1;
+				}
+
+			} else {
+				++num_items;
+			}
+		}
+
+		type = type_array(elem_type, num_items);
+
 	} else {
 		type = typespec ? resolve_typespec(typespec) : expected_type;
 	}

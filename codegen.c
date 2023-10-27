@@ -173,8 +173,11 @@ char *gen_expr_compound_c(Expr *expr, bool is_init) {
 
 	} else {
 		for (int i=0; i<num_args; ++i) {
+			if (args[i].field_index) {
+				da_printf(str, "[%s] = ", gen_expr_c(args[i].field_index));
+			}
 			da_printf(str, "%s%s", 
-				gen_expr_c(expr->compound.args[i].field_value),
+				gen_expr_c(args[i].field_value),
 				i == num_args - 1 ? "" : ", ");
 		}
 	}

@@ -90,7 +90,8 @@ typedef enum {
 } ExprKind;
 
 typedef struct {
-	Expr *field_name; // optional
+	Expr *field_name;  // optional
+	Expr *field_index; // optional
 	Expr *field_value;
 } CompoundArg;
 

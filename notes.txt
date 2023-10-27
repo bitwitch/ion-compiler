@@ -1,4 +1,7 @@
 TODO:
+[ ] currently array sizes are limited by int type, i should probably allow
+    64-bit unsigned
+
 [X] allow implicitly sized arrays
 	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
 

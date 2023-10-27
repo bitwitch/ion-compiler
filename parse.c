@@ -94,6 +94,11 @@ Expr *parse_expr_compound(Typespec *typespec) {
     BUF(CompoundArg *args) = NULL; // @LEAK
     do {
 		CompoundArg arg = {0};
+		if (match_token('[')) {
+			arg.field_index = parse_expr();
+			expect_token(']');
+			expect_token('=');
+		}
 		Expr *expr = parse_expr();
 		if (match_token('=')) {
 			arg.field_name = expr;
