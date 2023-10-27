@@ -10,9 +10,18 @@ char *parse_name(void) {
         return name;
     } else {
         syntax_error("Expected name, got %s", token_kind_to_str(token.kind));
-		assert(0);
         return NULL;
     }
+}
+
+Typespec *parse_typespec_func_param(void) {
+	Token lookahead = lookahead_token();
+	if (lookahead.kind == ':') {
+		// skip over parameter name
+		parse_name();
+		expect_token(':');
+	}
+	return parse_typespec();
 }
 
 Typespec *parse_typespec_func(void) {
@@ -27,7 +36,7 @@ Typespec *parse_typespec_func(void) {
 			syntax_error("at least one parameter must precede '...' in a variadic function");
 			is_variadic = true;
 		} else { 
-			da_push(param_typespecs, parse_typespec());
+			da_push(param_typespecs, parse_typespec_func_param());
 		}
 		// parse remaining parameters
 		while (match_token(',')) {
@@ -35,10 +44,9 @@ Typespec *parse_typespec_func(void) {
 				is_variadic = true;
 			} else {
 				if (is_variadic) syntax_error("no parameters can follow '...' in a variadic function");
-				da_push(param_typespecs, parse_typespec());
+				da_push(param_typespecs, parse_typespec_func_param());
 			}
 		}
-
 	}
 	expect_token(')');
 

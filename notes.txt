@@ -97,6 +97,10 @@ TODO:
 
 
 
+DONE:
+[X] support named parameters in function pointers
+		func(userdata: void*, event: SDL_Event*): int;
+		as an alternative to func(void*, SDL_Event*): int;
 [X] designated initializers ( pos := Vec3{x=6, y=9} )
 [X] implement read_dir() on linux (in os_unix.c)
 [X] some buffer bug, maybe overflow

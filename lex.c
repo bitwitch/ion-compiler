@@ -334,7 +334,6 @@ void scan_chr(void) {
         } \
         break;
 
-
 void next_token(void) {
 repeat:
     token.start = stream;
@@ -485,6 +484,23 @@ repeat:
 	}
 	token.pos.line = current_line;
     token.end = stream;
+}
+
+// look ahead by one token, return that token
+Token lookahead_token(void) {
+	Token prev_token = token;
+	int prev_line = current_line;
+	char *prev_stream = stream;
+
+	next_token();
+	Token result = token;
+
+	// restore prev token
+	token = prev_token;
+	stream = prev_stream;
+	current_line = prev_line;
+
+	return result;
 }
 
 void init_stream(char *path, char *source) {

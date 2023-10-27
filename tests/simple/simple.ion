@@ -1,5 +1,7 @@
 func f1(a: int): int {
 
+	func_ptr1: func(one: int, two: float): int;
+	func_ptr2: func(int, float): int;
 
 	str := "fried chicken";
 	str2: char*;
@@ -21,5 +23,10 @@ func f1(a: int): int {
 
 func print(s: char*) {
 	
+}
+
+func main(argc: int, argv: char**): int {
+	f1(69);
+	return 0;
 }
 // dis last ting
