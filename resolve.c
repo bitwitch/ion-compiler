@@ -189,7 +189,7 @@ Sym *sym_get(char *name) {
 	return get_package_sym(current_package, name);
 }
 
-void sym_global_put(char *name, Sym *sym) {
+void sym_package_put(char *name, Sym *sym) {
 	Sym *old_sym = map_get(&current_package->syms_map, name);
 	if (old_sym) {
 		if (sym == old_sym) return;
@@ -217,13 +217,13 @@ bool name_in_local_scope(char *name, Sym **scope_start) {
 
 void sym_put_decl(Decl *decl) {
 	Sym *sym = sym_decl(decl);
-	sym_global_put(sym->name, sym);
+	sym_package_put(sym->name, sym);
 
 	if (decl->kind == DECL_ENUM) {
 		EnumItem *items = decl->enum_decl.items;
 		for (int i = 0; i < decl->enum_decl.num_items; ++i) {
 			Sym *s = sym_enum_const(items[i].name, decl);
-			sym_global_put(s->name, s);
+			sym_package_put(s->name, s);
 		}
 	}
 }
@@ -232,7 +232,7 @@ void sym_put_decl(Decl *decl) {
 void sym_put_type(char *name, Type *type) {
     Sym *sym = sym_type(name, type);
 	type->sym = sym;
-	sym_global_put(sym->name, sym);
+	sym_package_put(sym->name, sym);
 }
 
 void sym_put_const(char *name, Type *type, Val val) {
@@ -240,7 +240,7 @@ void sym_put_const(char *name, Type *type, Val val) {
 	sym->state = SYM_RESOLVED;
 	sym->type  = type;
 	sym->val   = val;
-	sym_global_put(sym->name, sym);
+	sym_package_put(sym->name, sym);
 }
 
 // initializes primative types and built-in constants

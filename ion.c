@@ -118,7 +118,7 @@ bool parse_package_file(Package *package, char *filepath) {
 	return true;
 }
 
-void add_package_decl_syms(Package *package) {
+void add_package_decls_to_sym_table(Package *package) {
 	for (int i=0; i<da_len(package->decls); ++i) {
 		Decl *decl = package->decls[i];
 		if (decl->kind != DECL_DIRECTIVE && decl->kind != DECL_IMPORT) {
@@ -135,7 +135,7 @@ void import_all_package_symbols(Package *package) {
 			continue;
 		}
 		if (sym->package == package) {
-			sym_global_put(sym->name, sym);
+			sym_package_put(sym->name, sym);
 		}
 	}
 }
@@ -185,7 +185,7 @@ void import_package_symbols(Decl *decl, Package *package) {
             semantic_error(decl->pos, "symbol '%s' is not native to package '%s', you must import it from its native package '%s'", 
 				item.name, package->path, sym->package->path);
 		}
-		sym_global_put(item.rename ? item.rename : item.name, sym);
+		sym_package_put(item.rename ? item.rename : item.name, sym);
 	}
 }
 
@@ -246,7 +246,7 @@ bool parse_package(Package *package) {
 	if (builtin_package) {
 		import_all_package_symbols(builtin_package);
 	}
-	add_package_decl_syms(package);
+	add_package_decls_to_sym_table(package);
 	process_package_imports(package);
 	leave_package(old_package);
 	return true;

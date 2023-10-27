@@ -1,9 +1,14 @@
 TODO:
+[X] allow implicitly sized arrays
+	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
 
+[ ] resolving constants
+    integers with u suffix
+
+[ ] anonymous enums ???
 
 [ ] support increment expression in array index
 		e.g.  deck[card_index++] = Card{num=1, symbol='A', face_down=true, prev=prev};
-
 
 [ ] symbol renaming on import
     [ ] c codegen should output the original symbol name (although with any
@@ -28,9 +33,6 @@ TODO:
     foreign function in the current package yields a duplicate symbol error. but
     this should probably work, right??
 
-
-[X] allow implicitly sized arrays
-	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
 
 [ ] output line directives to the c compiler (preprocessor technically, i
     think) to allow debugging ion source code
@@ -220,6 +222,49 @@ TODO:
 [X] order independent declarations
 [X] type resolution, type checking
 [X] replace instances of fatal() with syntax_error() where appropriate. fatal is useful now in early development 
+
+2023-10-26
+--------------------------------------------------------------------------------
+Importing Packages
+
+1. First parsing the package into a bunch of declarations
+2. Add all package declarations to symbol table, (No resolution occurs here,
+  just a name -> symbol association
+3. Process packages own imports and add name associations for any imported
+  symbols
+
+Note: No type checking, no order resolution, no codegen
+
+Resolving packages
+- When resolving, there is a new way to associate ast nodes with symbols. There
+  are set_resolved_sym() and get_resolved_sym() functions which take a void
+  pointer and symbol as arguments, and can associate any pointer with a symbol
+  by adding an entry to a hash table
+
+
+Code Readthrough
+- in parse package we are setting gen_all_symbols to true for any packages that
+  have foreign sources. is this the right approach? it seems that per may have
+  changed his approach for how to incorporate c library code into ion projects.
+  need to look into this.
+
+- sym_global_put is a now a misnomer. it only adds symbols to package symbol
+  table
+
+- check if var declaration but not definition does zero initialization or not,
+  something like x: int;
+
+2023-10-25
+--------------------------------------------------------------------------------
+It has been a few months since I worked on the compiler (I moved to North
+Carolina and bought a house). I need to re-familiarize with the codebase and I
+am thinking that this would be a great time to takes some notes and document
+anything that I find confusing or unintuative as I am regaining my bearings.
+After I am back up to speed, I want to continue working on packages and get a
+package system working well.
+
+- read through once to get a high level view of the system
+- read through again to understand more details
 
 
 2023-07-15
@@ -582,10 +627,6 @@ What does it mean to "resolve" a symbol?
 There are two kinds of "resolution" happening:
 1. Discovering dependencies and ordering
 2. Type completion
-
-
-TODO
-Order Independent Declarations
 
 
 A dependency on a particular symbol does not necessarily mean that it must
