@@ -31,14 +31,14 @@ Expr *expr_alloc(ExprKind kind, SourcePos pos) {
     return expr;
 }
 
-Expr *expr_int(SourcePos pos, uint64_t val, TokenMod mod) {
+Expr *expr_int(SourcePos pos, uint64_t val, uint32_t mod) {
     Expr *expr = expr_alloc(EXPR_INT, pos);
     expr->int_val = val;
 	expr->mod = mod;
     return expr;
 }
 
-Expr *expr_float(SourcePos pos, double val, TokenMod mod) {
+Expr *expr_float(SourcePos pos, double val, uint32_t mod) {
 	Expr *expr = expr_alloc(EXPR_FLOAT, pos);
     expr->float_val = val;
     expr->mod = mod;

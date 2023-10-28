@@ -1,3 +1,4 @@
+var gconst_ul  = 0xfffful;
 var gc1: char = 1;
 var gc2: schar;
 var gc3: uchar;
@@ -71,6 +72,10 @@ func main(): int {
 	val = arr[i1];
 	val = arr[i2];
 	val = arr[true];
+
+	const_u   := 0xffffu;
+	const_ul  := 0xfffful;
+	const_ull := 0xffffull;
 
 	return 0;
 }

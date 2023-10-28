@@ -2,6 +2,7 @@
 #define MAX(x, y) ((x) >= (y) ? (x) : (y))
 #define MIN(x, y) ((x) <= (y) ? (x) : (y))
 #define IS_POW2(x) (((x) != 0) && ((x) & ((x)-1)) == 0)
+#define IS_SET(bits, check) ((bits & check) == check)
 
 // Helper Utilities
 void *xmalloc(size_t size) {

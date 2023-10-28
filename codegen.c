@@ -205,11 +205,28 @@ char *gen_expr_c(Expr *expr) {
     case EXPR_COMPOUND:
 		return gen_expr_compound_c(expr, false);
     case EXPR_INT: {
-		char *fmt = "%lld";
-		if (expr->mod == TOKENMOD_HEX || expr->mod == TOKENMOD_BIN) {
-			fmt = "%#llx";
-		} else if (expr->mod == TOKENMOD_OCT) {
-			fmt = "%#llo";
+		BUF(char *fmt) = NULL;
+		da_printf(fmt, "%%");
+		if (IS_SET(expr->mod, TOKENMOD_HEX) || IS_SET(expr->mod, TOKENMOD_BIN)) {
+			da_printf(fmt, "#X");
+		} else if (IS_SET(expr->mod, TOKENMOD_OCT)) {
+			da_printf(fmt, "#o");
+		}
+		if (is_unsigned_integer_type(expr->type)) {
+			da_printf(fmt, "u");
+			if (expr->type == type_ulong) {
+				da_printf(fmt, "l");
+			} else if (expr->type == type_ulonglong) {
+				da_printf(fmt, "ll");
+			}
+		} else {
+			if (expr->type == type_longlong) {
+				da_printf(fmt, "lld");
+			} else if (expr->type == type_long) {
+				da_printf(fmt, "ld");
+			} else {
+				da_printf(fmt, "d");
+			}
 		}
         return strf(fmt, expr->int_val);
 	}

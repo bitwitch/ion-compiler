@@ -893,13 +893,37 @@ bool arithmetic_conversion(ResolvedExpr *left, ResolvedExpr *right) {
 	}
 }
 
+// see the table in c11 standard section 6.4.4.1
 ResolvedExpr resolve_expr_int(Expr *expr) {
 	assert(expr->kind == EXPR_INT);
 	uint64_t int_val = expr->int_val;
 	ResolvedExpr result = resolved_const(type_ulonglong, (Val){.ull = int_val});
 	Type *type;
 
-	if (expr->mod == TOKENMOD_HEX || expr->mod == TOKENMOD_BIN || expr->mod == TOKENMOD_OCT) {
+	bool explicit_unsigned = IS_SET(expr->mod, TOKENMOD_UNSIGNED);
+	bool explicit_long     = IS_SET(expr->mod, TOKENMOD_LONG);
+	bool explicit_longlong = IS_SET(expr->mod, TOKENMOD_LONGLONG);
+
+	if (explicit_unsigned) {
+		type = type_uint;
+		if (int_val > integer_max_values[TYPE_UINT]) {
+			type = type_ulong;
+			if (int_val > integer_max_values[TYPE_ULONG]) {
+				type = type_ulonglong;
+			}
+		}
+
+		if (explicit_longlong) {
+			type = type_ulonglong;
+		} else if (explicit_long && int_val <= integer_max_values[TYPE_ULONG]) {
+			type = type_ulong;
+		}
+
+	// hex, bin, or oct that is not explicitly unsigned
+	} else if (IS_SET(expr->mod, TOKENMOD_HEX) || 
+	           IS_SET(expr->mod, TOKENMOD_BIN) || 
+	           IS_SET(expr->mod, TOKENMOD_OCT))
+	{
 		type = type_int;
 		if (int_val > integer_max_values[TYPE_INT]) {
 			type = type_uint;
@@ -916,14 +940,27 @@ ResolvedExpr resolve_expr_int(Expr *expr) {
 				}
 			}
 		}
+
+		if (explicit_longlong && int_val <= integer_max_values[TYPE_LONGLONG]) {
+			type = type_longlong;
+		} else if (explicit_long && int_val <= integer_max_values[TYPE_LONG]) {
+			type = type_long;
+		}
+
+	// decimal int that is not explicitly unsigned
 	} else {
-		assert(expr->mod == TOKENMOD_NONE);
 		type = type_int;
 		if (int_val > integer_max_values[TYPE_INT]) {
 			type = type_long;
 			if (int_val > integer_max_values[TYPE_LONG]) {
 				type = type_longlong;
 			}
+		}
+
+		if (explicit_longlong) {
+			type = type_longlong;
+		} else if (explicit_long && int_val <= integer_max_values[TYPE_LONG]) {
+			type = type_long;
 		}
 	}
 
@@ -1204,7 +1241,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
         result = resolved_const(type_char, (Val){.c=expr->char_val});
 		break;
     case EXPR_FLOAT:
-		if (expr->mod == TOKENMOD_DOUBLE)
+		if (IS_SET(expr->mod, TOKENMOD_DOUBLE))
 			result = resolved_const(type_double, (Val){.d=(double)expr->float_val});
 		else
 			result = resolved_const(type_float, (Val){.f=(float)expr->float_val});

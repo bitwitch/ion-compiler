@@ -1,13 +1,15 @@
 TODO:
+[ ] change cast syntax from cast(type, val) to type(val)
+
+
+[ ] const qualifiers ??
+
+
+[ ] output line directives to the c compiler (preprocessor technically, i
+    think) to allow debugging ion source code
+
 [ ] currently array sizes are limited by int type, i should probably allow
     64-bit unsigned
-
-[ ] resolving constants
-    integers with u suffix
-
-[ ] codegen for variable declarations of enum type always uses type int instead
-    of the enum name, it should use the enum name for everything but anonymous
-    enums
 
 [ ] support increment expression in array index
 		e.g.  deck[card_index++] = Card{num=1, symbol='A', face_down=true, prev=prev};
@@ -34,10 +36,6 @@ TODO:
 [ ] importing a package that has a foreign function and declaring the same
     foreign function in the current package yields a duplicate symbol error. but
     this should probably work, right??
-
-
-[ ] output line directives to the c compiler (preprocessor technically, i
-    think) to allow debugging ion source code
 
 [ ] return and continue statements inside switch cases should NOT be followed by
     an implicit break
@@ -99,6 +97,11 @@ TODO:
 
 
 DONE:
+[X] resolving constants
+    integers with suffixes: l, ll, u, ul, ull
+[X] codegen for variable declarations of enum type always uses type int instead
+    of the enum name, it should use the enum name for everything but anonymous
+    enums
 [X] anonymous enums
 [X] allow implicitly sized arrays
 	[X] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)

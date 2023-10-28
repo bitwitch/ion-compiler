@@ -40,15 +40,18 @@ typedef enum {
 
 typedef enum {
 	TOKENMOD_NONE,
-	TOKENMOD_HEX,
-	TOKENMOD_BIN,
-	TOKENMOD_OCT,
-	TOKENMOD_DOUBLE,
+	TOKENMOD_HEX      = 1 << 0,
+	TOKENMOD_BIN      = 1 << 1,
+	TOKENMOD_OCT      = 1 << 2,
+	TOKENMOD_DOUBLE   = 1 << 3,
+	TOKENMOD_UNSIGNED = 1 << 4,
+	TOKENMOD_LONG     = 1 << 5,
+	TOKENMOD_LONGLONG = 1 << 6,
 } TokenMod;
 
 typedef struct {
 	TokenKind kind;
-	TokenMod mod;
+	uint32_t mod;
 	SourcePos pos;
     char *start, *end;
 	union {
@@ -58,7 +61,6 @@ typedef struct {
         char *name;
 	};
 } Token;
-
 
 Token token;
 char *stream;
@@ -201,19 +203,34 @@ void scan_int(void) {
         ++stream;
         if (tolower(*stream) == 'x') {
             ++stream;
-            token.mod = TOKENMOD_HEX;
+			token.mod |= TOKENMOD_HEX;
             base = 16;
         } else if (tolower(*stream) == 'b') {
             ++stream;
-            token.mod = TOKENMOD_BIN;
+			token.mod |= TOKENMOD_BIN;
             base = 2;
         } else if (isdigit(*stream)) {
-            token.mod = TOKENMOD_OCT;
+			token.mod |= TOKENMOD_OCT;
             base = 8;
         }
     }
 
 	uint64_t val = scan_int_val(base);
+
+	// scan int suffix
+	if (tolower(*stream) == 'u') {
+		token.mod |= TOKENMOD_UNSIGNED;
+		++stream;
+	} 
+	if (tolower(*stream) == 'l') {
+		++stream;
+		if (tolower(*stream) == 'l') {
+			token.mod |= TOKENMOD_LONGLONG;
+			++stream;
+		} else {
+			token.mod |= TOKENMOD_LONG;
+		}
+	}
 
     token.kind = TOKEN_INT;
     token.int_val = val;
@@ -241,7 +258,7 @@ void scan_float(void) {
         syntax_error("Float literal overflow");
 	if (*stream == 'd') {
 		++stream;
-		token.mod = TOKENMOD_DOUBLE;
+		token.mod |= TOKENMOD_DOUBLE;
 	}
     token.kind = TOKEN_FLOAT;
     token.float_val = val;

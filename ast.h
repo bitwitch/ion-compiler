@@ -99,7 +99,7 @@ struct Expr {
     ExprKind kind;
 	SourcePos pos;
 	struct Type *type;
-	TokenMod mod;
+	uint32_t mod; // modifiers, like an integer suffix ull
     union {
 		uint64_t int_val;
         double float_val;

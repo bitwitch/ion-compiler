@@ -20,9 +20,13 @@ void print_expr(Expr *expr) {
 
     switch (expr->kind) {
     case EXPR_INT: {
-		char *fmt = "%lld";
-		if (expr->mod == TOKENMOD_HEX)
-			fmt = "%#x";
+		bool is_unsigned = IS_SET(expr->mod, TOKENMOD_UNSIGNED);
+		char *fmt = is_unsigned ? "%ull" : "%lld";
+		if (IS_SET(expr->mod, TOKENMOD_HEX) || IS_SET(expr->mod, TOKENMOD_BIN)) {
+			fmt = is_unsigned ? "%#Xull" : "%#Xll";
+		} else if (IS_SET(expr->mod, TOKENMOD_OCT)) {
+			fmt = is_unsigned ? "%#oull" : "%#oll";
+		}
         printf(fmt, expr->int_val);
         break;
 	}
