@@ -5,7 +5,9 @@ TODO:
 [ ] resolving constants
     integers with u suffix
 
-[ ] anonymous enums ???
+[ ] codegen for variable declarations of enum type always uses type int instead
+    of the enum name, it should use the enum name for everything but anonymous
+    enums
 
 [ ] support increment expression in array index
 		e.g.  deck[card_index++] = Card{num=1, symbol='A', face_down=true, prev=prev};
@@ -96,8 +98,8 @@ TODO:
     types or nah?? (s := "farts"; --> char *s = "farts";)
 
 
-
 DONE:
+[X] anonymous enums
 [X] allow implicitly sized arrays
 	[X] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
 [X] support named parameters in function pointers

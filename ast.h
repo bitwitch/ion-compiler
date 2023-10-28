@@ -315,6 +315,7 @@ struct Decl {
 	NoteList notes;  // annotations
     union {
         struct {
+			bool is_anonymous;
             EnumItem *items;
             int num_items;
         } enum_decl;

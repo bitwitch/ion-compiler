@@ -140,6 +140,7 @@ Sym *sym_decl(Decl *decl) {
         assert(0);
         break;
     }
+
     Sym *sym = sym_alloc(decl->name, kind);
     sym->decl = decl;
     sym->state = SYM_UNRESOLVED;
@@ -190,6 +191,7 @@ Sym *sym_get(char *name) {
 }
 
 void sym_package_put(char *name, Sym *sym) {
+	assert(name);
 	Sym *old_sym = map_get(&current_package->syms_map, name);
 	if (old_sym) {
 		if (sym == old_sym) return;

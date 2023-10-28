@@ -597,13 +597,16 @@ char *gen_sym_decl_c(Sym *sym) {
 		--gen_indent;
 		gen_newline(str);
 		da_printf(str, "};");
-		// TODO(shaw): wasting space in stretchy buf from len to cap
 		return str;
 	}
 
 	case DECL_ENUM: {
 		BUF(char *str) = NULL; // @LEAK
-		da_printf(str, "enum %s {", decl->name);
+		da_printf(str, "enum "); 
+		if (!decl->enum_decl.is_anonymous) {
+			da_printf(str, "%s ", decl->name);
+		}
+		da_printf(str, "{"); 
 		++gen_indent;
 		gen_newline(str);
 
@@ -750,19 +753,22 @@ char *gen_forward_decls_c(void) {
 	gen_newline(str);
 	for (int i=0; i<da_len(reachable_syms); ++i) {
 		Sym *sym = reachable_syms[i];
+		Decl *decl = sym->decl;
 		// NOTE(shaw): primative types don't have declarations, skip those
-		if (!sym->decl) continue;
-		if (is_foreign_decl(sym->decl)) continue;
+		if (!decl) continue;
+		if (is_foreign_decl(decl)) continue;
 		if (sym->kind == SYM_TYPE) {
-			if (sym->decl->kind == DECL_STRUCT) {
+			if (decl->kind == DECL_STRUCT) {
 				da_printf(str, "typedef struct %s %s;", sym->name, sym->name);
 				gen_newline(str);
-			} else if (sym->decl->kind == DECL_UNION) {
+			} else if (decl->kind == DECL_UNION) {
 				da_printf(str, "typedef union %s %s;", sym->name, sym->name);
 				gen_newline(str);
-			} else if (sym->decl->kind == DECL_ENUM) {
-				da_printf(str, "typedef enum %s %s;", sym->name, sym->name);
-				gen_newline(str);
+			} else if (decl->kind == DECL_ENUM) {
+				if (!decl->enum_decl.is_anonymous) {
+					da_printf(str, "typedef enum %s %s;", sym->name, sym->name);
+					gen_newline(str);
+				}
 			}
 		} 
 	}

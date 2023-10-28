@@ -312,9 +312,10 @@ Decl *decl_typedef(SourcePos pos, char *name, Typespec *typespec) {
 }
 
 
-Decl *decl_enum(SourcePos pos, char *name, EnumItem *items, int num_items) {
+Decl *decl_enum(SourcePos pos, char *name, bool is_anonymous, EnumItem *items, int num_items) {
 	Decl *decl = decl_alloc(DECL_ENUM, pos);
     decl->name = name;
+    decl->enum_decl.is_anonymous = is_anonymous;
     decl->enum_decl.items = ast_memdup(items, num_items * sizeof(*items));
     decl->enum_decl.num_items = num_items;
     return decl;

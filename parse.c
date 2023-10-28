@@ -507,16 +507,32 @@ Stmt *parse_stmt(void) {
     }
 }
 
+static int anonymous_enum_index;
+
+char *next_anonymous_enum_name(void) {
+	char buf[256] = {0};
+	snprintf(buf, sizeof(buf), "enum_anon_%d", anonymous_enum_index);
+	++anonymous_enum_index;
+	return str_intern(buf);
+}
 
 Decl *parse_decl_enum(void) {
 	SourcePos pos = token.pos;
-    char *name = parse_name();
+    char *name = NULL;
+	bool is_anonymous = false;
+
+	if (is_token('{')) {
+		is_anonymous = true;
+		name = next_anonymous_enum_name();
+	} else {
+		name = parse_name();
+	}
     expect_token('{');
 
     BUF(EnumItem *enum_items) = NULL; // @LEAK
 
     while(!is_token('}')) {
-        char *name = parse_name();
+        char *item_name = parse_name();
         Expr *expr = NULL;
 
         if (match_token('='))
@@ -525,10 +541,10 @@ Decl *parse_decl_enum(void) {
         if (!is_token('}'))
             expect_token(',');
 
-        da_push(enum_items, (EnumItem){name, expr});
+        da_push(enum_items, (EnumItem){item_name, expr});
     }
     expect_token('}');
-	return decl_enum(pos, name, enum_items, da_len(enum_items));
+	return decl_enum(pos, name, is_anonymous, enum_items, da_len(enum_items));
 }
 
 Decl *parse_decl_const(void) {
