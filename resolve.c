@@ -1048,19 +1048,10 @@ ResolvedExpr resolve_expr_compound(Expr *expr, Type *expected_type) {
 	int num_args = expr->compound.num_args;
 	Type *type = NULL;
 
-	bool is_implicit_sized_array = 
-		(typespec && typespec->kind == TYPESPEC_ARRAY && !typespec->array.num_items) ||
-		(expected_type && expected_type->kind == TYPE_ARRAY && !expected_type->array.num_items);
-
-	// TODO(shaw): handle case where compound expr is array type, explicitly
-	// sized, and has array index designators
-
-	if (is_implicit_sized_array) {
-		Type *elem_type = typespec 
-			? resolve_typespec(typespec->array.base) 
-			: expected_type->array.base;
-
-		// if designated_init, compute number of array elements
+	bool is_array = (typespec && typespec->kind == TYPESPEC_ARRAY) ||
+	                (expected_type && expected_type->kind == TYPE_ARRAY);
+	if (is_array) {
+		// compute number of items based on entries in the initializer
 		int num_items = 0;
 		for (int i=0; i<num_args; ++i) {
 			CompoundArg arg = args[i];
@@ -1089,9 +1080,26 @@ ResolvedExpr resolve_expr_compound(Expr *expr, Type *expected_type) {
 			}
 		}
 
-		type = type_array(elem_type, num_items);
+		bool is_implicit_sized_array = 
+			(typespec && !typespec->array.num_items) ||
+			(expected_type && !expected_type->array.num_items);
 
-	} else {
+		if (is_implicit_sized_array) {
+			Type *elem_type = typespec 
+				? resolve_typespec(typespec->array.base) 
+				: expected_type->array.base;
+			type = type_array(elem_type, num_items);
+		} else {
+			type = typespec ? resolve_typespec(typespec) : expected_type;
+			if (type->array.num_items < num_items) {
+				semantic_error(expr->pos, 
+					"too many items in array initializer, array size is %d but the number of items present is %d", 
+					type->array.num_items, num_items);
+				return resolved_null;
+			}
+		}
+
+	} else { // not array
 		type = typespec ? resolve_typespec(typespec) : expected_type;
 	}
 

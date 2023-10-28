@@ -2,9 +2,6 @@ TODO:
 [ ] currently array sizes are limited by int type, i should probably allow
     64-bit unsigned
 
-[X] allow implicitly sized arrays
-	[ ] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
-
 [ ] resolving constants
     integers with u suffix
 
@@ -101,6 +98,8 @@ TODO:
 
 
 DONE:
+[X] allow implicitly sized arrays
+	[X] handle this case: arr[] = {1,2,3,4, [10]=69};  (size is 11 here)
 [X] support named parameters in function pointers
 		func(userdata: void*, event: SDL_Event*): int;
 		as an alternative to func(void*, SDL_Event*): int;
