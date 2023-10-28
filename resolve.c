@@ -479,6 +479,7 @@ Type *resolve_typespec(Typespec *typespec) {
 	case TYPE_FLOAT:     operand->val._x = (_type)operand->val.f;   break; \
 	case TYPE_DOUBLE:    operand->val._x = (_type)operand->val.d;   break; \
 	case TYPE_BOOL:      operand->val._x = (_type)operand->val.b;   break; \
+	case TYPE_ENUM:      operand->val._x = (_type)operand->val.i;   break; \
 	default: assert(0); break; \
 	}
 
@@ -1715,6 +1716,7 @@ Type *resolve_decl_func(Decl *decl) {
 
 Type *resolve_decl_type(Decl *decl) {
 	if (decl->kind == DECL_ENUM) {
+		Type *type = type_enum();
 		EnumItem *items = decl->enum_decl.items;
 		Val val = {.i=0};
 		for (int i = 0; i < decl->enum_decl.num_items; ++i) {
@@ -1726,11 +1728,12 @@ Type *resolve_decl_type(Decl *decl) {
 				}
 				val = resolved.val;
 			}
-			item_sym->type  = type_int;
+
+			item_sym->type = decl->enum_decl.is_anonymous ? type_int : type;
 			item_sym->val.i = val.i++;
 			item_sym->state = SYM_RESOLVED;
 		}
-		return type_enum();
+		return type;
 	} else if (decl->kind == DECL_TYPEDEF) {
 		return resolve_typespec(decl->typedef_decl.typespec);
 	} else {

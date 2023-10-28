@@ -96,11 +96,12 @@ bool is_floating_type(Type *type) {
 
 bool is_integer_type(Type *type) {
 	return type == type_bool     ||
-	       type == type_char     || type == type_schar  || type == type_uchar ||
-	       type == type_short    || type == type_ushort ||
-	       type == type_int      || type == type_uint   || 
-	       type == type_long     || type == type_ulong  || 
-	       type == type_longlong || type == type_ulonglong;
+	       type == type_char     || type == type_schar     || type == type_uchar ||
+	       type == type_short    || type == type_ushort    ||
+	       type == type_int      || type == type_uint      || 
+	       type == type_long     || type == type_ulong     || 
+	       type == type_longlong || type == type_ulonglong ||
+		   type->kind == TYPE_ENUM;
 }
 
 bool is_arithmetic_type(Type *type) {
