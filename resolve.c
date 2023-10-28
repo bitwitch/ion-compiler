@@ -1036,142 +1036,158 @@ int index_of_aggregate_field(char *name, Type *type) {
 	return -1;
 }
 
-ResolvedExpr resolve_expr_compound(Expr *expr, Type *expected_type) {
-	assert(expr->kind == EXPR_COMPOUND);
+ResolvedExpr resolve_expr_compound_array(Expr *expr, Type *expected_type) {
 	Typespec *typespec = expr->compound.typespec;
-	if (!typespec && !expected_type) {
-		semantic_error(expr->pos, "compound literal is missing a type specification in a context where its type cannot be inferred");
-		return resolved_null;
-	}
-
 	CompoundArg *args = expr->compound.args;
 	int num_args = expr->compound.num_args;
 	Type *type = NULL;
 
-	bool is_array = (typespec && typespec->kind == TYPESPEC_ARRAY) ||
-	                (expected_type && expected_type->kind == TYPE_ARRAY);
-	if (is_array) {
-		// compute number of items based on entries in the initializer
-		int num_items = 0;
-		for (int i=0; i<num_args; ++i) {
-			CompoundArg arg = args[i];
-			if (arg.field_index) {
-				ResolvedExpr index = resolve_expr(arg.field_index);
-				if (!is_integer_type(index.type)) {
-					semantic_error(arg.field_index->pos, 
-							"array index designator expression must have integer type, got %s",
-							type_to_str(index.type));
-					return resolved_null;
-				}
-
-				if (!index.is_const) {
-					semantic_error(arg.field_index->pos, "array index designator must be a constant expression");
-					return resolved_null;
-				}
-
-				// TODO(shaw): always interpreting val as int here, but it
-				// could be another integer type
-				if (index.val.i >= num_items) {
-					num_items = index.val.i + 1;
-				}
-
-			} else {
-				++num_items;
-			}
-		}
-
-		bool is_implicit_sized_array = 
-			(typespec && !typespec->array.num_items) ||
-			(expected_type && !expected_type->array.num_items);
-
-		if (is_implicit_sized_array) {
-			Type *elem_type = typespec 
-				? resolve_typespec(typespec->array.base) 
-				: expected_type->array.base;
-			type = type_array(elem_type, num_items);
-		} else {
-			type = typespec ? resolve_typespec(typespec) : expected_type;
-			if (type->array.num_items < num_items) {
-				semantic_error(expr->pos, 
-					"too many items in array initializer, array size is %d but the number of items present is %d", 
-					type->array.num_items, num_items);
+	// compute number of items based on entries in the initializer
+	int num_items = 0;
+	for (int i=0; i<num_args; ++i) {
+		CompoundArg arg = args[i];
+		if (arg.field_index) {
+			ResolvedExpr index = resolve_expr(arg.field_index);
+			if (!is_integer_type(index.type)) {
+				semantic_error(arg.field_index->pos, 
+						"array index designator expression must have integer type, got %s",
+						type_to_str(index.type));
 				return resolved_null;
 			}
-		}
 
-	} else { // not array
+			if (!index.is_const) {
+				semantic_error(arg.field_index->pos, "array index designator must be a constant expression");
+				return resolved_null;
+			}
+
+			// TODO(shaw): always interpreting val as int here, but it
+			// could be another integer type
+			if (index.val.i >= num_items) {
+				num_items = index.val.i + 1;
+			}
+
+		} else {
+			++num_items;
+		}
+	}
+
+	bool is_implicit_sized_array = 
+		(typespec && !typespec->array.num_items) ||
+		(expected_type && !expected_type->array.num_items);
+
+	if (is_implicit_sized_array) {
+		Type *elem_type = typespec 
+			? resolve_typespec(typespec->array.base) 
+			: expected_type->array.base;
+		type = type_array(elem_type, num_items);
+	} else {
 		type = typespec ? resolve_typespec(typespec) : expected_type;
+		if (type->array.num_items < num_items) {
+			semantic_error(expr->pos, 
+					"too many items in array initializer, array size is %d but the number of items present is %d", 
+					type->array.num_items, num_items);
+			return resolved_null;
+		}
 	}
 
 	complete_type(type);
+	assert(type->kind == TYPE_ARRAY);
 
-	if (type->kind == TYPE_ARRAY) {
-		for (int i = 0; i < num_args; ++i) {
-			ResolvedExpr arg = resolve_expr_expected(args[i].field_value, type->array.base);
-			(void)arg;
+	for (int i = 0; i < num_args; ++i) {
+		ResolvedExpr arg = resolve_expr_expected(args[i].field_value, type->array.base);
+		(void)arg;
+	}
+
+	return resolved_lvalue(type);
+}
+
+ResolvedExpr resolve_expr_compound_aggregate(Expr *expr, Type *expected_type) {
+	Typespec *typespec = expr->compound.typespec;
+	CompoundArg *args = expr->compound.args;
+	int num_args = expr->compound.num_args;
+
+	Type *type = typespec ? resolve_typespec(typespec) : expected_type;
+	complete_type(type);
+	assert(type->kind == TYPE_STRUCT || type->kind == TYPE_UNION);
+
+	for (int i = 0; i < num_args; ++i) {
+		CompoundArg arg = expr->compound.args[i];
+		if (arg.field_name) {
+			expr->compound.is_designated_init = true;
+			break;
 		}
-	} else {
-		assert(type->kind == TYPE_STRUCT || type->kind == TYPE_UNION);
+	}
 
-		for (int i = 0; i < num_args; ++i) {
-			CompoundArg arg = expr->compound.args[i];
-			if (arg.field_name) {
-				expr->compound.is_designated_init = true;
-				break;
-			}
+	for (int i = 0; i < num_args; ++i) {
+		int index = i;
+		CompoundArg arg = expr->compound.args[i];
+
+		if (expr->compound.is_designated_init && !arg.field_name) {
+			SourcePos pos = expr->pos;
+			if (arg.field_value) pos = arg.field_value->pos;
+			// FIXME: better error message
+			semantic_error(pos, "Expected field name for argument in designated initializer (cannot mix named and unnamed arguments in a compound literal)");
+			// TODO(shaw): try to continue resolving args or just return resolve_null??
+			continue;
 		}
 
-		for (int i = 0; i < num_args; ++i) {
-
-			int index = i;
-			CompoundArg arg = expr->compound.args[i];
-
-			if (expr->compound.is_designated_init && !arg.field_name) {
-				SourcePos pos = expr->pos;
-				if (arg.field_value) pos = arg.field_value->pos;
+		if (arg.field_name) {
+			char *name = arg.field_name->name;
+			if (arg.field_name->kind != EXPR_NAME) {
 				// FIXME: better error message
-				semantic_error(pos, "Expected field name for argument in designated initializer (cannot mix named and unnamed arguments in a compound literal)");
+				semantic_error(arg.field_name->pos, "Expected field name, got a more complicated expression");
 				// TODO(shaw): try to continue resolving args or just return resolve_null??
 				continue;
 			}
 
-			if (arg.field_name) {
-				char *name = arg.field_name->name;
-				if (arg.field_name->kind != EXPR_NAME) {
-					// FIXME: better error message
-					semantic_error(arg.field_name->pos, "Expected field name, got a more complicated expression");
-					// TODO(shaw): try to continue resolving args or just return resolve_null??
-					continue;
-				}
-
-				index = index_of_aggregate_field(name, type);
-				if (index == -1) {
-					semantic_error(arg.field_name->pos, "'%s' is not a field of type %s", name, type_to_str(type));
-					// TODO(shaw): try to continue resolving args or just return resolve_null??
-					continue;
-				}
+			index = index_of_aggregate_field(name, type);
+			if (index == -1) {
+				semantic_error(arg.field_name->pos, "'%s' is not a field of type %s", name, type_to_str(type));
+				// TODO(shaw): try to continue resolving args or just return resolve_null??
+				continue;
 			}
-
-			Type *field_type = type->aggregate.fields[index].type;
-			ResolvedExpr resolved_arg = resolve_expr_expected(arg.field_value, field_type);
-
-			if (resolved_arg.type->kind == TYPE_ARRAY && field_type->kind == TYPE_PTR) {
-				pointer_decay(&resolved_arg);
-			}
-
-			if (resolved_arg.type != field_type) {
-				if (!convert_operand(&resolved_arg, field_type)) {
-					semantic_error(expr->pos,
-							"invalid argument type in compound expression: expected %s for field '%s' in %s, got %s",
-							type_to_str(field_type), type->aggregate.fields[i].name, type_to_str(type), type_to_str(resolved_arg.type)); 
-					continue;
-				}	
-			}
-			arg.field_value->type = field_type;
 		}
+
+		Type *field_type = type->aggregate.fields[index].type;
+		ResolvedExpr resolved_arg = resolve_expr_expected(arg.field_value, field_type);
+
+		if (resolved_arg.type->kind == TYPE_ARRAY && field_type->kind == TYPE_PTR) {
+			pointer_decay(&resolved_arg);
+		}
+
+		if (resolved_arg.type != field_type) {
+			if (!convert_operand(&resolved_arg, field_type)) {
+				semantic_error(expr->pos,
+					"invalid argument type in compound expression: expected %s for field '%s' in %s, got %s",
+					type_to_str(field_type), 
+					type->aggregate.fields[i].name, 
+					type_to_str(type), 
+					type_to_str(resolved_arg.type)); 
+				continue;
+			}	
+		}
+		arg.field_value->type = field_type;
 	}
 
 	return resolved_lvalue(type);
+}
+
+ResolvedExpr resolve_expr_compound(Expr *expr, Type *expected_type) {
+	assert(expr->kind == EXPR_COMPOUND);
+	Typespec *typespec = expr->compound.typespec;
+	if (!typespec && !expected_type) {
+		semantic_error(expr->pos, 
+			"compound literal is missing a type specification in a context where its type cannot be inferred");
+		return resolved_null;
+	}
+
+	bool is_array = (typespec && typespec->kind == TYPESPEC_ARRAY) ||
+	                (expected_type && expected_type->kind == TYPE_ARRAY);
+	if (is_array) {
+		return resolve_expr_compound_array(expr, expected_type);
+	} else { 
+		return resolve_expr_compound_aggregate(expr, expected_type);
+	}
 }
 
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
