@@ -736,7 +736,7 @@ char *gen_preamble_c(void) {
 char *gen_foreign_headers_c(void) {
 	BUF(char *headers) = NULL;
 	da_printf(headers, "// Foreign headers ------------------------------------------------------------\n");
-	// directive includes
+	// directive headers
 	for (int j=0; j<da_len(packages); ++j) {
 		Package *package = packages[j];
 		for (int i=0; i<da_len(package->directives); ++i) {
@@ -744,7 +744,7 @@ char *gen_foreign_headers_c(void) {
 			if (decl->name == name_foreign) {
 				for (int j=0; j<decl->directive.num_args; ++j) {
 					DirectiveArg arg = decl->directive.args[j];
-					if (arg.name == name_include) {
+					if (arg.name == name_header) {
 						char *val = arg.expr->str_val;
 						if (val[0] == '<') {
 							// system include
