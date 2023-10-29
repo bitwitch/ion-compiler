@@ -104,6 +104,10 @@ bool is_integer_type(Type *type) {
 		   type->kind == TYPE_ENUM;
 }
 
+bool is_ptr_like_type(Type *type) {
+	return type && (type->kind == TYPE_PTR || type->kind == TYPE_FUNC);
+}
+
 bool is_arithmetic_type(Type *type) {
 	return is_integer_type(type) || is_floating_type(type);
 }

@@ -131,18 +131,12 @@ Expr *parse_expr_base(void) {
 		char *name = token.name;
 		next_token();
 		if (is_token('{')) {
+			// compound literal
 			Typespec *typespec = typespec_name(pos, name);
 			expr = parse_expr_compound(typespec);
 		} else {
 			expr = expr_name(pos, name);
 		}
-    } else if (match_keyword(keyword_cast)) {
-        expect_token('(');
-        Typespec *typespec = parse_typespec();
-        expect_token(',');
-        Expr *sub_expr = parse_expr();
-        expect_token(')');
-		expr = expr_cast(pos, typespec, sub_expr);
     } else if (match_keyword(keyword_sizeof)) {
         expect_token('(');
         if (match_token(':'))
@@ -151,16 +145,20 @@ Expr *parse_expr_base(void) {
 			expr = expr_sizeof_expr(pos, parse_expr());
         expect_token(')');
     } else if (match_token('(')) {
-        // compound literal
         if (match_token(':')) {
             Typespec *typespec = parse_typespec();
             expect_token(')');
-            expr = parse_expr_compound(typespec);
+			if (is_token('{')) {
+				expr = parse_expr_compound(typespec);
+			} else if (match_token('(')) {
+				Expr *sub_expr = parse_expr();
+				expect_token(')');
+				expr = expr_cast(pos, typespec, sub_expr);
+			}
         } else {
             expr = parse_expr();
             expect_token(')');
         }
-
     } else if (is_token('{')) {
         expr = parse_expr_compound(NULL);
     } else {

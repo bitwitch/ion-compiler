@@ -462,6 +462,37 @@ Type *resolve_typespec(Typespec *typespec) {
     }
 }
 
+// based on the C standard, see https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1548.pdf
+bool is_convertible(Type *src, Type *dest) {
+	if (src == dest) {
+		return true;
+	} else if (src->kind == TYPE_PTR && dest->kind == TYPE_PTR) {
+		return (src->ptr.base->kind == TYPE_VOID || dest->ptr.base->kind == TYPE_VOID);
+	} else if (is_integer_type(src) && is_integer_type(dest)) {
+		return true;
+	} else if (is_floating_type(src) && is_floating_type(dest)) {
+		return true;
+	} else if (is_integer_type(src) && is_floating_type(dest)) {
+		return true;
+	}
+	return false;
+}
+
+bool is_castable(Type *src, Type *dest) {
+	if (is_convertible(src, dest)) {
+		return true;
+	} else if (is_integer_type(dest)) {
+		return is_ptr_like_type(src) || is_floating_type(src);
+	} else if (is_integer_type(src)) {
+		return is_ptr_like_type(dest);
+	} else if (is_ptr_like_type(dest) && is_ptr_like_type(src)) {
+		return true;
+	} else if (is_floating_type(src) && is_integer_type(dest)) {
+		return true;
+	} else {
+		return false;
+	}
+}
 
 #define CASE(_x, _type) \
 	switch (operand->type->kind) { \
@@ -483,35 +514,52 @@ Type *resolve_typespec(Typespec *typespec) {
 	default: assert(0); break; \
 	}
 
-void cast_operand(ResolvedExpr *operand, Type *type) {
+bool cast_operand(ResolvedExpr *operand, Type *type) {
+	if (!is_castable(operand->type, type)) {
+		return false;
+	}
 	if (operand->is_const) {
-		switch (type->kind) {
-		case TYPE_CHAR:      CASE(c,   char);     break;
-		case TYPE_SCHAR:     CASE(sc,  int8_t);   break;
-		case TYPE_UCHAR:     CASE(uc,  uint8_t);  break;
-		case TYPE_SHORT:     CASE(s,   int16_t);  break;
-		case TYPE_USHORT:    CASE(us,  uint16_t); break;
-		case TYPE_INT:       CASE(i,   int32_t);  break;
-		case TYPE_UINT:      CASE(ui,  uint32_t); break;
-		case TYPE_LONG:      CASE(l,   int32_t);  break;
-		case TYPE_ULONG:     CASE(ul,  uint32_t); break;
-		case TYPE_LONGLONG:  CASE(ll,  int64_t);  break;
-		case TYPE_ULONGLONG: CASE(ull, uint64_t); break;
-		case TYPE_FLOAT:     CASE(f,   float);    break;
-		case TYPE_DOUBLE:    CASE(d,   double);   break;
-		case TYPE_BOOL:      CASE(b,   bool);     break;
-		case TYPE_PTR:
-			assert(is_null_ptr(*operand));
-			break;
-		default: 
-			assert(0); 
-			break;
+		if (is_floating_type(operand->type)) {
+			operand->is_const = !is_integer_type(type);
+		} else {
+			switch (type->kind) {
+			case TYPE_CHAR:      CASE(c,   char);     break;
+			case TYPE_SCHAR:     CASE(sc,  int8_t);   break;
+			case TYPE_UCHAR:     CASE(uc,  uint8_t);  break;
+			case TYPE_SHORT:     CASE(s,   int16_t);  break;
+			case TYPE_USHORT:    CASE(us,  uint16_t); break;
+			case TYPE_INT:       CASE(i,   int32_t);  break;
+			case TYPE_UINT:      CASE(ui,  uint32_t); break;
+			case TYPE_LONG:      CASE(l,   int32_t);  break;
+			case TYPE_ULONG:     CASE(ul,  uint32_t); break;
+			case TYPE_LONGLONG:  CASE(ll,  int64_t);  break;
+			case TYPE_ULONGLONG: CASE(ull, uint64_t); break;
+			case TYPE_FLOAT:     CASE(f,   float);    break;
+			case TYPE_DOUBLE:    CASE(d,   double);   break;
+			case TYPE_BOOL:      CASE(b,   bool);     break;
+			case TYPE_PTR:
+				assert(is_null_ptr(*operand));
+				break;
+			default: 
+				assert(0); 
+				break;
+			}
 		}
 	}
 	operand->type = type;
+	return true;
 }
 
 #undef CASE
+
+bool convert_operand(ResolvedExpr *operand, Type *type) {
+	if (is_convertible(operand->type, type)) {
+		cast_operand(operand, type);
+		return true;
+	}	
+	return false;
+}
+
 
 // TODO(shaw): using c's macros for min and max values of integer types for
 // now. furthermore it will be the values ONLY for the system the compiler is
@@ -764,30 +812,6 @@ void pointer_decay(ResolvedExpr *resolved) {
 	assert(resolved->type->kind == TYPE_ARRAY);
 	resolved->type = type_ptr(resolved->type->array.base);
 	resolved->is_lvalue = false;
-}
-
-// based on the C standard, see https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1548.pdf
-bool is_convertible(Type *from, Type *to) {
-	if (from == to) {
-		return true;
-	} else if (from->kind == TYPE_PTR || to->kind == TYPE_PTR) {
-		return (from->ptr.base->kind == TYPE_VOID || to->ptr.base->kind == TYPE_VOID);
-	} else if (is_integer_type(from) && is_integer_type(to)) {
-		return true;
-	} else if (is_floating_type(from) && is_floating_type(to)) {
-		return true;
-	} else if (is_integer_type(from) && is_floating_type(to)) {
-		return true;
-	}
-	return false;
-}
-
-bool convert_operand(ResolvedExpr *operand, Type *type) {
-	if (is_convertible(operand->type, type)) {
-		cast_operand(operand, type);
-		return true;
-	}	
-	return false;
 }
 
 bool floating_conversion(ResolvedExpr *operand_left, ResolvedExpr *operand_right) {
@@ -1230,6 +1254,74 @@ ResolvedExpr resolve_expr_compound(Expr *expr, Type *expected_type) {
 	}
 }
 
+ResolvedExpr resolve_expr_call(Expr *expr) {
+	assert(expr->kind == EXPR_CALL);
+
+	// check if this is a cast
+	if (expr->call.expr->kind == EXPR_NAME) {
+		Sym *sym = resolve_name(expr->call.expr->name);
+		if (sym && sym->kind == SYM_TYPE) {
+			if (expr->call.num_args != 1) {
+				semantic_error(expr->pos, "expected one argument to cast, got %d", expr->call.num_args);
+				return resolved_null;
+			}
+			ResolvedExpr operand = resolve_expr(expr->call.args[0]);
+			if (!cast_operand(&operand, sym->type)) {
+				semantic_error(expr->pos, "Invalid type cast from %s to %s", 
+					type_to_str(operand.type), type_to_str(sym->type));
+				return resolved_null;
+			}
+			return resolved_rvalue(sym->type);
+		}
+	}
+
+	// okay this is a function call
+
+	ResolvedExpr operand = resolve_expr(expr->call.expr);
+	if (operand.type->kind != TYPE_FUNC) {
+		semantic_error(expr->pos, "attempting to call %s which is not a function", expr->call.expr->name);
+		return resolved_null;
+	}
+	Type *type = operand.type;
+
+	// check that num of args in call match the function signature
+	if (expr->call.num_args < type->func.num_params) {
+		semantic_error(expr->pos, "not enough arguments passed to function %s", type_to_str(type));
+		return resolved_null;
+	} else if (expr->call.num_args > type->func.num_params) {
+		// only allowed if variadic function
+		if (!type->func.is_variadic) {
+			semantic_error(expr->pos, "too many arguments passed to function %s", type_to_str(type));
+			return resolved_null;
+		}
+	}
+	// resolve call arguments and type check against function parameters
+	for (int i = 0; i < expr->call.num_args; ++i) {
+		TypeField param = type->func.params[i];
+		Expr *arg_expr = expr->call.args[i];
+		ResolvedExpr arg = resolve_expr_expected(arg_expr, param.type);
+		if (arg.type->kind == TYPE_ARRAY && arg_expr->kind != EXPR_COMPOUND) {
+			pointer_decay(&arg);
+		}
+		if (i < type->func.num_params) {
+			if (arg.type != param.type) { 
+				if (!convert_operand(&arg, param.type)) {
+					semantic_error(expr->pos, 
+							"type mismatch in function call: expected %s for parameter %s, got %s", 
+							type_to_str(param.type), param.name, type_to_str(arg.type));
+					continue;
+				}
+			}
+			expr->call.args[i]->type = param.type;
+		} else {
+			assert(type->func.is_variadic);
+			// cannot typecheck var args, so do nothing
+		}
+	}
+
+	return resolved_rvalue(type->func.ret);
+}
+
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
     ResolvedExpr result = resolved_null;
 
@@ -1250,7 +1342,6 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		result = resolved_const(type_bool, (Val){.b=expr->bool_val});
 		break;
 	case EXPR_STR:
-		//result = resolved_rvalue(type_array(type_char, strlen(expr->str_val) + 1));
 		result = resolved_rvalue(type_ptr(type_char));
 		break;
     case EXPR_NAME:
@@ -1271,8 +1362,14 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 	}
 	case EXPR_CAST: {
 		Type *type = resolve_typespec(expr->cast.typespec);
-		resolve_expr(expr->cast.expr);
-		result = resolved_rvalue(type);
+		ResolvedExpr operand = resolve_expr(expr->cast.expr);
+		if (cast_operand(&operand, type)) {
+			result = resolved_rvalue(type);
+		} else {
+			semantic_error(expr->pos, "Invalid type cast from %s to %s", 
+				type_to_str(operand.type), type_to_str(type));
+			result = resolved_null;
+		}
 		break;
 	}
 	case EXPR_BINARY: {
@@ -1339,52 +1436,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 	}
 
 	case EXPR_CALL: {
-		ResolvedExpr resolved = resolve_expr(expr->call.expr);
-		if (resolved.type->kind != TYPE_FUNC) {
-			semantic_error(expr->pos, "attempting to call %s which is not a function", expr->call.expr->name);
-			result = resolved_null;
-			break;
-		}
-		Type *type = resolved.type;
-
-		// check that num of args in call match the function signature
-		if (expr->call.num_args < type->func.num_params) {
-			semantic_error(expr->pos, "not enough arguments passed to function %s", type_to_str(type));
-			result = resolved_null;
-			break;
-		} else if (expr->call.num_args > type->func.num_params) {
-			// only allowed if variadic function
-			if (!type->func.is_variadic) {
-				semantic_error(expr->pos, "too many arguments passed to function %s", type_to_str(type));
-				result = resolved_null;
-				break;
-			}
-		}
-		// resolve call arguments and type check against function parameters
-		for (int i = 0; i < expr->call.num_args; ++i) {
-			TypeField param = type->func.params[i];
-			Expr *arg_expr = expr->call.args[i];
-			ResolvedExpr arg = resolve_expr_expected(arg_expr, param.type);
-			if (arg.type->kind == TYPE_ARRAY && arg_expr->kind != EXPR_COMPOUND) {
-				pointer_decay(&arg);
-			}
-			if (i < type->func.num_params) {
-				if (arg.type != param.type) { 
-					if (!convert_operand(&arg, param.type)) {
-						semantic_error(expr->pos, 
-							"type mismatch in function call: expected %s for parameter %s, got %s", 
-							type_to_str(param.type), param.name, type_to_str(arg.type));
-						continue;
-					}
-				}
-				expr->call.args[i]->type = param.type;
-			} else {
-				assert(type->func.is_variadic);
-				// cannot typecheck var args, so do nothing
-			}
-		}
-
-		result = resolved_rvalue(type->func.ret);
+		result = resolve_expr_call(expr);
 		break;
 	}
 	

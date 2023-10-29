@@ -1,9 +1,6 @@
 TODO:
-[ ] change cast syntax from cast(type, val) to type(val)
-
 
 [ ] const qualifiers ??
-
 
 [ ] output line directives to the c compiler (preprocessor technically, i
     think) to allow debugging ion source code
@@ -97,6 +94,8 @@ TODO:
 
 
 DONE:
+[X] change cast syntax from cast(type, val) to type(val)
+  [X] change codegen for call exprs that are casts
 [X] resolving constants
     integers with suffixes: l, ll, u, ul, ull
 [X] codegen for variable declarations of enum type always uses type int instead

@@ -1,5 +1,8 @@
 func f1(a: int): int {
 
+	derp := 32;
+	dap := float(derp);
+
 	func_ptr1: func(one: int, two: float): int;
 	func_ptr2: func(int, float): int;
 

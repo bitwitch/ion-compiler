@@ -246,14 +246,20 @@ char *gen_expr_c(Expr *expr) {
         char *name = gen_expr_c(expr->call.expr);
         Expr **args = expr->call.args;
         int num_args = expr->call.num_args;
-
 		BUF(char *str) = NULL;
-		da_printf(str, "%s(", name);
-        for (int i=0; i<num_args; ++i) {
-			da_printf(str, "%s%s", gen_expr_c(args[i]), i == num_args - 1 ? "" : ", ");
-        }
-		da_printf(str, ")");
-        return str;
+
+		if (expr->type->sym->kind == SYM_TYPE) {
+			// cast
+			str = strf("(%s)(%s)", name, gen_expr_c(args[0]));
+		} else {
+			// function call
+			da_printf(str, "%s(", name);
+			for (int i=0; i<num_args; ++i) {
+				da_printf(str, "%s%s", gen_expr_c(args[i]), i == num_args - 1 ? "" : ", ");
+			}
+			da_printf(str, ")");
+		}
+		return str;
     }
     case EXPR_INDEX: 
         return strf("%s[%s]",
