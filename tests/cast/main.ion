@@ -1,0 +1,24 @@
+struct Foo {
+	x: int;
+}
+func main(argc: int, argv: char**): int {
+	x := float(32);
+
+	// these should be errorrs
+	// y := Foo(x);
+	// p := (:void*)(3.14);
+
+	ptr := (:char*)&x;
+
+	a := uint(x);
+	b := long(x);
+	c := ulonglong(x);
+
+	// pointer casts
+	d: uint*;
+	e: Foo*;
+	f: float*;
+	g := (:void*)d;
+	h := (:ulonglong*)e;
+	i := (:int*)f;
+}

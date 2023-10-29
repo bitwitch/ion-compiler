@@ -1,0 +1,32 @@
+
+enum Stuff {
+	STUFF_GOOD,
+	STUFF_BAD,
+	STUFF_PRETTY_DECE,
+}
+
+enum Thing {
+	THING_ZERO,
+	THING_ONE,
+	THING_TWO,
+	THING_THREE,
+	THING_SEVENTEEN = 17,
+	THING_EIGHTEEN,
+	THING_NINETEEN,
+}
+
+enum {
+	BIG,
+	OLE,
+	FARTS,
+}
+
+func main(argc: int, argv: char**): int {
+	s := STUFF_PRETTY_DECE;
+	t := THING_THREE;
+	i : int = FARTS;
+
+	j: int;
+	j = THING_ONE;
+	return 0;
+}

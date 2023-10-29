@@ -1,4 +1,10 @@
 TODO:
+[ ] add a parameter to foreign directives to allow assigning an external name to
+    the declaration: @foreign("external_name") ...
+
+[ ] move builtin package to an actual package in system_packages
+
+[ ] static assert 
 
 [ ] const qualifiers ??
 

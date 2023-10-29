@@ -237,10 +237,6 @@ bool parse_package(Package *package) {
 		return false;
 	}
 
-	if (has_foreign_sources(package)) {
-		package->gen_all_symbols = true;
-	}
-
 	// add symbols to package symbol table
 	Package *old_package = enter_package(package);
 	if (builtin_package) {
@@ -252,27 +248,49 @@ bool parse_package(Package *package) {
 	return true;
 }
 
-Package *init_builtin_package(void) {
-	char *package_path = str_intern("builtin");
-	Package *package = xcalloc(1, sizeof(Package));
-	package->path = package_path;
-	package->external_name = str_intern("");
-	// if (!copy_package_full_path(package->full_path, package_path)) {
-	// free(package);
-	// return NULL;
-	// }
-	return package; 
+void init_builtin_types(void) {
+	assert(builtin_package);
+	Package *old_package = enter_package(builtin_package);
+
+	// primative types
+	sym_put_type(str_intern("void"),       type_void);
+	sym_put_type(str_intern("char"),       type_char);
+	sym_put_type(str_intern("schar"),      type_schar);
+	sym_put_type(str_intern("uchar"),      type_uchar);
+	sym_put_type(str_intern("short"),      type_short);
+	sym_put_type(str_intern("ushort"),     type_ushort);
+	sym_put_type(str_intern("int"),        type_int);
+	sym_put_type(str_intern("uint"),       type_uint);
+	sym_put_type(str_intern("long"),       type_long);
+	sym_put_type(str_intern("ulong"),      type_ulong);
+	sym_put_type(str_intern("longlong"),   type_longlong);
+	sym_put_type(str_intern("ulonglong"),  type_ulonglong);
+	sym_put_type(str_intern("float"),      type_float);
+	sym_put_type(str_intern("double"),     type_double);
+	sym_put_type(str_intern("bool"),       type_bool);
+
+	// built-in constants
+	// sym_put_const(str_intern("true"),  type_bool,           (Val){.i=1});
+	// sym_put_const(str_intern("false"), type_bool,           (Val){.i=0});
+	// sym_put_const(str_intern("NULL"),  type_ptr(type_void), (Val){.p=0});
+
+	leave_package(old_package);
+}
+
+void init_builtin_package(void) {
+	builtin_package = import_package("builtin");
+	if (!builtin_package) {
+		fatal("failed to initialize builtins\n");
+	}
+	builtin_package->external_name = str_intern("");
+	builtin_package->always_reachable = true;
+	init_builtin_types();
 }
 
 void init_compiler(void) {
 	init_package_search_paths();
 	init_keywords();
-
-	builtin_package = init_builtin_package();
-	if (!builtin_package) {
-		fatal("failed to initialize builtins\n");
-	}
-	sym_init_table();
+	init_builtin_package();
 }
 
 bool compile_package(char *package_name, char *out_name) {
@@ -294,14 +312,15 @@ bool compile_package(char *package_name, char *out_name) {
 		fatal("package '%s' contains no function called main", package_name);
 	}
 
-	resolve_package(main_package);
 
-	// resolve all symbols in packages that have gen_all_symbols set
+	// resolve all symbols in packages that have always_reachable set
 	for (int i=0; i<da_len(packages); ++i) {
-		if (packages[i]->gen_all_symbols) {
+		if (packages[i]->always_reachable) {
 			resolve_package(packages[i]);
 		}
 	}
+
+	resolve_package(main_package);
 
 	complete_reachable_syms();
     printf("Compiled %d symbols in %d packages\n", da_len(reachable_syms), da_len(packages));

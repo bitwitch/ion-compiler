@@ -17,7 +17,7 @@ typedef union {
 	uint64_t ull;
 	float f;
 	double d;
-	void *p;
+	uintptr_t p;
 } Val;
 
 typedef struct {
@@ -64,11 +64,7 @@ struct Package {
 	BUF(Sym **syms);
 	BUF(Decl **decls);
 	BUF(Decl **directives);
-
-	// generate code for all symbols, including "unreachable"
-	// useful for packages that include foreign sources or for 
-	// generating c libraries
-	bool gen_all_symbols; 
+	bool always_reachable;
 }; 
 
 Map package_map;
@@ -243,36 +239,6 @@ void sym_put_const(char *name, Type *type, Val val) {
 	sym->type  = type;
 	sym->val   = val;
 	sym_package_put(sym->name, sym);
-}
-
-// initializes primative types and built-in constants
-void sym_init_table(void) {
-	assert(builtin_package);
-	Package *old_package = enter_package(builtin_package);
-
-	// primative types
-	sym_put_type(str_intern("void"),       type_void);
-	sym_put_type(str_intern("char"),       type_char);
-	sym_put_type(str_intern("schar"),      type_schar);
-	sym_put_type(str_intern("uchar"),      type_uchar);
-	sym_put_type(str_intern("short"),      type_short);
-	sym_put_type(str_intern("ushort"),     type_ushort);
-	sym_put_type(str_intern("int"),        type_int);
-	sym_put_type(str_intern("uint"),       type_uint);
-	sym_put_type(str_intern("long"),       type_long);
-	sym_put_type(str_intern("ulong"),      type_ulong);
-	sym_put_type(str_intern("longlong"),   type_longlong);
-	sym_put_type(str_intern("ulonglong"),  type_ulonglong);
-	sym_put_type(str_intern("float"),      type_float);
-	sym_put_type(str_intern("double"),     type_double);
-	sym_put_type(str_intern("bool"),       type_bool);
-
-	// built-in constants
-	sym_put_const(str_intern("true"),  type_bool,           (Val){.i=1});
-	sym_put_const(str_intern("false"), type_bool,           (Val){.i=0});
-	sym_put_const(str_intern("NULL"),  type_ptr(type_void), (Val){.p=0});
-
-	leave_package(old_package);
 }
 
 Sym **sym_enter_scope(void) {
@@ -502,15 +468,14 @@ bool is_castable(Type *src, Type *dest) {
 	case TYPE_SHORT:     operand->val._x = (_type)operand->val.s;   break; \
 	case TYPE_USHORT:    operand->val._x = (_type)operand->val.us;  break; \
 	case TYPE_INT:       operand->val._x = (_type)operand->val.i;   break; \
+	case TYPE_ENUM:      operand->val._x = (_type)operand->val.i;   break; \
 	case TYPE_UINT:      operand->val._x = (_type)operand->val.ui;  break; \
 	case TYPE_LONG:      operand->val._x = (_type)operand->val.l;   break; \
 	case TYPE_ULONG:     operand->val._x = (_type)operand->val.ul;  break; \
 	case TYPE_LONGLONG:  operand->val._x = (_type)operand->val.ll;  break; \
 	case TYPE_ULONGLONG: operand->val._x = (_type)operand->val.ull; break; \
-	case TYPE_FLOAT:     operand->val._x = (_type)operand->val.f;   break; \
-	case TYPE_DOUBLE:    operand->val._x = (_type)operand->val.d;   break; \
 	case TYPE_BOOL:      operand->val._x = (_type)operand->val.b;   break; \
-	case TYPE_ENUM:      operand->val._x = (_type)operand->val.i;   break; \
+	case TYPE_PTR:       operand->val._x = (_type)operand->val.p;   break; \
 	default: assert(0); break; \
 	}
 
@@ -523,25 +488,23 @@ bool cast_operand(ResolvedExpr *operand, Type *type) {
 			operand->is_const = !is_integer_type(type);
 		} else {
 			switch (type->kind) {
-			case TYPE_CHAR:      CASE(c,   char);     break;
-			case TYPE_SCHAR:     CASE(sc,  int8_t);   break;
-			case TYPE_UCHAR:     CASE(uc,  uint8_t);  break;
-			case TYPE_SHORT:     CASE(s,   int16_t);  break;
-			case TYPE_USHORT:    CASE(us,  uint16_t); break;
-			case TYPE_INT:       CASE(i,   int32_t);  break;
-			case TYPE_UINT:      CASE(ui,  uint32_t); break;
-			case TYPE_LONG:      CASE(l,   int32_t);  break;
-			case TYPE_ULONG:     CASE(ul,  uint32_t); break;
-			case TYPE_LONGLONG:  CASE(ll,  int64_t);  break;
-			case TYPE_ULONGLONG: CASE(ull, uint64_t); break;
-			case TYPE_FLOAT:     CASE(f,   float);    break;
-			case TYPE_DOUBLE:    CASE(d,   double);   break;
-			case TYPE_BOOL:      CASE(b,   bool);     break;
-			case TYPE_PTR:
-				assert(is_null_ptr(*operand));
-				break;
+			case TYPE_CHAR:      CASE(c,   char);      break;
+			case TYPE_SCHAR:     CASE(sc,  int8_t);    break;
+			case TYPE_UCHAR:     CASE(uc,  uint8_t);   break;
+			case TYPE_SHORT:     CASE(s,   int16_t);   break;
+			case TYPE_USHORT:    CASE(us,  uint16_t);  break;
+			case TYPE_INT:       CASE(i,   int32_t);   break;
+			case TYPE_UINT:      CASE(ui,  uint32_t);  break;
+			case TYPE_LONG:      CASE(l,   int32_t);   break;
+			case TYPE_ULONG:     CASE(ul,  uint32_t);  break;
+			case TYPE_LONGLONG:  CASE(ll,  int64_t);   break;
+			case TYPE_ULONGLONG: CASE(ull, uint64_t);  break;
+			case TYPE_FLOAT:                           break;
+			case TYPE_DOUBLE:                          break;
+			case TYPE_BOOL:      CASE(b,   bool);      break;
+			case TYPE_PTR:       CASE(p,   uintptr_t); break;
 			default: 
-				assert(0); 
+				operand->is_const = false;
 				break;
 			}
 		}
@@ -1271,7 +1234,7 @@ ResolvedExpr resolve_expr_call(Expr *expr) {
 					type_to_str(operand.type), type_to_str(sym->type));
 				return resolved_null;
 			}
-			return resolved_rvalue(sym->type);
+			return operand;
 		}
 	}
 
@@ -1364,7 +1327,7 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		Type *type = resolve_typespec(expr->cast.typespec);
 		ResolvedExpr operand = resolve_expr(expr->cast.expr);
 		if (cast_operand(&operand, type)) {
-			result = resolved_rvalue(type);
+			result = operand;
 		} else {
 			semantic_error(expr->pos, "Invalid type cast from %s to %s", 
 				type_to_str(operand.type), type_to_str(type));
