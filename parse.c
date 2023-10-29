@@ -150,9 +150,8 @@ Expr *parse_expr_base(void) {
             expect_token(')');
 			if (is_token('{')) {
 				expr = parse_expr_compound(typespec);
-			} else if (match_token('(')) {
+			} else {
 				Expr *sub_expr = parse_expr();
-				expect_token(')');
 				expr = expr_cast(pos, typespec, sub_expr);
 			}
         } else {
