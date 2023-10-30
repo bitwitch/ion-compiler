@@ -57,6 +57,11 @@ func test_constants() {
 
 	f := 3.14;
 	d := 3.14d;
+
+	dl := 420l;
+	dll := 32ll;
+	ul := 99ul;
+	ull := 23ull;
 }
 
 func test_escapes() {

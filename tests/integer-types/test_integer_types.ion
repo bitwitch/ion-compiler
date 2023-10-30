@@ -77,5 +77,28 @@ func main(): int {
 	const_ul  := 0xfffful;
 	const_ull := 0xffffull;
 
+
+	h1 := 0x45;
+	h2 := 0xffffffff;
+	h3 := 0xffffffff0;
+	h4 := 0xffffffffffffffff;
+
+	b1 := 0b11110111;
+
+	o1 := 0666;
+
+	ll3 := -3000000000;
+	ll4 :=  3000000000;
+
+	f := 3.14;
+	dub := 3.14d;
+
+	dl := 420l;
+	dll := 32ll;
+	ul := 99ul;
+	ull := 23ull;
+
+	sum := 39ull + 42ll;
+
 	return 0;
 }

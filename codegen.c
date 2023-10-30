@@ -186,6 +186,51 @@ char *gen_expr_compound_c(Expr *expr, bool is_init) {
 	return str;
 }
 
+char *gen_expr_int_c(Expr *expr) {
+	assert(expr->kind == EXPR_INT);
+
+	BUF(char *fmt) = NULL;
+	da_printf(fmt, "%%");
+
+	bool is_hex = IS_SET(expr->mod, TOKENMOD_HEX);
+	bool is_bin = IS_SET(expr->mod, TOKENMOD_BIN);
+	bool is_oct = IS_SET(expr->mod, TOKENMOD_OCT);
+
+	if (is_hex || is_bin || is_oct) {
+		da_printf(fmt, "#");
+	}
+
+	// add length sub-specifier to format
+	if (expr->type == type_ullong || expr->type == type_llong) {
+		da_printf(fmt, "l");
+	} else if (expr->type == type_ulong || expr->type == type_long) {
+		da_printf(fmt, "ll");
+	}
+
+	// add specifier to format
+	if (is_hex || is_bin) {
+		da_printf(fmt, "X");
+	} else if (is_oct) {
+		da_printf(fmt, "o");
+	} else if (is_unsigned_integer_type(expr->type)) {
+		da_printf(fmt, "u");
+	} else {
+		da_printf(fmt, "d");
+	}
+
+	// add suffixes
+	if (IS_SET(expr->mod, TOKENMOD_UNSIGNED)) {
+		da_printf(fmt, "u");
+	}
+	if (IS_SET(expr->mod, TOKENMOD_LLONG)) {
+		da_printf(fmt, "ll");
+	} else if (IS_SET(expr->mod, TOKENMOD_LONG)) {
+		da_printf(fmt, "l");
+	}
+
+	return strf(fmt, expr->int_val);
+}
+
 char *gen_expr_c(Expr *expr) {
     assert(expr);
     switch (expr->kind) {
@@ -198,38 +243,14 @@ char *gen_expr_c(Expr *expr) {
     case EXPR_CHAR: 
         return strf("\'%c\'", expr->int_val); 
     case EXPR_NAME: 
-        // return strf("%s", gen_name_c(expr->name)); 
-        return strf("%s", expr->name); 
+		return strf("%s", gen_name_c(expr->name)); 
+        // return strf("%s", expr->name); 
     case EXPR_UNARY: 
 		return strf("%c(%s)", expr->unary.op, gen_expr_c(expr->unary.expr));
     case EXPR_COMPOUND:
 		return gen_expr_compound_c(expr, false);
-    case EXPR_INT: {
-		BUF(char *fmt) = NULL;
-		da_printf(fmt, "%%");
-		if (IS_SET(expr->mod, TOKENMOD_HEX) || IS_SET(expr->mod, TOKENMOD_BIN)) {
-			da_printf(fmt, "#X");
-		} else if (IS_SET(expr->mod, TOKENMOD_OCT)) {
-			da_printf(fmt, "#o");
-		}
-		if (is_unsigned_integer_type(expr->type)) {
-			da_printf(fmt, "u");
-			if (expr->type == type_ulong) {
-				da_printf(fmt, "l");
-			} else if (expr->type == type_ullong) {
-				da_printf(fmt, "ll");
-			}
-		} else {
-			if (expr->type == type_llong) {
-				da_printf(fmt, "lld");
-			} else if (expr->type == type_long) {
-				da_printf(fmt, "ld");
-			} else {
-				da_printf(fmt, "d");
-			}
-		}
-        return strf(fmt, expr->int_val);
-	}
+    case EXPR_INT:
+		return gen_expr_int_c(expr);
     case EXPR_BINARY: {
 		char *op = strf("%s", token_kind_to_str(expr->binary.op));
         return strf("(%s) %s (%s)", 
