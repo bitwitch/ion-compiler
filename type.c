@@ -18,8 +18,8 @@ typedef enum {
     TYPE_UINT,
     TYPE_LONG,
     TYPE_ULONG,
-    TYPE_LONGLONG,
-    TYPE_ULONGLONG,
+    TYPE_LLONG,
+    TYPE_ULLONG,
     TYPE_FLOAT,
     TYPE_DOUBLE,
 	TYPE_BOOL,
@@ -79,8 +79,8 @@ Type *type_int         = &(Type){ .kind = TYPE_INT,       .size = 4, .align = 4 
 Type *type_uint        = &(Type){ .kind = TYPE_UINT,      .size = 4, .align = 4 };
 Type *type_long        = &(Type){ .kind = TYPE_LONG,      .size = 4, .align = 4 };
 Type *type_ulong       = &(Type){ .kind = TYPE_ULONG,     .size = 4, .align = 4 };
-Type *type_longlong    = &(Type){ .kind = TYPE_LONGLONG,  .size = 8, .align = 8 };
-Type *type_ulonglong   = &(Type){ .kind = TYPE_ULONGLONG, .size = 8, .align = 8 };
+Type *type_llong       = &(Type){ .kind = TYPE_LLONG,     .size = 8, .align = 8 };
+Type *type_ullong      = &(Type){ .kind = TYPE_ULLONG,    .size = 8, .align = 8 };
 Type *type_float       = &(Type){ .kind = TYPE_FLOAT,     .size = 4, .align = 4 };
 Type *type_double      = &(Type){ .kind = TYPE_DOUBLE,    .size = 8, .align = 8 };
 Type *type_bool        = &(Type){ .kind = TYPE_BOOL,      .size = 4, .align = 4 };
@@ -96,11 +96,11 @@ bool is_floating_type(Type *type) {
 
 bool is_integer_type(Type *type) {
 	return type == type_bool     ||
-	       type == type_char     || type == type_schar     || type == type_uchar ||
-	       type == type_short    || type == type_ushort    ||
-	       type == type_int      || type == type_uint      || 
-	       type == type_long     || type == type_ulong     || 
-	       type == type_longlong || type == type_ulonglong ||
+	       type == type_char     || type == type_schar    || type == type_uchar ||
+	       type == type_short    || type == type_ushort   ||
+	       type == type_int      || type == type_uint     || 
+	       type == type_long     || type == type_ulong    || 
+	       type == type_llong    || type == type_ullong   ||
 		   type->kind == TYPE_ENUM;
 }
 
@@ -121,7 +121,7 @@ bool is_signed_integer_type(Type *type) {
 	       type == type_short    || 
 	       type == type_int      || 
 	       type == type_long     || 
-	       type == type_longlong;
+	       type == type_llong;
 }
 
 bool is_unsigned_integer_type(Type *type) {
@@ -130,7 +130,7 @@ bool is_unsigned_integer_type(Type *type) {
 	       type == type_ushort    || 
 	       type == type_uint      || 
 	       type == type_ulong     || 
-	       type == type_ulonglong;
+	       type == type_ullong;
 }
 
 void complete_type(Type *type);

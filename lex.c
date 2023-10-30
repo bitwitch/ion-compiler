@@ -46,7 +46,7 @@ typedef enum {
 	TOKENMOD_DOUBLE   = 1 << 3,
 	TOKENMOD_UNSIGNED = 1 << 4,
 	TOKENMOD_LONG     = 1 << 5,
-	TOKENMOD_LONGLONG = 1 << 6,
+	TOKENMOD_LLONG    = 1 << 6,
 } TokenMod;
 
 typedef struct {
@@ -225,7 +225,7 @@ void scan_int(void) {
 	if (tolower(*stream) == 'l') {
 		++stream;
 		if (tolower(*stream) == 'l') {
-			token.mod |= TOKENMOD_LONGLONG;
+			token.mod |= TOKENMOD_LLONG;
 			++stream;
 		} else {
 			token.mod |= TOKENMOD_LONG;

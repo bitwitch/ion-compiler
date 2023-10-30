@@ -201,6 +201,13 @@ struct Stmt {
 // annotations
 typedef struct {
 	char *name;
+	Expr *expr;
+} NoteArg;
+
+typedef struct {
+	char *name;
+	NoteArg *args;
+	int num_args;
 } Note;
 
 typedef struct {
@@ -231,11 +238,6 @@ typedef struct {
     char *name;
     Typespec *typespec;
 } FuncParam;
-
-typedef struct {
-	char *name;
-	Expr *expr;
-} DirectiveArg;
 
 typedef struct {
 	char *name;
@@ -276,7 +278,7 @@ struct Decl {
             Typespec *typespec;
         } typedef_decl;
 		struct {
-			DirectiveArg *args;
+			NoteArg *args;
 			int num_args;
 		} directive;
 		struct {

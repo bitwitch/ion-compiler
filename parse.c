@@ -661,28 +661,48 @@ Decl *parse_decl_func(void) {
 
 Note parse_note(void) {
 	char *name = parse_name();
-	return (Note){ .name = name };
+	BUF(NoteArg *args) = NULL;
+	if (match_token('(')) {
+		do {
+			TokenKind token_kind = token.kind;
+			Expr *arg_name = parse_expr();
+			if (arg_name->kind != EXPR_STR) {
+				syntax_error("Expected string as note argument, got %s", token_kind_to_str(token_kind));
+			}
+			Expr *expr = NULL;
+			if (match_token('=')) {
+				expr = parse_expr();
+			}
+			da_push(args, (NoteArg){arg_name->str_val, expr});
+		} while (match_token(','));
+		expect_token(')');
+	}
+	Note note = new_note(name, args, da_len(args));
+	da_free(args);
+	return note;
 }
 
 NoteList parse_note_list(void) {
-	BUF(Note *notes) = NULL;
+	BUF(Note *notes_buf) = NULL;
 	SourcePos pos = token.pos;
 	while (match_token('@')) {
-		da_push(notes, parse_note());
+		da_push(notes_buf, parse_note());
 	}
-	return note_list(pos, notes, da_len(notes));
+	NoteList notes = note_list(pos, notes_buf, da_len(notes_buf));
+	da_free(notes_buf);
+	return notes;
 }
 
 Decl *parse_decl_directive(void) {
 	SourcePos pos = token.pos;
 	char *name = parse_name();
 	expect_token('(');
-	BUF(DirectiveArg *args) = NULL;
+	BUF(NoteArg *args) = NULL;
 	do {
 		char *arg_name = parse_name();
 		expect_token('=');
 		Expr *expr = parse_expr();
-		da_push(args, (DirectiveArg){arg_name, expr});
+		da_push(args, (NoteArg){arg_name, expr});
 	} while (match_token(','));
 	expect_token(')');
 	Decl *decl = decl_directive(pos, name, args, da_len(args));

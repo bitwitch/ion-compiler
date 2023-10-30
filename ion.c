@@ -66,7 +66,7 @@ bool is_package_dir(char *search_path, char *package_path) {
 bool has_foreign_sources(Package *package) {
 	for (int i=0; i<da_len(package->directives); ++i) {
 		assert(package->directives[i]->kind == DECL_DIRECTIVE);
-		DirectiveArg *args = package->directives[i]->directive.args;
+		NoteArg *args = package->directives[i]->directive.args;
 		int num_args = package->directives[i]->directive.num_args;
 		for (int j=0; j<num_args; ++j) {
 			if (args[j].name == name_source) {
@@ -263,8 +263,8 @@ void init_builtin_types(void) {
 	sym_put_type(str_intern("uint"),       type_uint);
 	sym_put_type(str_intern("long"),       type_long);
 	sym_put_type(str_intern("ulong"),      type_ulong);
-	sym_put_type(str_intern("longlong"),   type_longlong);
-	sym_put_type(str_intern("ulonglong"),  type_ulonglong);
+	sym_put_type(str_intern("llong"),      type_llong);
+	sym_put_type(str_intern("ullong"),     type_ullong);
 	sym_put_type(str_intern("float"),      type_float);
 	sym_put_type(str_intern("double"),     type_double);
 	sym_put_type(str_intern("bool"),       type_bool);

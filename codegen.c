@@ -96,8 +96,8 @@ char *gen_type_c(Type *type, char *inner) {
 	case TYPE_UINT:       return strf("uint%s%s", sep, inner);
 	case TYPE_LONG:       return strf("long%s%s", sep, inner);
 	case TYPE_ULONG:      return strf("ulong%s%s", sep, inner);
-	case TYPE_LONGLONG:   return strf("longlong%s%s", sep, inner);
-	case TYPE_ULONGLONG:  return strf("ulonglong%s%s", sep, inner);
+	case TYPE_LLONG:      return strf("llong%s%s", sep, inner);
+	case TYPE_ULLONG:     return strf("ullong%s%s", sep, inner);
 	case TYPE_FLOAT:      return strf("float%s%s", sep, inner);
 	case TYPE_DOUBLE:     return strf("double%s%s", sep, inner);
 	case TYPE_BOOL:       return strf("bool%s%s", sep, inner);
@@ -216,11 +216,11 @@ char *gen_expr_c(Expr *expr) {
 			da_printf(fmt, "u");
 			if (expr->type == type_ulong) {
 				da_printf(fmt, "l");
-			} else if (expr->type == type_ulonglong) {
+			} else if (expr->type == type_ullong) {
 				da_printf(fmt, "ll");
 			}
 		} else {
-			if (expr->type == type_longlong) {
+			if (expr->type == type_llong) {
 				da_printf(fmt, "lld");
 			} else if (expr->type == type_long) {
 				da_printf(fmt, "ld");
@@ -293,8 +293,10 @@ char *gen_typespec_c(Typespec *typespec, char *inner) {
 	char *sep = *inner ? " " : "";
 
 	switch (typespec->kind) {
-	case TYPESPEC_NAME:
+	case TYPESPEC_NAME: {
+
         return strf("%s%s%s", typespec->name, sep, inner);
+	}
 
 	case TYPESPEC_ARRAY: {
 		char *str;
@@ -727,15 +729,15 @@ char *gen_preamble_c(void) {
 	BUF(char *preamble) = NULL;
 	da_printf(preamble, "// Preamble -------------------------------------------------------------------\n");
 	// c lib includes
-	da_printf(preamble, "%s\n", "#include <stdbool.h>\n#include <stdint.h>\n");
+	da_printf(preamble, "%s\n", "#include <stdbool.h>\n");
 	// typedefs for primative types
 	da_printf(preamble, "%s\n", "typedef signed char schar;");
 	da_printf(preamble, "%s\n", "typedef unsigned char uchar;");
 	da_printf(preamble, "%s\n", "typedef unsigned short ushort;");
 	da_printf(preamble, "%s\n", "typedef unsigned int uint;");
 	da_printf(preamble, "%s\n", "typedef unsigned long ulong;");
-	da_printf(preamble, "%s\n", "typedef long long longlong;");
-	da_printf(preamble, "%s\n", "typedef unsigned long long ulonglong;");
+	da_printf(preamble, "%s\n", "typedef long long llong;");
+	da_printf(preamble, "%s\n", "typedef unsigned long long ullong;");
 	return preamble;
 }
 	
@@ -749,7 +751,7 @@ char *gen_foreign_headers_c(void) {
 			Decl *decl = package->directives[i];
 			if (decl->name == name_foreign) {
 				for (int j=0; j<decl->directive.num_args; ++j) {
-					DirectiveArg arg = decl->directive.args[j];
+					NoteArg arg = decl->directive.args[j];
 					if (arg.name == name_header) {
 						char *val = arg.expr->str_val;
 						if (val[0] == '<') {
@@ -835,7 +837,7 @@ char *gen_foreign_sources_c(void) {
 			Decl *decl = package->directives[i];
 			if (decl->name == name_foreign) {
 				for (int j=0; j<decl->directive.num_args; ++j) {
-					DirectiveArg arg = decl->directive.args[j];
+					NoteArg arg = decl->directive.args[j];
 					if (arg.name == name_source) {
 						char source_path[MAX_PATH];
 						path_copy(source_path, package->full_path);

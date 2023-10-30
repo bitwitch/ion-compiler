@@ -276,8 +276,20 @@ Stmt *stmt_switch(SourcePos pos, Expr *expr, SwitchCase *cases, int num_cases) {
 
 
 // Notes (annotations)
+Note new_note(char *name, NoteArg *args, int num_args) {
+	return (Note){
+		.name = name,
+		.args = ast_memdup(args, num_args * sizeof(*args)),
+		.num_args = num_args,
+	};
+}
+
 NoteList note_list(SourcePos pos, Note *notes, int num_notes) {
-	return (NoteList){.pos=pos, .notes=notes, .num_notes=num_notes};
+	return (NoteList){
+		.pos = pos, 
+		.notes = ast_memdup(notes, num_notes * sizeof(*notes)),
+		.num_notes = num_notes,
+	};
 }
 
 
@@ -342,7 +354,7 @@ Decl *decl_func(SourcePos pos, char *name, FuncParam *params, int num_params, bo
     return decl;
 }
 
-Decl *decl_directive(SourcePos pos, char *name, DirectiveArg *args, int num_args) {
+Decl *decl_directive(SourcePos pos, char *name, NoteArg *args, int num_args) {
 	Decl *decl = decl_alloc(DECL_DIRECTIVE, pos);
 	decl->name = name;
 	decl->directive.args = ast_memdup(args, num_args * sizeof(*args));

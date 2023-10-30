@@ -8,7 +8,6 @@ func f1(a: int): int {
 
 	str := "fried chicken";
 	str2: char*;
-	// TODO: this requires pointer decay
 	str2 = str;
 	str3 := "hey dude";
 	str2 = str3;

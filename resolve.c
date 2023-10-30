@@ -472,8 +472,8 @@ bool is_castable(Type *src, Type *dest) {
 	case TYPE_UINT:      operand->val._x = (_type)operand->val.ui;  break; \
 	case TYPE_LONG:      operand->val._x = (_type)operand->val.l;   break; \
 	case TYPE_ULONG:     operand->val._x = (_type)operand->val.ul;  break; \
-	case TYPE_LONGLONG:  operand->val._x = (_type)operand->val.ll;  break; \
-	case TYPE_ULONGLONG: operand->val._x = (_type)operand->val.ull; break; \
+	case TYPE_LLONG:     operand->val._x = (_type)operand->val.ll;  break; \
+	case TYPE_ULLONG:    operand->val._x = (_type)operand->val.ull; break; \
 	case TYPE_BOOL:      operand->val._x = (_type)operand->val.b;   break; \
 	case TYPE_PTR:       operand->val._x = (_type)operand->val.p;   break; \
 	default: assert(0); break; \
@@ -497,8 +497,8 @@ bool cast_operand(ResolvedExpr *operand, Type *type) {
 			case TYPE_UINT:      CASE(ui,  uint32_t);  break;
 			case TYPE_LONG:      CASE(l,   int32_t);   break;
 			case TYPE_ULONG:     CASE(ul,  uint32_t);  break;
-			case TYPE_LONGLONG:  CASE(ll,  int64_t);   break;
-			case TYPE_ULONGLONG: CASE(ull, uint64_t);  break;
+			case TYPE_LLONG:     CASE(ll,  int64_t);   break;
+			case TYPE_ULLONG:    CASE(ull, uint64_t);  break;
 			case TYPE_FLOAT:                           break;
 			case TYPE_DOUBLE:                          break;
 			case TYPE_BOOL:      CASE(b,   bool);      break;
@@ -538,8 +538,8 @@ int64_t integer_min_values[] = {
 	[TYPE_UINT]      = 0,
 	[TYPE_LONG]      = LONG_MIN,
 	[TYPE_ULONG]     = 0,
-	[TYPE_LONGLONG]  = LLONG_MIN,
-	[TYPE_ULONGLONG] = 0,
+	[TYPE_LLONG]     = LLONG_MIN,
+	[TYPE_ULLONG]    = 0,
 };
 
 uint64_t integer_max_values[] = {
@@ -553,8 +553,8 @@ uint64_t integer_max_values[] = {
 	[TYPE_UINT]      = UINT_MAX,
 	[TYPE_LONG]      = LONG_MAX,
 	[TYPE_ULONG]     = ULONG_MAX,
-	[TYPE_LONGLONG]  = LLONG_MAX,
-	[TYPE_ULONGLONG] = ULLONG_MAX,
+	[TYPE_LLONG]     = LLONG_MAX,
+	[TYPE_ULLONG]    = ULLONG_MAX,
 };
 
 int integer_conversion_ranks[] = {
@@ -568,8 +568,8 @@ int integer_conversion_ranks[] = {
 	[TYPE_UINT]      = 4,
 	[TYPE_LONG]      = 5,
 	[TYPE_ULONG]     = 5,
-	[TYPE_LONGLONG]  = 6,
-	[TYPE_ULONGLONG] = 6,
+	[TYPE_LLONG]     = 6,
+	[TYPE_ULLONG]    = 6,
 };
 
 void integer_promotion(ResolvedExpr *operand) {
@@ -647,13 +647,13 @@ Val eval_constant_unary_expr(TokenKind op, ResolvedExpr *operand) {
 	ResolvedExpr result = {0}; 
 
 	if (is_signed_integer_type(type)) {
-		cast_operand(&dummy,  type_longlong);
+		cast_operand(&dummy,  type_llong);
 		int64_t val = eval_unary_op_signed(op, dummy.val.ll);
-		result = resolved_const(type_longlong, (Val){.ll=val});
+		result = resolved_const(type_llong, (Val){.ll=val});
 	} else if (is_unsigned_integer_type(type)) {
-		cast_operand(&dummy,  type_ulonglong);
+		cast_operand(&dummy,  type_ullong);
 		uint64_t val = eval_unary_op_unsigned(op, dummy.val.ull);
-		result = resolved_const(type_ulonglong, (Val){.ull=val});
+		result = resolved_const(type_ullong, (Val){.ull=val});
 	} else if (is_floating_type(type)) {
 		cast_operand(&dummy,  type_double);
 		double val = eval_unary_op_floating(op, dummy.val.d);
@@ -870,7 +870,7 @@ bool arithmetic_conversion(ResolvedExpr *left, ResolvedExpr *right) {
 				[TYPE_SHORT]     = type_ushort,
 				[TYPE_INT]       = type_uint,
 				[TYPE_LONG]      = type_ulong,
-				[TYPE_LONGLONG]  = type_ulonglong,
+				[TYPE_LLONG]     = type_ullong,
 			};
 			Type *type = corresponding_unsigned_type[signed_operand->type->kind];
 			cast_operand(signed_operand, type);
@@ -884,24 +884,24 @@ bool arithmetic_conversion(ResolvedExpr *left, ResolvedExpr *right) {
 ResolvedExpr resolve_expr_int(Expr *expr) {
 	assert(expr->kind == EXPR_INT);
 	uint64_t int_val = expr->int_val;
-	ResolvedExpr result = resolved_const(type_ulonglong, (Val){.ull = int_val});
+	ResolvedExpr result = resolved_const(type_ullong, (Val){.ull = int_val});
 	Type *type;
 
 	bool explicit_unsigned = IS_SET(expr->mod, TOKENMOD_UNSIGNED);
 	bool explicit_long     = IS_SET(expr->mod, TOKENMOD_LONG);
-	bool explicit_longlong = IS_SET(expr->mod, TOKENMOD_LONGLONG);
+	bool explicit_llong = IS_SET(expr->mod, TOKENMOD_LLONG);
 
 	if (explicit_unsigned) {
 		type = type_uint;
 		if (int_val > integer_max_values[TYPE_UINT]) {
 			type = type_ulong;
 			if (int_val > integer_max_values[TYPE_ULONG]) {
-				type = type_ulonglong;
+				type = type_ullong;
 			}
 		}
 
-		if (explicit_longlong) {
-			type = type_ulonglong;
+		if (explicit_llong) {
+			type = type_ullong;
 		} else if (explicit_long && int_val <= integer_max_values[TYPE_ULONG]) {
 			type = type_ulong;
 		}
@@ -919,17 +919,17 @@ ResolvedExpr resolve_expr_int(Expr *expr) {
 				if (int_val > integer_max_values[TYPE_LONG]) {
 					type = type_ulong;
 					if (int_val > integer_max_values[TYPE_ULONG]) {
-						type = type_longlong;
-						if (int_val > integer_max_values[TYPE_LONGLONG]) {
-							type = type_ulonglong;
+						type = type_llong;
+						if (int_val > integer_max_values[TYPE_LLONG]) {
+							type = type_ullong;
 						}
 					}
 				}
 			}
 		}
 
-		if (explicit_longlong && int_val <= integer_max_values[TYPE_LONGLONG]) {
-			type = type_longlong;
+		if (explicit_llong && int_val <= integer_max_values[TYPE_LLONG]) {
+			type = type_llong;
 		} else if (explicit_long && int_val <= integer_max_values[TYPE_LONG]) {
 			type = type_long;
 		}
@@ -940,12 +940,12 @@ ResolvedExpr resolve_expr_int(Expr *expr) {
 		if (int_val > integer_max_values[TYPE_INT]) {
 			type = type_long;
 			if (int_val > integer_max_values[TYPE_LONG]) {
-				type = type_longlong;
+				type = type_llong;
 			}
 		}
 
-		if (explicit_longlong) {
-			type = type_longlong;
+		if (explicit_llong) {
+			type = type_llong;
 		} else if (explicit_long && int_val <= integer_max_values[TYPE_LONG]) {
 			type = type_long;
 		}
@@ -1030,15 +1030,15 @@ Val eval_constant_binary_expr(TokenKind op, ResolvedExpr *operand_left, Resolved
 	ResolvedExpr result = {0}; 
 
 	if (is_signed_integer_type(type)) {
-		cast_operand(&left,  type_longlong);
-		cast_operand(&right, type_longlong);
+		cast_operand(&left,  type_llong);
+		cast_operand(&right, type_llong);
 		int64_t val = eval_binary_op_signed(op, left.val.ll, right.val.ll);
-		result = resolved_const(type_longlong, (Val){.ll=val});
+		result = resolved_const(type_llong, (Val){.ll=val});
 	} else if (is_unsigned_integer_type(type)) {
-		cast_operand(&left,  type_ulonglong);
-		cast_operand(&right, type_ulonglong);
+		cast_operand(&left,  type_ullong);
+		cast_operand(&right, type_ullong);
 		uint64_t val = eval_binary_op_unsigned(op, left.val.ull, right.val.ull);
-		result = resolved_const(type_ulonglong, (Val){.ull=val});
+		result = resolved_const(type_ullong, (Val){.ull=val});
 	} else if (is_floating_type(type)) {
 		cast_operand(&left,  type_double);
 		cast_operand(&right, type_double);
@@ -1802,7 +1802,7 @@ void resolve_decl_directive(Decl *decl) {
 	// if (decl->name != name_foreign) return;
 
 	for (int i=0; i<decl->directive.num_args; ++i) {
-		DirectiveArg arg = decl->directive.args[i];
+		NoteArg arg = decl->directive.args[i];
 
 		assert(arg.name == name_header || arg.name == name_source);
 
