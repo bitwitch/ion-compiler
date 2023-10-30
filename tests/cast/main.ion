@@ -1,6 +1,10 @@
 struct Foo {
 	x: int;
 }
+
+func f1(f: float) { }
+func f2(i: int): int { return 69; }
+
 func main(argc: int, argv: char**): int {
 	x := float(32);
 
@@ -12,13 +16,17 @@ func main(argc: int, argv: char**): int {
 
 	a := uint(x);
 	b := long(x);
-	c := ulonglong(x);
+	c := ullong(x);
 
 	// pointer casts
 	d: uint*;
 	e: Foo*;
 	f: float*;
 	g := (:void*)d;
-	h := (:ulonglong*)e;
+	h := (:ullong*)e;
 	i := (:int*)f;
+
+	// function calls
+	f1(3.14);
+	j := f2(2);
 }

@@ -1,8 +1,8 @@
-// #foreign(include = "<stdio.h>", include = "<stdlib.h>", include = "<string.h>")
-#foreign(include = "<stdio.h>")
-#foreign(include = "<stdlib.h>")
-#foreign(include = "<string.h>")
-#foreign(include = "some_local_lib.h")
+// #foreign(header = "<stdio.h>", header = "<stdlib.h>", header = "<string.h>")
+#foreign(header = "<stdio.h>")
+#foreign(header = "<stdlib.h>")
+#foreign(header = "<string.h>")
+#foreign(header = "some_local_lib.h")
 @foreign func malloc(size: uint): void*;
 @foreign func strcpy(dst: char*, src: char*): char*;
 @foreign func printf(fmt: char*, ...);

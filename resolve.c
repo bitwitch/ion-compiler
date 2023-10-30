@@ -286,7 +286,13 @@ bool is_foreign_decl(Decl *decl) {
 	return false;
 }
 
-
+Note *get_note_foreign(Decl *decl) {
+	for (int i=0; i<decl->notes.num_notes; ++i) {
+		if (decl->notes.notes[i].name == name_foreign)
+			return &decl->notes.notes[i];
+	}
+	return NULL;
+}
 
 Sym *resolve_name(char *name);
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type);
@@ -1228,6 +1234,7 @@ ResolvedExpr resolve_expr_call(Expr *expr) {
 				semantic_error(expr->pos, "expected one argument to cast, got %d", expr->call.num_args);
 				return resolved_null;
 			}
+			expr->call.expr->type = sym->type;
 			ResolvedExpr operand = resolve_expr(expr->call.args[0]);
 			if (!cast_operand(&operand, sym->type)) {
 				semantic_error(expr->pos, "Invalid type cast from %s to %s", 
@@ -1865,14 +1872,26 @@ void complete_sym(Sym *sym) {
     assert(sym->state == SYM_RESOLVED);
     Package *old_package = enter_package(sym->package);
 
-	if (sym->decl && !is_foreign_decl(sym->decl)) {
-		if (sym->kind == SYM_TYPE) {
-			complete_type(sym->type);
-		} else if (sym->kind == SYM_FUNC) {
-			if (!sym->decl->func.is_incomplete) {
-				resolve_func_body(sym->decl, sym->type);
+	if (sym->decl) {
+		// set external name for foreign decls
+		Note *foreign_note = get_note_foreign(sym->decl);
+		if (foreign_note) {
+			if (foreign_note->num_args > 0) {
+				sym->external_name = foreign_note->args[0].name;
+			} else {
+				sym->external_name = sym->decl->name;
 			}
-			da_push(ordered_syms, sym);
+
+		// complete normal syms
+		} else {
+			if (sym->kind == SYM_TYPE) {
+				complete_type(sym->type);
+			} else if (sym->kind == SYM_FUNC) {
+				if (!sym->decl->func.is_incomplete) {
+					resolve_func_body(sym->decl, sym->type);
+				}
+				da_push(ordered_syms, sym);
+			}
 		}
 	}
 

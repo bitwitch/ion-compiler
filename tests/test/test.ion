@@ -115,13 +115,13 @@ typedef String = char*;
 func find_me() {
 	str := "tacos";
 	c := str[0];
-	while (c < cast(char, 122)) {
-	   c += cast(char, 1);
+	while (c < char(122)) {
+	   c += char(1);
 	}
  
 	any: void*;
-	func_ptr := cast(func(int):int, any);
-	as_float := cast(float, global_int);
+	func_ptr := (:func(int):int)any;
+	as_float := float(global_int);
 	arr: int[5] = {1,2,3,4,5};
 }
 
@@ -153,7 +153,7 @@ func test1(): void {
 	ptr := &arr[2];
 	num2 := ptr[-1];
 	fib_result := fib(num2);
-	as_float := cast(float, fib_result);
+	as_float := float(fib_result);
 	dot_product := vec3_dot({1,2,3}, {4,5,6});
 	i := 2;
 	switch (v.y) {

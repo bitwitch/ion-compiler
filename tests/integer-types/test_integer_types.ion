@@ -8,8 +8,8 @@ var gi1: int;
 var gi2: uint;
 var gl1: long;
 var gl2: ulong;
-var gll1: longlong;
-var gll2: ulonglong;
+var gll1: llong;
+var gll2: ullong;
 var gf: float;
 var gd: double;
 

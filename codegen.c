@@ -69,7 +69,7 @@ char *gen_name_c(char *name) {
 			if (sym->external_name) {
 				gen_name = sym->external_name;
 			} else if (sym->package->external_name) {
-				gen_name = strf("%s_%s", sym->package->external_name, sym->name);
+				gen_name = strf("%s%s", sym->package->external_name, sym->name);
 			} else {
 				gen_name = sym->name;
 			}
@@ -106,7 +106,7 @@ char *gen_type_c(Type *type, char *inner) {
 	case TYPE_STRUCT:
 	case TYPE_UNION:
 	case TYPE_ENUM: {
-		return strf("%s%s%s", type->sym->name, sep, inner);
+		return strf("%s%s%s", gen_name_c(type->sym->name), sep, inner);
 	}
 
 	case TYPE_PTR: {
@@ -243,21 +243,22 @@ char *gen_expr_c(Expr *expr) {
             gen_expr_c(expr->ternary.then_expr),
             gen_expr_c(expr->ternary.else_expr));
     case EXPR_CALL: {
-        char *name = gen_expr_c(expr->call.expr);
+		Expr *call_expr = expr->call.expr;
+        char *name = gen_expr_c(call_expr);
         Expr **args = expr->call.args;
         int num_args = expr->call.num_args;
 		BUF(char *str) = NULL;
 
-		if (expr->type->sym->kind == SYM_TYPE) {
-			// cast
-			str = strf("(%s)(%s)", name, gen_expr_c(args[0]));
-		} else {
+		if (call_expr->type->kind == TYPE_FUNC) {
 			// function call
 			da_printf(str, "%s(", name);
 			for (int i=0; i<num_args; ++i) {
 				da_printf(str, "%s%s", gen_expr_c(args[i]), i == num_args - 1 ? "" : ", ");
 			}
 			da_printf(str, ")");
+		} else {
+			// cast
+			str = strf("(%s)(%s)", name, gen_expr_c(args[0]));
 		}
 		return str;
     }
@@ -294,8 +295,7 @@ char *gen_typespec_c(Typespec *typespec, char *inner) {
 
 	switch (typespec->kind) {
 	case TYPESPEC_NAME: {
-
-        return strf("%s%s%s", typespec->name, sep, inner);
+        return strf("%s%s%s", gen_name_c(typespec->name), sep, inner);
 	}
 
 	case TYPESPEC_ARRAY: {
@@ -338,7 +338,7 @@ char *gen_typespec_c(Typespec *typespec, char *inner) {
 char *gen_decl_func_c(Decl *decl) {
 	BUF(char *str) = NULL; // @LEAK
 
-	da_printf(str, "%s(", decl->name);
+	da_printf(str, "%s(", gen_name_c(decl->name));
 
 	int num_params = decl->func.num_params;
 	if (num_params == 0) {
@@ -595,10 +595,12 @@ char *gen_sym_decl_c(Sym *sym) {
 
 	switch (decl->kind) {
 	case DECL_CONST:
-		return strf("#define %s (%s)", decl->name, gen_expr_c(decl->const_decl.expr));
+		return strf("#define %s (%s)", gen_name_c(decl->name), gen_expr_c(decl->const_decl.expr));
 		break;
-	case DECL_TYPEDEF:
-		return strf("typedef %s;", gen_typespec_c(decl->typedef_decl.typespec, decl->name));
+	case DECL_TYPEDEF: {
+		char *decl_name = gen_name_c(decl->name);
+		return strf("typedef %s;", gen_typespec_c(decl->typedef_decl.typespec, decl_name));
+	}
 
 	case DECL_UNION:
 	case DECL_STRUCT: {
@@ -609,7 +611,7 @@ char *gen_sym_decl_c(Sym *sym) {
 		}
 
 		BUF(char *str) = NULL; // @LEAK
-		da_printf(str, "%s %s {", decl->kind == DECL_STRUCT ? "struct" : "union", decl->name);
+		da_printf(str, "%s %s {", decl->kind == DECL_STRUCT ? "struct" : "union", gen_name_c(decl->name));
 		++gen_indent;
 		gen_newline(str);
 
@@ -629,7 +631,7 @@ char *gen_sym_decl_c(Sym *sym) {
 		BUF(char *str) = NULL; // @LEAK
 		da_printf(str, "enum "); 
 		if (!decl->enum_decl.is_anonymous) {
-			da_printf(str, "%s ", decl->name);
+			da_printf(str, "%s ", gen_name_c(decl->name));
 		}
 		da_printf(str, "{"); 
 		++gen_indent;
@@ -652,9 +654,10 @@ char *gen_sym_decl_c(Sym *sym) {
 	}
 
 	case DECL_VAR: {
+		char *decl_name = gen_name_c(decl->name);
 		char *str = decl->var.typespec
-			? gen_typespec_c(decl->var.typespec, decl->name)
-			: gen_type_c(sym->type, decl->name);
+			? gen_typespec_c(decl->var.typespec, decl_name)
+			: gen_type_c(sym->type, decl_name);
 		return strf("extern %s;", str); 
 	}
 
@@ -693,9 +696,10 @@ char *gen_sym_def_c(Sym *sym) {
 		break;	
 
 	case DECL_VAR: {
+		char *decl_name = gen_name_c(decl->name);
 		char *type = decl->var.typespec
-		   ? gen_typespec_c(decl->var.typespec, decl->name)
-		   : gen_type_c(sym->type, decl->name);
+		   ? gen_typespec_c(decl->var.typespec, decl_name)
+		   : gen_type_c(sym->type, decl_name);
 
 		if (decl->var.expr) {
 			char *init_expr = (decl->var.expr->kind == EXPR_COMPOUND) 
@@ -783,15 +787,16 @@ char *gen_forward_decls_c(void) {
 		if (!decl) continue;
 		if (is_foreign_decl(decl)) continue;
 		if (sym->kind == SYM_TYPE) {
+			char *name = gen_name_c(sym->name);
 			if (decl->kind == DECL_STRUCT) {
-				da_printf(str, "typedef struct %s %s;", sym->name, sym->name);
+				da_printf(str, "typedef struct %s %s;", name, name);
 				gen_newline(str);
 			} else if (decl->kind == DECL_UNION) {
-				da_printf(str, "typedef union %s %s;", sym->name, sym->name);
+				da_printf(str, "typedef union %s %s;", name, name);
 				gen_newline(str);
 			} else if (decl->kind == DECL_ENUM) {
 				if (!decl->enum_decl.is_anonymous) {
-					da_printf(str, "typedef enum %s %s;", sym->name, sym->name);
+					da_printf(str, "typedef enum %s %s;", name, name);
 					gen_newline(str);
 				}
 			}

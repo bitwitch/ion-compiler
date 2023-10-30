@@ -220,7 +220,13 @@ char *str_replace_char(char *str, char to_replace, char replacement) {
 	return result;
 }
 
-
+void str_replace_char_in_place(char *str, char to_replace, char replacement) {
+	for (char *it = str; *it; ++it) {
+		if (*it == to_replace) {
+			*it = replacement;
+		}
+	}
+}
 
 void da_test(void) {
 	int *buf = NULL;

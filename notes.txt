@@ -1,8 +1,13 @@
 TODO:
-[ ] add a parameter to foreign directives to allow assigning an external name to
+[X] add a parameter to foreign directives to allow assigning an external name to
     the declaration: @foreign("external_name") ...
+  [X] codegen should generate the external name for all usages (for example if a
+			typedef has a foreign external name, that is the name that should be used
+      any time a variable of that type is declared
 
-[ ] move builtin package to an actual package in system_packages
+[X] symbol renaming on import
+    [ ] c codegen should output the original symbol name (although with any
+        package prefixes to avoid duplicate names)
 
 [ ] static assert 
 
@@ -16,10 +21,6 @@ TODO:
 
 [ ] support increment expression in array index
 		e.g.  deck[card_index++] = Card{num=1, symbol='A', face_down=true, prev=prev};
-
-[ ] symbol renaming on import
-    [ ] c codegen should output the original symbol name (although with any
-        package prefixes to avoid duplicate names)
 
 [ ] when importing all symbols from a package, ignore the main symbol. this
     should allow programmers to create packages that can be used as an
@@ -100,6 +101,7 @@ TODO:
 
 
 DONE:
+[X] move builtin package to an actual package in system_packages
 [X] change cast syntax from cast(type, val) to type(val)
   [X] change codegen for call exprs that are casts
 [X] resolving constants

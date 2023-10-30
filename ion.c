@@ -165,8 +165,17 @@ Package *import_package(char *package_path) {
 			free(package);
 			return NULL;
 		}
-		char *external_name = str_replace_char(package_path, '/', '_');
+
+		// set external name
+		char external_name[MAX_PATH];
+		path_copy(external_name, package_path);
+		str_replace_char_in_place(external_name, '/', '_'); 
+		size_t len = strlen(external_name);
+		assert(len + 1 < MAX_PATH);
+		external_name[len] = '_';
+		external_name[len+1] = 0;
 		package->external_name = str_intern(external_name);
+
 		add_package(package);
 		parse_package(package);
 	}
