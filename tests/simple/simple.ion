@@ -1,6 +1,6 @@
 func f1(a: int): int {
-
 	b: int32;
+
 	derp := 32;
 	dap := float(derp);
 

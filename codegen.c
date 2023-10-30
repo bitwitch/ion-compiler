@@ -661,7 +661,7 @@ char *gen_sym_decl_c(Sym *sym) {
 		int num_items = decl->enum_decl.num_items;
 		for (int i=0; i<num_items; ++i){
 			EnumItem item = decl->enum_decl.items[i];
-			da_printf(str, "%s", item.name);
+			da_printf(str, "%s", gen_name_c(item.name));
 			if (item.expr)
 				da_printf(str, " = %s", gen_expr_c(item.expr));
 			da_printf(str, ",");
