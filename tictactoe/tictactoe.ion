@@ -1,4 +1,4 @@
-#foreign(include = "<stdio.h>", include = "<stdlib.h>", include = "<time.h>")
+#foreign(header = "<stdio.h>", header = "<stdlib.h>", header = "<time.h>")
 
 @foreign func printf(fmt: char*, ...): int {}
 @foreign func scanf(fmt: char*, ...): int {}
