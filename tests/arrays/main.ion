@@ -32,5 +32,12 @@ func main(argc: int, argv: char**): int {
 
 	sized_arr_with_designator: int[18] = {2,4,6, [15]=82};
 
+	// TODO: implement this
+	// trailing_commas: int[] = {
+		// 10,
+		// 20,
+		// 30,
+	// };
+
 	return 0;
 }

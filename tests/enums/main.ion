@@ -28,5 +28,12 @@ func main(argc: int, argv: char**): int {
 
 	j: int;
 	j = THING_ONE;
+
+	arr: int[] = {
+		[THING_ZERO] = STUFF_GOOD,
+		[THING_ONE]  = STUFF_BAD,
+		[THING_TWO]  = STUFF_PRETTY_DECE
+	};
+
 	return 0;
 }

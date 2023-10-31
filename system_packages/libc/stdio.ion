@@ -1,10 +1,12 @@
-#foreign(include = "<stdio.h>")
+#foreign(header = "<stdio.h>")
 
+@foreign typedef va_list = char*;
 @foreign struct FILE;
 @foreign var stdin: FILE*;
 @foreign var stdout: FILE*;
 @foreign var stderr: FILE*;
 @foreign func printf(fmt: char*, ...);
+@foreign func fprintf(stream: FILE*, fmt: char*, ... );
 @foreign func fgets(str: char*, count: int, stream: FILE*): char*;
 @foreign func scanf(fmt: char*, ...): int;
 @foreign func fopen(filename: char*, mode: char*): FILE*;

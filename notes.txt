@@ -1,4 +1,7 @@
 TODO:
+
+[ ] support trailing commas in array literals
+
 [X] symbol renaming on import
     [ ] c codegen should output the original symbol name (although with any
         package prefixes to avoid duplicate names)
@@ -27,9 +30,6 @@ TODO:
     [X] compiler takes package (directory name) on command line
     [ ] issue user friendly message for when a single .ion file is passed (could
         also just support compiling both single ion files and packages??)
-
-[ ] c codegen needs to prefix decl names with a package prefix to avoid
-    name collisions with other packages
 
 [ ] importing a package that has a foreign function and declaring the same
     foreign function in the current package yields a duplicate symbol error. but
@@ -95,6 +95,8 @@ TODO:
 
 
 DONE:
+[X] c codegen needs to prefix decl names with a package prefix to avoid
+    name collisions with other packages
 [X] add a parameter to foreign directives to allow assigning an external name to
     the declaration: @foreign("external_name") ...
   [X] codegen should generate the external name for all usages (for example if a

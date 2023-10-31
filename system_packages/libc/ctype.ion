@@ -1,0 +1,3 @@
+#foreign(header = "<ctype.h>")
+
+@foreign func isprint(ch: int): int;

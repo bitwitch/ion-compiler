@@ -1,0 +1,10 @@
+@foreign
+// func SDL_LoadFunction(handle: void*, name: char const*): void*;
+func SDL_LoadFunction(handle: void*, name: char*): void*;
+
+@foreign
+// func SDL_LoadObject(sofile: char const*): void*;
+func SDL_LoadObject(sofile: char*): void*;
+
+@foreign
+func SDL_UnloadObject(handle: void*);
