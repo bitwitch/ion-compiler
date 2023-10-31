@@ -1837,6 +1837,7 @@ void resolve_sym(Sym *sym) {
     sym->state = SYM_RESOLVING;
 
 	Package *old_package = enter_package(sym->package);
+	bool skip_ordering = false;
 
     switch (sym->kind) {
     case SYM_VAR:   
@@ -1847,9 +1848,8 @@ void resolve_sym(Sym *sym) {
         break;
     case SYM_FUNC:  
         sym->type = resolve_decl_func(sym->decl); 
-		sym->state = SYM_RESOLVED;
-		leave_package(old_package);
-		return; // don't add to ordered_syms until the function body is resolved
+		skip_ordering = true; // don't add to ordered_syms until the function body is resolved
+		break;
     case SYM_TYPE: 
         sym->type = resolve_decl_type(sym->decl);  
 		sym->type->sym = sym;
@@ -1857,14 +1857,19 @@ void resolve_sym(Sym *sym) {
 	case SYM_ENUM_CONST:
 		// resolve the entire enum decl that this enum item is apart of
 		resolve_sym(sym_get(sym->decl->name));
-		return;
+		skip_ordering = true;
+		break;
     default:
         assert(0);
         break;
     }
+
     sym->state = SYM_RESOLVED;
-    da_push(ordered_syms, sym);
 	leave_package(old_package);
+
+	if (!skip_ordering) {
+		da_push(ordered_syms, sym);
+	}
 }
 
 
@@ -1879,7 +1884,7 @@ void complete_sym(Sym *sym) {
 			if (foreign_note->num_args > 0) {
 				sym->external_name = foreign_note->args[0].name;
 			} else {
-				sym->external_name = sym->decl->name;
+				sym->external_name = sym->name;
 			}
 
 		// complete normal syms
