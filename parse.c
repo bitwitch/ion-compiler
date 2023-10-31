@@ -93,6 +93,7 @@ Expr *parse_expr_compound(Typespec *typespec) {
     expect_token('{');
     BUF(CompoundArg *args) = NULL; // @LEAK
     do {
+		if (is_token('}')) break; // this is to allow trailing commas
 		CompoundArg arg = {0};
 		if (match_token('[')) {
 			arg.field_index = parse_expr();

@@ -1,6 +1,5 @@
 TODO:
 
-[ ] support trailing commas in array literals
 
 [X] symbol renaming on import
     [ ] c codegen should output the original symbol name (although with any
@@ -95,6 +94,7 @@ TODO:
 
 
 DONE:
+[X] support trailing commas in compound literals
 [X] c codegen needs to prefix decl names with a package prefix to avoid
     name collisions with other packages
 [X] add a parameter to foreign directives to allow assigning an external name to
