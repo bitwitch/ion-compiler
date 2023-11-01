@@ -1292,6 +1292,122 @@ ResolvedExpr resolve_expr_call(Expr *expr) {
 	return resolved_rvalue(type->func.ret);
 }
 
+ResolvedExpr resolve_expr_ternary(Expr *expr) {
+	ResolvedExpr result = resolved_null;
+
+	resolve_expr_cond(expr->ternary.cond);
+	ResolvedExpr then_expr = resolve_expr(expr->ternary.then_expr);
+	ResolvedExpr else_expr = resolve_expr(expr->ternary.else_expr);
+
+	if (is_arithmetic_type(then_expr.type) && is_arithmetic_type(else_expr.type)) {
+		ResolvedExpr dummy_left  = then_expr;
+		ResolvedExpr dummy_right = else_expr;
+		if (arithmetic_conversion(&dummy_left, &dummy_right)) {
+			result = resolved_rvalue(dummy_left.type);
+		} else {
+			semantic_error(expr->pos,
+				"incompatible types for branches in ternary expression, left is %s right is %s",
+				type_to_str(then_expr.type), type_to_str(else_expr.type));
+		}
+	} else if (is_aggregate_type(then_expr.type) && is_aggregate_type(else_expr.type)) {
+		if (then_expr.type == else_expr.type) {
+			result = resolved_rvalue(then_expr.type);
+		} else {
+			semantic_error(expr->pos,
+				"incompatible types for branches in ternary expression, left is %s right is %s",
+				type_to_str(then_expr.type), type_to_str(else_expr.type));
+		}
+	} else if (then_expr.type == type_void && else_expr.type == type_void) {
+		result = resolved_rvalue(type_void);
+	} else if (then_expr.type->kind == TYPE_PTR && else_expr.type->kind == TYPE_PTR && 
+			   then_expr.type == else_expr.type) {
+		// TODO(shaw): the standard says "both operands are pointers to
+		// qualified or unqualified versions of compatible types"
+		result = resolved_rvalue(then_expr.type);
+	} else if (then_expr.type->kind == TYPE_PTR && is_null_ptr(else_expr)) {
+		result = resolved_rvalue(then_expr.type);
+	} else if (is_null_ptr(then_expr) && else_expr.type->kind == TYPE_PTR) {
+		result = resolved_rvalue(else_expr.type);
+	} else if (then_expr.type->kind == TYPE_PTR && else_expr.type == type_ptr(type_void)) {
+		result = resolved_rvalue(else_expr.type);
+	} else if (then_expr.type == type_ptr(type_void) && else_expr.type->kind == TYPE_PTR) {
+		result = resolved_rvalue(then_expr.type);
+	} else {
+		semantic_error(expr->pos,
+			"invalid types for branches in ternary expression, left is %s right is %s",
+			type_to_str(then_expr.type), type_to_str(else_expr.type));
+	}
+	return result;
+}
+
+ResolvedExpr resolve_expr_index(Expr *expr) {
+	assert(expr->kind == EXPR_INDEX);
+	ResolvedExpr result = resolved_null;
+	ResolvedExpr resolved_expr = resolve_expr(expr->index.expr);
+	ResolvedExpr index = resolve_expr(expr->index.index);
+	if (!is_integer_type(index.type)) {
+		semantic_error(expr->pos, "index expression must have integer type, got %s",
+			type_to_str(index.type));
+		return resolved_null;
+	}
+	Type *type = resolved_expr.type;
+	if (type->kind == TYPE_ARRAY) {
+		result = resolved_lvalue(type->array.base);
+	} else if (type->kind == TYPE_PTR) {
+		result = resolved_lvalue(type->ptr.base);
+	} else {
+		semantic_error(expr->pos, "attempting to index a non array or pointer type");
+		result = resolved_null;
+	}
+	return result;
+}
+
+ResolvedExpr resolve_expr_field(Expr *expr) {
+	assert(expr->kind == EXPR_FIELD);
+	ResolvedExpr result = resolved_null;
+	ResolvedExpr operand = resolve_expr(expr->field.expr);
+	Type *type = operand.type;
+	if (operand.type->kind == TYPE_PTR) {
+		type = operand.type->ptr.base;
+	}
+	complete_type(type);
+	if (type->kind != TYPE_STRUCT && type->kind != TYPE_UNION) {
+		semantic_error(expr->pos, "attempting to access a field of a non struct or union");
+	}
+	TypeField *fields = type->aggregate.fields;
+	int num_fields =  type->aggregate.num_fields;
+	bool found = false;
+	for (int i = 0; i < num_fields; ++i) {
+		if (expr->field.name == fields[i].name) {
+			result = resolved_lvalue(fields[i].type);
+			found = true; 
+			break;
+		}
+	}
+	if (!found) {
+		semantic_error(expr->pos, "%s is not a field of %s", expr->field.name, type_to_str(type));
+	}
+	return result;
+}
+
+ResolvedExpr resolve_expr_binary(Expr *expr) {
+	ResolvedExpr result = resolved_null;
+	ResolvedExpr left = resolve_expr(expr->binary.left);
+	ResolvedExpr right = resolve_expr(expr->binary.right);
+	if (!arithmetic_conversion(&left, &right)) {
+		semantic_error(expr->pos, 
+			"incompatible types for left and right side of binary expression, left is %s right is %s",
+			type_to_str(left.type), type_to_str(right.type));
+	}
+	if (left.is_const && right.is_const) {
+		Val val = eval_constant_binary_expr(expr->binary.op, &left, &right);
+		result = resolved_const(left.type, val);
+	} else {
+		result = resolved_rvalue(left.type);
+	}
+	return result;
+}
+
 ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
     ResolvedExpr result = resolved_null;
 
@@ -1303,10 +1419,11 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
         result = resolved_const(type_char, (Val){.c=expr->char_val});
 		break;
     case EXPR_FLOAT:
-		if (IS_SET(expr->mod, TOKENMOD_DOUBLE))
+		if (IS_SET(expr->mod, TOKENMOD_DOUBLE)) {
 			result = resolved_const(type_double, (Val){.d=(double)expr->float_val});
-		else
+		} else {
 			result = resolved_const(type_float, (Val){.f=(float)expr->float_val});
+		}
 		break;
 	case EXPR_BOOL:
 		result = resolved_const(type_bool, (Val){.b=expr->bool_val});
@@ -1319,6 +1436,24 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 		break;
     case EXPR_UNARY:
         result = resolve_expr_unary(expr);
+		break;
+	case EXPR_BINARY:
+		result = resolve_expr_binary(expr);
+		break;
+	case EXPR_TERNARY:
+		result = resolve_expr_ternary(expr);
+		break;
+	case EXPR_CALL:
+		result = resolve_expr_call(expr);
+		break;
+	case EXPR_INDEX:
+		result = resolve_expr_index(expr);
+		break;
+	case EXPR_FIELD:
+		result = resolve_expr_field(expr);
+		break;
+	case EXPR_COMPOUND:
+		result = resolve_expr_compound(expr, expected_type);
 		break;
     case EXPR_SIZEOF_EXPR: {
         ResolvedExpr sizeof_expr = resolve_expr(expr->sizeof_expr);
@@ -1340,128 +1475,6 @@ ResolvedExpr resolve_expr_expected(Expr *expr, Type *expected_type) {
 				type_to_str(operand.type), type_to_str(type));
 			result = resolved_null;
 		}
-		break;
-	}
-	case EXPR_BINARY: {
-		ResolvedExpr left  = resolve_expr(expr->binary.left);
-		ResolvedExpr right = resolve_expr(expr->binary.right);
-		if (!arithmetic_conversion(&left, &right)) {
-			semantic_error(expr->pos, 
-				"incompatible types for left and right side of binary expression, left is %s right is %s",
-				type_to_str(left.type), type_to_str(right.type));
-		}
-		if (left.is_const && right.is_const) {
-			Val val = eval_constant_binary_expr(expr->binary.op, &left, &right);
-			result = resolved_const(left.type, val);
-		} else {
-			result = resolved_rvalue(left.type);
-		}
-		break;
-	}
-
-	case EXPR_TERNARY: {
-		resolve_expr_cond(expr->ternary.cond);
-		ResolvedExpr then_expr = resolve_expr(expr->ternary.then_expr);
-		ResolvedExpr else_expr = resolve_expr(expr->ternary.else_expr);
-
-		if (is_arithmetic_type(then_expr.type) && is_arithmetic_type(else_expr.type)) {
-			ResolvedExpr dummy_left  = then_expr;
-			ResolvedExpr dummy_right = else_expr;
-			if (arithmetic_conversion(&dummy_left, &dummy_right)) {
-				result = resolved_rvalue(dummy_left.type);
-			} else {
-				semantic_error(expr->pos,
-					"incompatible types for branches in ternary expression, left is %s right is %s",
-					type_to_str(then_expr.type), type_to_str(else_expr.type));
-			}
-		} else if (is_aggregate_type(then_expr.type) && is_aggregate_type(else_expr.type)) {
-			if (then_expr.type == else_expr.type) {
-				result = resolved_rvalue(then_expr.type);
-			} else {
-				semantic_error(expr->pos,
-					"incompatible types for branches in ternary expression, left is %s right is %s",
-					type_to_str(then_expr.type), type_to_str(else_expr.type));
-			}
-		} else if (then_expr.type == type_void && else_expr.type == type_void) {
-			result = resolved_rvalue(type_void);
-		} else if (then_expr.type->kind == TYPE_PTR && else_expr.type->kind == TYPE_PTR && 
-				   then_expr.type == else_expr.type) {
-			// TODO(shaw): the standard says "both operands are pointers to
-			// qualified or unqualified versions of compatible types"
-			result = resolved_rvalue(then_expr.type);
-		} else if (then_expr.type->kind == TYPE_PTR && is_null_ptr(else_expr)) {
-			result = resolved_rvalue(then_expr.type);
-		} else if (is_null_ptr(then_expr) && else_expr.type->kind == TYPE_PTR) {
-			result = resolved_rvalue(else_expr.type);
-		} else if (then_expr.type->kind == TYPE_PTR && else_expr.type == type_ptr(type_void)) {
-			result = resolved_rvalue(else_expr.type);
-		} else if (then_expr.type == type_ptr(type_void) && else_expr.type->kind == TYPE_PTR) {
-			result = resolved_rvalue(then_expr.type);
-		} else {
-			semantic_error(expr->pos,
-				"invalid types for branches in ternary expression, left is %s right is %s",
-				type_to_str(then_expr.type), type_to_str(else_expr.type));
-		}
-		break;
-	}
-
-	case EXPR_CALL: {
-		result = resolve_expr_call(expr);
-		break;
-	}
-	
-	case EXPR_INDEX: {
-		ResolvedExpr resolved_expr  = resolve_expr(expr->index.expr);
-		ResolvedExpr index = resolve_expr(expr->index.index);
-
-		if (!is_integer_type(index.type)) {
-			semantic_error(expr->pos, "index expression must have integer type, got %s",
-				type_to_str(index.type));
-			result = resolved_null;
-			break;
-		}
-
-		Type *type = resolved_expr.type;
-		if (type->kind == TYPE_ARRAY) {
-			result = resolved_lvalue(type->array.base);
-		} else if (type->kind == TYPE_PTR) {
-			result = resolved_lvalue(type->ptr.base);
-		} else {
-			semantic_error(expr->pos, "attempting to index a non array or pointer type");
-			result = resolved_null;
-		}
-		break;
-	}
-
-	case EXPR_FIELD: {
-		ResolvedExpr operand = resolve_expr(expr->field.expr);
-		Type *type = operand.type;
-		if (operand.type->kind == TYPE_PTR) {
-			type = operand.type->ptr.base;
-		}
-		complete_type(type);
-		if (type->kind != TYPE_STRUCT && type->kind != TYPE_UNION) {
-			semantic_error(expr->pos, "attempting to access a field of a non struct or union");
-		}
-
-		TypeField *fields = type->aggregate.fields;
-		int num_fields =  type->aggregate.num_fields;
-		bool found = false;
-		for (int i = 0; i < num_fields; ++i) {
-			if (expr->field.name == fields[i].name) {
-				result = resolved_lvalue(fields[i].type);
-				found = true; 
-				break;
-			}
-		}
-		if (!found) {
-			semantic_error(expr->pos, "%s is not a field of %s", expr->field.name, type_to_str(type));
-		}
-		break;
-	}
-
-	case EXPR_COMPOUND: {
-		result = resolve_expr_compound(expr, expected_type);
 		break;
 	}
 

@@ -18,7 +18,6 @@ decl = 'enum' enum_decl
      | '#' directive_decl
      | 'import' import_decl
 
-for_init = 
 assign_op = EQ | AUTO_EQ | ADD_EQ | SUB_EQ | MUL_EQ | DIV_EQ | MOD_EQ | LSHIFT_EQ | RSHIFT_EQ | XOR_EQ | AND_EQ | OR_EQ
 stmt_block = '{' stmt* '}'
 stmt = 'return' expr? ';'
@@ -41,6 +40,7 @@ typespec = NAME | '(' ':' type ')'
 
 base_expr = INT
           | FLOAT
+          | INCREMENT |  DECREMENT
           | STR
           | TRUE | FALSE
           | NAME
