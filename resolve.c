@@ -1821,10 +1821,11 @@ void resolve_decl_directive(Decl *decl) {
 	}
 }
 
-void resolve_sym(Sym *sym) {
+void resolve_sym(Sym *sym, char *local_name) {
+	assert(sym);
 	if (!sym->reachable && !is_local_sym(sym)) {
 		da_push(reachable_syms, sym);
-		map_put(&reachable_syms_map, sym->name, sym);
+		map_put(&reachable_syms_map, local_name, sym);
 		sym->reachable = true;
 	}
     if (sym->state == SYM_RESOLVED) {
@@ -1856,7 +1857,7 @@ void resolve_sym(Sym *sym) {
         break;
 	case SYM_ENUM_CONST:
 		// resolve the entire enum decl that this enum item is apart of
-		resolve_sym(sym_get(sym->decl->name));
+		resolve_name(sym->decl->name);
 		skip_ordering = true;
 		break;
     default:
@@ -1906,7 +1907,7 @@ void complete_sym(Sym *sym) {
 Sym *resolve_name(char *name) {
     Sym *sym = sym_get(name);
     if (!sym) return NULL;
-    resolve_sym(sym);
+    resolve_sym(sym, name);
     return sym;
 }
 
@@ -1918,7 +1919,7 @@ void resolve_package(Package *package) {
 	for (int i = 0; i<da_len(package->syms); ++i) {
 		Sym *sym = package->syms[i];
 		if (sym->package == package) {
-			resolve_sym(sym);
+			resolve_sym(sym, sym->name);
 		}
 	}
 	leave_package(old_package);

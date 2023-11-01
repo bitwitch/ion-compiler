@@ -243,8 +243,7 @@ char *gen_expr_c(Expr *expr) {
     case EXPR_CHAR: 
         return strf("\'%c\'", expr->int_val); 
     case EXPR_NAME: 
-		return strf("%s", gen_name_c(expr->name)); 
-        // return strf("%s", expr->name); 
+		return strf("%s", gen_name_c(expr->name));
     case EXPR_UNARY: 
 		return strf("%c(%s)", expr->unary.op, gen_expr_c(expr->unary.expr));
     case EXPR_COMPOUND:
