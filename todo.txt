@@ -1,17 +1,17 @@
 TODO:
+[ ] allow sizeof(SOME_TYPE) syntax for simple types
 
-[ ] break larege resolve_expr switch cases into functions: ternary, index, field
-
-[X] symbol renaming on import
-    [ ] c codegen should output the original symbol name (although with any
-        package prefixes to avoid duplicate names)
+[ ] define multiple variables of the same type with commas:
+    a, b: int;
+    var j, k: int;
+    struct int2 {
+        x, y: int;
+    }
 
 [ ] change increment operation from a statement to an expression
   [ ] allow pre-increment
 	[ ] support increment expression in array index
 			e.g.  deck[card_index++] = Card{num=1, symbol='A', face_down=true, prev=prev};
-
-[ ] static assert 
 
 [ ] const qualifiers ??
 
@@ -48,13 +48,6 @@ TODO:
 [ ] build a simple system to compile all the test packages and maybe check them
     against a reference file
 
-[ ] define multiple variables of the same type with commas:
-    a, b: int;
-    var j, k: int;
-    struct int2 {
-        x, y: int;
-    }
-
 [ ] preserve comments for c codegen
 
 [ ] free dynamic arrays used in ast node creation, many ast nodes use ast_memdup
@@ -88,6 +81,11 @@ TODO:
 
 
 DONE:
+[X] static assert 
+[X] symbol renaming on import
+    [X] c codegen should output the original symbol name (although with any
+        package prefixes to avoid duplicate names)
+[X] break larege resolve_expr switch cases into functions: ternary, index, field
 [X] when importing all symbols from a package, ignore the main symbol. this
     should allow programmers to create packages that can be used as an
     executable and also as a library

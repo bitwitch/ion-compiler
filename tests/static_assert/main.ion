@@ -1,0 +1,11 @@
+const check = 69;
+#static_assert(check == 69)
+
+// these should fail
+// var x: int;
+// #static_assert(check == 10)
+// #static_assert(x == 10)
+
+func main(argc: int, argv: char**): int {
+	return 0;
+}

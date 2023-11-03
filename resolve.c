@@ -1817,20 +1817,31 @@ Type *resolve_decl_type(Decl *decl) {
 void resolve_decl_directive(Decl *decl) {
 	assert(decl->kind == DECL_DIRECTIVE);
 
-	// only handling "foreign" directive for now
-	assert(decl->name == name_foreign);
-	// if (decl->name != name_foreign) return;
-
-	for (int i=0; i<decl->directive.num_args; ++i) {
-		NoteArg arg = decl->directive.args[i];
-
-		assert(arg.name == name_header || arg.name == name_source);
-
-		ResolvedExpr resolved = resolve_expr(arg.expr);
-		if (resolved.type != type_ptr(type_char)) {
-			semantic_error(decl->pos, "expected directive argument value to be type char*, got %s", 
-				type_to_str(resolved.type));
+	switch (decl->directive.kind) {
+	case DIRECTIVE_FOREIGN:
+		for (int i=0; i<decl->directive.foreign.num_args; ++i) {
+			NoteArg arg = decl->directive.foreign.args[i];
+			assert(arg.name == name_header || arg.name == name_source);
+			ResolvedExpr resolved = resolve_expr(arg.expr);
+			if (resolved.type != type_ptr(type_char)) {
+				semantic_error(decl->pos, "expected directive argument value to be type char*, got %s", 
+						type_to_str(resolved.type));
+			}
 		}
+		break;
+	case DIRECTIVE_STATIC_ASSERT: {
+		ResolvedExpr resolved = resolve_expr(decl->directive.assert.expr);
+		if (!resolved.is_const) {
+			semantic_error(decl->pos, "static assert must take a constant expression");
+		}
+		if (!resolved.val.b) {
+			fatal_semantic_error(decl->pos, "static assertion failed");
+		}
+		break;
+	}
+	default:
+		assert(0);
+		break;
 	}
 }
 

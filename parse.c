@@ -695,19 +695,30 @@ NoteList parse_note_list(void) {
 }
 
 Decl *parse_decl_directive(void) {
+	Decl *decl = NULL;
 	SourcePos pos = token.pos;
 	char *name = parse_name();
 	expect_token('(');
-	BUF(NoteArg *args) = NULL;
-	do {
-		char *arg_name = parse_name();
-		expect_token('=');
-		Expr *expr = parse_expr();
-		da_push(args, (NoteArg){arg_name, expr});
-	} while (match_token(','));
+
+	if (name == name_static_assert) {
+		decl = decl_directive_static_assert(pos, name, parse_expr());
+	} else {
+		BUF(NoteArg *args) = NULL;
+		do {
+			char *arg_name = parse_name();
+			expect_token('=');
+			Expr *expr = parse_expr();
+			da_push(args, (NoteArg){arg_name, expr});
+		} while (match_token(','));
+		decl = decl_directive_foreign(pos, name, args, da_len(args));
+		da_free(args);
+	}
+
 	expect_token(')');
-	Decl *decl = decl_directive(pos, name, args, da_len(args));
-	da_free(args);
+	if (is_token(';')) { // optional semicolon 
+		next_token();
+	}
+
 	return decl;
 }
 

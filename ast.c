@@ -354,11 +354,20 @@ Decl *decl_func(SourcePos pos, char *name, FuncParam *params, int num_params, bo
     return decl;
 }
 
-Decl *decl_directive(SourcePos pos, char *name, NoteArg *args, int num_args) {
+Decl *decl_directive_static_assert(SourcePos pos, char *name, Expr *expr) {
 	Decl *decl = decl_alloc(DECL_DIRECTIVE, pos);
 	decl->name = name;
-	decl->directive.args = ast_memdup(args, num_args * sizeof(*args));
-	decl->directive.num_args = num_args;
+	decl->directive.kind = DIRECTIVE_STATIC_ASSERT;
+	decl->directive.assert.expr = expr;
+	return decl;
+}
+
+Decl *decl_directive_foreign(SourcePos pos, char *name, NoteArg *args, int num_args) {
+	Decl *decl = decl_alloc(DECL_DIRECTIVE, pos);
+	decl->name = name;
+	decl->directive.kind = DIRECTIVE_FOREIGN;
+	decl->directive.foreign.args = ast_memdup(args, num_args * sizeof(*args));
+	decl->directive.foreign.num_args = num_args;
 	return decl;
 }
 

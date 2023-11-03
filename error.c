@@ -30,6 +30,11 @@ void semantic_error(SourcePos pos, char *fmt, ...) {
 	assert(0);
 }
 
+void fatal_semantic_error(SourcePos pos, char *fmt) {
+	semantic_error(pos, fmt);
+	exit(1);
+}
+
 void print_note(SourcePos pos, char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);

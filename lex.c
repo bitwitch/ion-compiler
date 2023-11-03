@@ -91,6 +91,7 @@ char *keyword_import;
 
 // non-keyword string interned names
 char *name_foreign;
+char *name_static_assert;
 char *name_header;
 char *name_source;
 
@@ -121,6 +122,7 @@ void init_keywords(void) {
         keyword_import = str_intern("import");
 
 		name_foreign = str_intern("foreign");
+		name_static_assert = str_intern("static_assert");
 		name_header = str_intern("header");
 		name_source = str_intern("source");
 	}
@@ -382,7 +384,7 @@ repeat:
 				while (*stream != '\n' && *stream != '\0')
 					++stream;
 				token.str_val = str_intern_range(token.start, stream);
-				token.kind = TOKEN_COMMENT;	
+				token.kind = TOKEN_COMMENT;
 
 				// @HACK TEMPORARY
 				// just discarding comments for now, can think about if we want to 

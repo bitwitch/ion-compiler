@@ -774,8 +774,8 @@ char *gen_foreign_headers_c(void) {
 		for (int i=0; i<da_len(package->directives); ++i) {
 			Decl *decl = package->directives[i];
 			if (decl->name == name_foreign) {
-				for (int j=0; j<decl->directive.num_args; ++j) {
-					NoteArg arg = decl->directive.args[j];
+				for (int j=0; j<decl->directive.foreign.num_args; ++j) {
+					NoteArg arg = decl->directive.foreign.args[j];
 					if (arg.name == name_header) {
 						char *val = arg.expr->str_val;
 						if (val[0] == '<') {
@@ -861,8 +861,8 @@ char *gen_foreign_sources_c(void) {
 		for (int i=0; i<da_len(package->directives); ++i) {
 			Decl *decl = package->directives[i];
 			if (decl->name == name_foreign) {
-				for (int j=0; j<decl->directive.num_args; ++j) {
-					NoteArg arg = decl->directive.args[j];
+				for (int j=0; j<decl->directive.foreign.num_args; ++j) {
+					NoteArg arg = decl->directive.foreign.args[j];
 					if (arg.name == name_source) {
 						char source_path[MAX_PATH];
 						path_copy(source_path, package->full_path);

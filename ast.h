@@ -216,19 +216,6 @@ typedef struct {
 	int num_notes;
 } NoteList;
 
-typedef enum {
-    DECL_NONE,
-    DECL_ENUM,
-    DECL_STRUCT,
-    DECL_UNION,
-    DECL_FUNC,
-    DECL_VAR,
-    DECL_CONST,
-    DECL_TYPEDEF,
-    DECL_DIRECTIVE,
-    DECL_IMPORT,
-} DeclKind;
-
 typedef struct {
 	char *name; 
 	Expr *expr;
@@ -243,6 +230,38 @@ typedef struct {
 	char *name;
 	char *rename;
 } ImportItem;
+
+typedef enum {
+	DIRECTIVE_NONE,
+	DIRECTIVE_FOREIGN,
+	DIRECTIVE_STATIC_ASSERT,
+} DirectiveKind;
+
+typedef struct {
+	DirectiveKind kind;
+	union {
+		struct {
+			NoteArg *args;
+			int num_args;
+		} foreign;
+		struct {
+			Expr *expr;
+		} assert;
+	};
+} Directive;
+
+typedef enum {
+    DECL_NONE,
+    DECL_ENUM,
+    DECL_STRUCT,
+    DECL_UNION,
+    DECL_FUNC,
+    DECL_VAR,
+    DECL_CONST,
+    DECL_TYPEDEF,
+    DECL_DIRECTIVE,
+    DECL_IMPORT,
+} DeclKind;
 
 struct Decl {
     DeclKind kind;
@@ -278,16 +297,13 @@ struct Decl {
             Typespec *typespec;
         } typedef_decl;
 		struct {
-			NoteArg *args;
-			int num_args;
-		} directive;
-		struct {
 			bool is_relative;
 			bool import_all;
 			char *package_path;
 			ImportItem *items; // items represents the imported symbols
 			int num_items;
 		} import;
+		Directive directive;
     };
 };
 

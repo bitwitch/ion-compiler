@@ -63,20 +63,6 @@ bool is_package_dir(char *search_path, char *package_path) {
 	return result;
 }
 
-bool has_foreign_sources(Package *package) {
-	for (int i=0; i<da_len(package->directives); ++i) {
-		assert(package->directives[i]->kind == DECL_DIRECTIVE);
-		NoteArg *args = package->directives[i]->directive.args;
-		int num_args = package->directives[i]->directive.num_args;
-		for (int j=0; j<num_args; ++j) {
-			if (args[j].name == name_source) {
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
 bool copy_package_full_path(char dest[MAX_PATH], char *package_path) {
 	for (int i=0; i<num_package_search_paths; ++i) {
 		if (is_package_dir(package_search_paths[i], package_path)) {
@@ -194,6 +180,7 @@ void import_package_symbols(Decl *decl, Package *package) {
             semantic_error(decl->pos, "symbol '%s' is not native to package '%s', you must import it from its native package '%s'", 
 				item.name, package->path, sym->package->path);
 		}
+
 		sym_package_put(item.rename ? item.rename : item.name, sym);
 	}
 }
